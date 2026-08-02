@@ -465,3 +465,21 @@ async def stream_up_upload(uuid: str, session_id: str, request: Request):
 
     await gate.flush()
     return {"ok": True}
+
+
+# ══════════════════════════════ PROXY-IP ROUTES ══════════════════════════════
+# Configs with a selected proxy IP carry path /proxyIP/{ip}/xhttp-siz10/...
+# Accept the route and delegate to the real handler so the connection works.
+@router.get("/proxyIP/{proxy}/xhttp-siz10/{mode}/{uuid}/{session_id}")
+async def xhttp_downlink_proxy(proxy: str, mode: str, uuid: str, session_id: str, request: Request):
+    return await xhttp_downlink(mode, uuid, session_id, request)
+
+
+@router.post("/proxyIP/{proxy}/xhttp-siz10/packet-up/{uuid}/{session_id}/{seq}")
+async def packet_up_upload_proxy(proxy: str, uuid: str, session_id: str, seq: int, request: Request):
+    return await packet_up_upload(uuid, session_id, seq, request)
+
+
+@router.post("/proxyIP/{proxy}/xhttp-siz10/stream-up/{uuid}/{session_id}")
+async def stream_up_upload_proxy(proxy: str, uuid: str, session_id: str, request: Request):
+    return await stream_up_upload(uuid, session_id, request)

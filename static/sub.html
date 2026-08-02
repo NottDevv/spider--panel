@@ -510,7 +510,7 @@
           '</h2>' +
           '<div class="flex gap-3">' +
             (cfg ?
-              '<button onclick="window.open(\'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=\'+encodeURIComponent(unescape(window.__cfg)),\'_blank\')" class="flex items-center gap-2 px-4 py-2 border border-black/10 dark:border-white/12 rounded-lg font-code-label text-code-label text-on-surface hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-300 hover:scale-[1.02]">' +
+              '<button onclick="window.open(\'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=\'+encodeURIComponent(unescape(window.__cfg)),\'_blank\')" class="flex items-center gap-2 px-4 py-2 border border-black/10 dark:border-white/12 rounded-lg text-code-label text-code-label text-on-surface hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-300 hover:scale-[1.02]">' +
                 '<span class="material-symbols-outlined text-[18px]">qr_code_2</span>' +
                 '<span class="en-only">QR Code</span><span class="fa-only">کد QR</span>' +
               '</button>' : '') +
@@ -532,9 +532,6 @@
                 '</div>' +
                 '<span class="cfg-text text-on-surface-variant truncate max-w-[130px] md:max-w-[320px] ltr:text-left rtl:text-right" dir="ltr">' + esc(cfg) + '</span>' +
               '</div>' +
-              '<button aria-label="Copy config" class="p-2 ml-2 mr-2 flex-shrink-0 text-on-surface-variant hover:text-on-surface transition-colors">' +
-                '<span class="material-symbols-outlined">content_copy</span>' +
-              '</button>' +
             '</div>' : '') +
           (cfg ?
             '<div class="group border border-black/5 dark:border-white/12 bg-black/5 dark:bg-white/5 rounded-2xl p-stack-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer relative overflow-hidden" onclick="copyStatus()">' +
@@ -560,9 +557,6 @@
                   esc((d.username || uname) + ' | Time: ' + (days === null ? '∞' : days + ' days') + ' | Traffic: ' + fmtBytes(used) + ' / ' + (limit > 0 ? fmtBytes(limit) : '∞')) +
                 '</span>' +
               '</div>' +
-              '<button aria-label="Copy status" class="p-2 ml-2 mr-2 flex-shrink-0 text-on-surface-variant hover:text-on-surface transition-colors">' +
-                '<span class="material-symbols-outlined">content_copy</span>' +
-              '</button>' +
             '</div>' : '') +
           (cfg ?
             '<div class="flex flex-wrap gap-2 mt-2">' +
@@ -611,9 +605,24 @@
     }
   }
 
+  // Build the full config text: main config + status config (time/traffic)
+  function allConfigsText() {
+    var parts = [];
+    if (window.__cfg) parts.push(window.__cfg);
+    var d = state.data;
+    if (d) {
+      var days = (d.expire_days === null || d.expire_days === undefined) ? '∞' : d.expire_days;
+      var used = fmtBytes(d.traffic_used_bytes || 0);
+      var lim = (d.traffic_limit_bytes || 0) > 0 ? fmtBytes(d.traffic_limit_bytes) : '∞';
+      parts.push('[' + (d.username || uname) + ']\nTime Left: ' + days + ' days\nTraffic Used: ' + used + ' / ' + lim);
+    }
+    return parts.join('\n');
+  }
+
   window.copyCfg = function() {
-    if (!window.__cfg) return;
-    copyText(window.__cfg);
+    var txt = allConfigsText();
+    if (!txt) return;
+    copyText(txt);
   };
   window.copyStatus = function() {
     var d = state.data;
@@ -624,7 +633,7 @@
     copyText('[' + (d.username || uname) + ']\nTime Left: ' + days + ' days\nTraffic Used: ' + used + ' / ' + lim);
   };
   window.copySub = function() {
-    copyText(subUrl);
+    copyText(subUrl + '\n' + allConfigsText());
   };
   window.importSub = function() {
     window.open('v2rayng://install-sub?url=' + encodeURIComponent(subUrl), '_blank');

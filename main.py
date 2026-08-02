@@ -1229,7 +1229,13 @@ try:
             return
         await websocket_tunnel(ws, uuid)
 
-    logger.info("VLESS Relay module loaded (WS: /ws/{uuid})")
+    # Configs with a selected proxy IP carry path /proxyIP/{ip}/ws/{uuid}.
+    # Accept the route and tunnel on the real uuid so the connection works.
+    @app.websocket("/proxyIP/{proxy}/ws/{uuid}")
+    async def ws_proxy_uuid_handler(ws: WebSocket, uuid: str, proxy: str):
+        await websocket_tunnel(ws, uuid)
+
+    logger.info("VLESS Relay module loaded (WS: /ws/{uuid} + /proxyIP/.../ws/{uuid})")
 except Exception as e:
     logger.warning(f"VLESS Relay module not available: {e}")
 
