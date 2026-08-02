@@ -694,7 +694,7 @@ async def ensure_default_link():
 # ── Basic endpoints ───────────────────────────────────────────────────────────
 @app.get("/")
 async def root():
-    return {"service": "Spider Gateway", "version": "9.2", "status": "active", "channel": "https://t.me/SpiderPanel"}
+    return {"service": "Spider Gateway", "version": "9.2", "status": "active", "channel": "https://t.me/spider_vpn1"}
 
 @app.get("/health")
 async def health():
@@ -737,7 +737,7 @@ async def subscription_handler(identifier: str, request: Request):
         vless = generate_vless_link(identifier, host, remark=f"Spider-{link['label']}", protocol=proto)
         content = base64.b64encode(vless.encode()).decode()
         return Response(content=content, media_type="text/plain",
-                        headers={"profile-title": quote(link["label"]), "support-url": "https://t.me/SpiderPanel"})
+                        headers={"profile-title": quote(link["label"]), "support-url": "https://t.me/spider_vpn1"})
 
     raise HTTPException(status_code=404, detail="not found")
 
@@ -897,7 +897,7 @@ async def sub_group_subscription(uuid_key: str, request: Request):
         media_type="text/plain",
         headers={
             "profile-title": quote(sub["name"]),
-            "support-url": "https://t.me/SpiderPanel",
+            "support-url": "https://t.me/spider_vpn1",
             "profile-update-interval": "12",
         }
     )
@@ -3576,11 +3576,14 @@ _PROXY_PING_TTL = 45  # seconds
 
 
 @app.get("/api/proxy-ips/{country}/ping")
-async def ping_country_proxies(country: str, _=Depends(require_auth)):
+async def ping_country_proxies(country: str, request: Request, _=Depends(require_auth)):
     """Measure TCP-connect latency to each ip:port in the country list.
 
     Uses asyncio.open_connection with a short timeout so dead IPs fail fast.
     Results are cached for _PROXY_PING_TTL seconds to avoid hammering the pool.
+
+    Optional query param `ips` (comma-separated ip:port) pins the exact list to
+    ping — used by the panel so the pings match the IPs it already loaded.
     """
     import random as _random
     code = country.strip().upper()
@@ -3588,27 +3591,44 @@ async def ping_country_proxies(country: str, _=Depends(require_auth)):
     if not fpath.is_file():
         raise HTTPException(status_code=404, detail=f"country proxy list not found: {code}")
 
-    proxies = []
-    try:
-        async with aiofiles.open(fpath, "r", encoding="utf-8", errors="ignore") as fh:
-            async for line in fh:
-                line = line.strip()
-                if not line or " " not in line:
-                    continue
-                ip, port = line.split(" ", 1)
-                ip = ip.strip()
-                port = port.strip()
-                if not ip or not port:
-                    continue
-                proxies.append({"ip": ip, "port": port})
-    except Exception as e:
-        logger.warning(f"Could not read country proxy list {code}: {e}")
-        raise HTTPException(status_code=500, detail=f"could not read proxy list: {code}")
-    if len(proxies) > 50:
-        proxies = _random.sample(proxies, 50)
+    requested = (request.query_params.get("ips") or "").strip()
+    if requested:
+        proxies = []
+        for entry in requested.split(","):
+            entry = entry.strip()
+            if not entry:
+                continue
+            if ":" in entry:
+                ip, port = entry.rsplit(":", 1)
+            else:
+                ip, port = entry, ""
+            ip = ip.strip()
+            port = port.strip()
+            if not ip:
+                continue
+            proxies.append({"ip": ip, "port": port or "443"})
+    else:
+        proxies = []
+        try:
+            async with aiofiles.open(fpath, "r", encoding="utf-8", errors="ignore") as fh:
+                async for line in fh:
+                    line = line.strip()
+                    if not line or " " not in line:
+                        continue
+                    ip, port = line.split(" ", 1)
+                    ip = ip.strip()
+                    port = port.strip()
+                    if not ip or not port:
+                        continue
+                    proxies.append({"ip": ip, "port": port})
+        except Exception as e:
+            logger.warning(f"Could not read country proxy list {code}: {e}")
+            raise HTTPException(status_code=500, detail=f"could not read proxy list: {code}")
+        if len(proxies) > 50:
+            proxies = _random.sample(proxies, 50)
 
     now = time.time()
-    key = code
+    key = code + ":" + requested[:200]
     async with _PROXY_PING_CACHE_LOCK:
         cached = _PROXY_PING_CACHE.get(key)
     if cached and now - cached["at"] < _PROXY_PING_TTL:

@@ -484,6 +484,21 @@
             '</div>' +
           '</div>' +
         '</div>' +
+        '<hr class="border-black/10 dark:border-white/10 my-stack-sm"/>' +
+        '<div>' +
+          '<div class="flex justify-between items-end mb-2">' +
+            '<span class="font-body-sm text-body-sm text-on-surface-variant">' +
+              '<span class="en-only">IP Devices</span><span class="fa-only">تعداد دستگاه</span>' +
+            '</span>' +
+            '<div class="text-right">' +
+              '<span class="font-headline-md text-headline-md text-on-surface" style="font-size:18px;">' + (d.used_ips != null ? esc(String(d.used_ips)) + ' / ' + (d.max_ip_per_user != null ? esc(String(d.max_ip_per_user)) : '∞') : '∞') + '</span>' +
+            '</div>' +
+          '</div>' +
+          (d.proxy_ips && d.proxy_ips.length ?
+            '<div class="flex flex-wrap gap-1.5 mt-2">' +
+              d.proxy_ips.map(function(ip){ return '<span class="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-code-label text-[10px] text-on-surface-variant" dir="ltr">' + esc(ip) + '</span>'; }).join('') +
+            '</div>' : '') +
+        '</div>' +
       '</div>';
 
     // Right column: config
@@ -515,9 +530,37 @@
                   '<span class="font-code-label text-code-label text-on-surface font-bold ltr:text-left rtl:text-right" dir="ltr">' + esc((d.protocol || 'vless').toUpperCase()) + '</span>' +
                   '<span class="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-code-label text-[10px] text-on-surface-variant">' + esc((d.transport_type || 'ws').toUpperCase()) + '</span>' +
                 '</div>' +
-                '<span class="cfg-text text-on-surface-variant truncate max-w-[200px] md:max-w-[400px] ltr:text-left rtl:text-right" dir="ltr">' + esc(cfg) + '</span>' +
+                '<span class="cfg-text text-on-surface-variant truncate max-w-[130px] md:max-w-[320px] ltr:text-left rtl:text-right" dir="ltr">' + esc(cfg) + '</span>' +
               '</div>' +
-              '<button aria-label="Copy config" class="p-2 text-on-surface-variant hover:text-on-surface transition-colors">' +
+              '<button aria-label="Copy config" class="p-2 ml-2 mr-2 flex-shrink-0 text-on-surface-variant hover:text-on-surface transition-colors">' +
+                '<span class="material-symbols-outlined">content_copy</span>' +
+              '</button>' +
+            '</div>' : '') +
+          (cfg ?
+            '<div class="group border border-black/5 dark:border-white/12 bg-black/5 dark:bg-white/5 rounded-2xl p-stack-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer relative overflow-hidden" onclick="copyStatus()">' +
+              '<div class="absolute ltr:left-0 rtl:right-0 top-0 bottom-0 w-1 bg-[#00ffff] opacity-0 group-hover:opacity-100 transition-opacity neon-border"></div>' +
+              '<div class="flex flex-col gap-1 ltr:pl-2 rtl:pr-2 min-w-0 flex-1">' +
+                '<div class="flex items-center gap-2">' +
+                  '<span class="material-symbols-outlined text-[15px] text-on-surface-variant">schedule</span>' +
+                  '<span class="font-code-label text-code-label text-on-surface font-bold ltr:text-left rtl:text-right">' +
+                    '<span class="en-only">Status Config</span><span class="fa-only">کانفیگ وضعیت</span>' +
+                  '</span>' +
+                '</div>' +
+                '<div class="flex flex-wrap gap-2 mt-1">' +
+                  '<span class="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-code-label text-[10px] text-on-surface-variant">' +
+                    '<span class="en-only">Time Left:</span><span class="fa-only">زمان باقیمانده:</span> ' + (days === null ? '∞' : esc(String(days))) + ' ' +
+                    '<span class="en-only">days</span><span class="fa-only">روز</span>' +
+                  '</span>' +
+                  '<span class="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-code-label text-[10px] text-on-surface-variant">' +
+                    '<span class="en-only">Traffic:</span><span class="fa-only">حجم:</span> ' + esc(fmtBytes(used)) + ' / ' + (limit > 0 ? esc(fmtBytes(limit)) : '∞') +
+                  '</span>' +
+                  '<span class="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-code-label text-[10px] text-on-surface-variant">' + pct.toFixed(1) + '%' + '</span>' +
+                '</div>' +
+                '<span class="cfg-text text-on-surface-variant truncate max-w-[130px] md:max-w-[320px] ltr:text-left rtl:text-right" dir="ltr">' +
+                  esc((d.username || uname) + ' | Time: ' + (days === null ? '∞' : days + ' days') + ' | Traffic: ' + fmtBytes(used) + ' / ' + (limit > 0 ? fmtBytes(limit) : '∞')) +
+                '</span>' +
+              '</div>' +
+              '<button aria-label="Copy status" class="p-2 ml-2 mr-2 flex-shrink-0 text-on-surface-variant hover:text-on-surface transition-colors">' +
                 '<span class="material-symbols-outlined">content_copy</span>' +
               '</button>' +
             '</div>' : '') +
@@ -571,6 +614,14 @@
   window.copyCfg = function() {
     if (!window.__cfg) return;
     copyText(window.__cfg);
+  };
+  window.copyStatus = function() {
+    var d = state.data;
+    if (!d) return;
+    var days = (d.expire_days === null || d.expire_days === undefined) ? '∞' : d.expire_days;
+    var used = fmtBytes(d.traffic_used_bytes || 0);
+    var lim = (d.traffic_limit_bytes || 0) > 0 ? fmtBytes(d.traffic_limit_bytes) : '∞';
+    copyText('[' + (d.username || uname) + ']\nTime Left: ' + days + ' days\nTraffic Used: ' + used + ' / ' + lim);
   };
   window.copySub = function() {
     copyText(subUrl);

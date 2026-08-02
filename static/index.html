@@ -302,6 +302,7 @@ input,select,button,textarea{font-family:inherit}
 .px-ip input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--neon); cursor: pointer; flex-shrink: 0; }
 .px-ip-ad { font-family: monospace; font-size: 12px; direction: ltr; color: var(--txt); }
 .px-ip-pt { font-family: monospace; font-size: 10px; color: var(--txt2); }
+.px-ping { margin-left: auto; font-family: monospace; font-size: 10px; font-weight: 700; direction: ltr; flex-shrink: 0; }
 .px-tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(0,225,193,.1); border: 1px solid rgba(0,225,193,.25); border-radius: 8px; font-size: 11px; color: var(--neon); margin: 3px 3px 0 0; }
 .px-tag .x { cursor: pointer; opacity: .6; }
 .px-tag .x:hover { opacity: 1; }
@@ -521,6 +522,30 @@ tr{animation:fadeIn .3s ease}
 .theme-dot.active{border-color:var(--neon);box-shadow:0 0 12px var(--neon)}
 .theme-dot.red{background:#ff1744}.theme-dot.green{background:#00ff41}.theme-dot.blue{background:#448aff}
 
+/* Contact Me bubbles */
+.contact-panel{text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}
+.contact-sub{font-size:12px;color:var(--txt2);margin-bottom:18px}
+.contact-bubbles{display:flex;gap:28px;justify-content:center;align-items:center;flex-wrap:wrap;padding:16px 0 8px}
+.contact-bubble{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  width:150px;height:150px;border-radius:50%;
+  background:var(--surface-glass);backdrop-filter:blur(20px) saturate(160%);
+  -webkit-backdrop-filter:blur(20px) saturate(160%);
+  border:1.5px solid var(--border);color:var(--txt);text-decoration:none;
+  box-shadow:var(--shadow-md),var(--glow);transition:all .3s ease;position:relative;overflow:hidden;
+}
+.contact-bubble::before{content:'';position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(180deg,rgba(255,255,255,.08),transparent);pointer-events:none}
+.contact-bubble svg{width:40px;height:40px;color:var(--neon);transition:transform .3s ease}
+.contact-bubble span{font-size:13px;font-weight:700}
+.contact-bubble small{font-size:10px;color:var(--txt2);direction:ltr}
+.contact-bubble:hover{transform:translateY(-6px);border-color:var(--border-glow);box-shadow:var(--shadow-lg),var(--glow-strong)}
+.contact-bubble:hover svg{transform:scale(1.15)}
+.contact-bubble.tg:hover svg{color:#229ED9}
+.contact-bubble.gh:hover svg{color:#a5a5a5}
+.contact-bubble.tg::after{content:'';position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,rgba(34,158,217,.14),transparent 70%);opacity:0;transition:opacity .3s;pointer-events:none}
+.contact-bubble.gh::after{content:'';position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,rgba(148,148,148,.14),transparent 70%);opacity:0;transition:opacity .3s;pointer-events:none}
+.contact-bubble:hover::after{opacity:1}
+
 .hidden{display:none!important}
 
 /* Separator */
@@ -623,6 +648,10 @@ tr{animation:fadeIn .3s ease}
       <div class="nav-item" onclick="switchTab('settings',this)">
         <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></span>
         تنظیمات
+      </div>
+      <div class="nav-item" onclick="switchTab('contact',this)">
+        <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
+        Contact Me
       </div>
       <div class="nav-item" onclick="doLogout()" style="color:var(--red)!important">
         <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4m7 14l5-5-5-5m5 5H9"/></svg></span>
@@ -746,6 +775,26 @@ tr{animation:fadeIn .3s ease}
             <div class="f-g"><label>رمز جدید</label><input type="password" id="cp-new" required minlength="4"></div>
             <button class="btn btn-p" style="width:100%">تغییر رمز</button>
           </form>
+        </div>
+      </div>
+
+      <!-- CONTACT TAB -->
+      <div class="tab-content hidden" id="tab-contact">
+        <div class="panel contact-panel">
+          <div class="panel-h"><span class="glow">Contact Me</span></div>
+          <p class="contact-sub">برای پشتیبانی و همکاری با من در ارتباط باشید</p>
+          <div class="contact-bubbles">
+            <a class="contact-bubble tg" href="https://t.me/spider_vpn1" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+              <span>Telegram</span>
+              <small>t.me/spider_vpn1</small>
+            </a>
+            <a class="contact-bubble gh" href="https://github.com/amirappleidfd-stack" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-.3.063-.61.095-.88.095-1.74 0-2.13-1.32-2.13-1.32-.285-.72-.695-1.313-1.238-1.673-.99-.675.06-.662.06-.662 1.08.06 1.65 1.065 1.65 1.065.96 1.65 2.52 1.173 3.135.897.097-.698.375-1.173.682-1.442-2.38-.27-4.875-1.19-4.875-5.31 0-1.173.42-2.133 1.11-2.883-.11-.27-.48-1.362.105-2.838 0 0 .907-.285 2.97 1.105.87-.24 1.8-.36 2.73-.36.93 0 1.86.12 2.73.36 2.06-1.39 2.97-1.105 2.97-1.105.586 1.476.216 2.568.105 2.838.69.75 1.11 1.71 1.11 2.883 0 4.13-2.5 5.035-4.885 5.31.385.33.72.98.72 1.975 0 1.425-.015 2.57-.015 2.92 0 .32.22.695.825.575C20.565 22.09 24 17.595 24 12.297 24 5.67 18.63.297 12 .297z"/></svg>
+              <span>GitHub</span>
+              <small>github.com/amirappleidfd-stack</small>
+            </a>
+          </div>
         </div>
       </div>
 
@@ -1824,7 +1873,7 @@ function pxSelectFromDropdown(code){
 
 function pxLoadIPs(code){
   var box = $id('px-ip-list');
-  PX.ips=[]; PX.selected={}; PX.filter='';
+  PX.ips=[]; PX.selected={}; PX.filter=''; PX.pings={};
   var sea=$id('px-search'); if(sea) sea.value='';
   pxRenderPreview();
   if (!box) return;
@@ -1833,24 +1882,64 @@ function pxLoadIPs(code){
     PX.ips = (d.proxies || []).map(function(p){ return p.ip + ':' + p.port; });
     pxRenderIPs();
     pxRenderPreview();
+    pxLoadPings();
   }).catch(function(){
     box.innerHTML = '<div class="px-noselected">IP ای برای این کشور یافت نشد</div>';
   });
 }
 
+function pxLoadPings(){
+  var code = PX.selectedCountry;
+  if (!code || !PX.ips.length) return;
+  var btn = $id('px-ping-btn');
+  if (btn){ btn.disabled = true; btn.textContent = 'در حال بررسی...'; }
+  api('/api/proxy-ips/' + code + '/ping?ips=' + encodeURIComponent(PX.ips.join(','))).then(function(d){
+    var results = d.results || [];
+    PX.pings = {};
+    results.forEach(function(r){ PX.pings[r.ip + ':' + r.port] = r; PX.pings[r.ip] = r; });
+    pxRenderIPs();
+  }).catch(function(){
+    toast('خطا در بررسی پینگ', 'err');
+  }).finally(function(){
+    if (btn){ btn.disabled = false; btn.textContent = 'بررسی پینگ'; }
+  });
+}
+
 function pxFilterIPs(){ PX.filter = ($id('px-search').value || '').toLowerCase(); pxRenderIPs(); }
 
-function pxSelectAll(){ PX.ips.forEach(function(ip){ PX.selected[ip]=true; }); pxRenderIPs(); pxRenderPreview(); }
+function pxSelectAll(){
+  PX.ips.forEach(function(ip){
+    if (Object.keys(PX.selected).length >= PX_MAX) return;
+    PX.selected[ip]=true;
+  });
+  pxRenderIPs(); pxRenderPreview();
+}
 function pxClearAll(){ PX.selected={}; pxRenderIPs(); pxRenderPreview(); }
 
 function pxToggleIP(ip){
   if (PX.selected[ip]) delete PX.selected[ip];
-  else PX.selected[ip] = true;
+  else {
+    if (Object.keys(PX.selected).length >= PX_MAX){
+      toast('حداکثر ' + PX_MAX + ' IP می‌توانید انتخاب کنید', 'err');
+      return;
+    }
+    PX.selected[ip] = true;
+  }
   pxRenderPreview();
   var chk = document.querySelector('.px-ip[data-ip="'+ip+'"] input');
   if (chk) chk.checked = !!PX.selected[ip];
   var it = document.querySelector('.px-ip[data-ip="'+ip+'"]');
   if (it) it.classList.toggle('sel', !!PX.selected[ip]);
+}
+
+function pxPingHtml(ip){
+  var r = PX.pings[ip];
+  if (!r) return '';
+  if (r.status === 'ok' && r.latency_ms != null){
+    var cls = r.latency_ms < 150 ? '#00e676' : r.latency_ms < 400 ? '#ffab00' : '#ff6b6b';
+    return '<span class="px-ping" style="color:'+cls+'" title="پینگ">'+r.latency_ms+'ms</span>';
+  }
+  return '<span class="px-ping" style="color:#ff6b6b" title="عدم دسترسی">✗</span>';
 }
 
 function pxRenderIPs(){
@@ -1863,7 +1952,9 @@ function pxRenderIPs(){
     html += '<div class="px-ip'+(sel?' sel':'')+'" data-ip="'+ip+'" onclick="pxToggleIP(\''+ip+'\')">'+
       '<input type="checkbox" '+(sel?'checked':'')+' onclick="event.stopPropagation()">'+
       '<span class="px-ip-ad">'+parts[0]+'</span>'+
-      '<span class="px-ip-pt">:'+(parts[1]||'')+'</span></div>';
+      '<span class="px-ip-pt">:'+(parts[1]||'')+'</span>'+
+      pxPingHtml(parts[0]) +
+      '</div>';
   });
   if (!PX.ips.length) html = '<div class="px-noselected">کشور را انتخاب کنید</div>';
   else if (!shown) html = '<div class="px-noselected">نتیجه‌ای یافت نشد</div>';
@@ -1874,14 +1965,13 @@ function pxRenderPreview(){
   var tags=$id('px-tags'), pathEl=$id('px-path');
   var keys=Object.keys(PX.selected);
   if (tags){
-    tags.innerHTML = keys.length ? '<div style="font-size:10px;color:var(--txt2);margin-bottom:2px">IP های انتخابی:</div>' +
+    tags.innerHTML = keys.length ? '<div style="font-size:10px;color:var(--txt2);margin-bottom:2px">IP های انتخابی ('+keys.length+'/'+PX_MAX+'):</div>' +
       keys.map(function(ip){ return '<span class="px-tag">'+ip+' <span class="x" onclick="event.stopPropagation();pxToggleIP(\''+ip+'\')">✕</span></span>'; }).join('') : '';
   }
   if (pathEl){
     var code = PX.selectedCountry;
     if (keys.length && code){
-      var ip = keys[0];
-      pathEl.innerHTML = '<span class="dim">پیش‌نمایش path کانفیگ:</span><br>/proxyIP/<span style="color:var(--neon)">'+ip+'</span>/ws/<span class="dim">&lt;uuid&gt;</span>';
+      pathEl.innerHTML = '<span class="dim">پیش‌نمایش path کانفیگ:</span><br>/proxyIP/<span style="color:var(--neon)">'+keys.join(',')+'</span>/ws/<span class="dim">&lt;uuid&gt;</span>';
       pathEl.style.display='block';
     } else {
       pathEl.innerHTML = '';
