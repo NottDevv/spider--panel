@@ -1,0 +1,76 @@
+{
+  "links": {
+    "dd265a54-f1d4-0554-2e59-1e237dcb450c": {
+      "label": "لینک پیش‌فرض",
+      "limit_bytes": 0,
+      "used_bytes": 0,
+      "created_at": "2026-08-02T14:54:12.507141",
+      "active": true,
+      "expires_at": null,
+      "note": "",
+      "is_default": true,
+      "sub_id": null,
+      "protocol": "vless-ws"
+    }
+  },
+  "users": {},
+  "subs": {},
+  "settings": {
+    "websocket_mode": true,
+    "xhttp_mode": true,
+    "default_connection_mode": "ws",
+    "max_ip_per_user": 3,
+    "bandwidth_limit_mbps": 100,
+    "live_monitoring": true,
+    "auto_ip_rotation": false,
+    "security_token": "8WJpGSN0zzPwHqjt1LZ10A",
+    "bg_login": "",
+    "bg_dashboard": "",
+    "bg_sub": "",
+    "panel_audio": "",
+    "panel_audio_enabled": false,
+    "reality": {
+      "port": 1234,
+      "dest": "is1-ssl.mzstatic.com:443",
+      "sni": "is1-ssl.mzstatic.com",
+      "public_key": "",
+      "private_key": "",
+      "short_id": "5a3ff5a13d",
+      "spiderx": "/",
+      "fingerprint": "chrome",
+      "external_domain": "",
+      "external_port": 443
+    },
+    "xhttp": {
+      "path": "/",
+      "host": "",
+      "mode": "auto",
+      "xPaddingBytes": "100-1000",
+      "scMaxEachPostBytes": "1000000",
+      "scMaxBufferedPosts": 30,
+      "scStreamUpServerSecs": "20-80"
+    }
+  },
+  "groups": {},
+  "inbounds": {
+    "default": {
+      "name": "VLESS+WS پیش‌فرض",
+      "protocol": "vless",
+      "port": 443,
+      "network": "ws",
+      "security": "tls",
+      "domain": "localhost",
+      "sni": "",
+      "external_port": 443,
+      "fingerprint": "chrome",
+      "reality_settings": {},
+      "xhttp_settings": {},
+      "created_at": "2026-08-02T14:49:08.722606"
+    }
+  },
+  "ip_pool": [],
+  "ip_blacklist": [],
+  "password_hash": "fcb3149c23e642e467520646d99c50a045d0a5908fda6468b74fab1e851a08fa",
+  "saved_secret": "spider-panel-secret-key-v2",
+  "saved_at": "2026-08-02T18:03:41.117136"
+}

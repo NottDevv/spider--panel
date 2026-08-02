@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html class="dark" dir="ltr" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Subscription Details - Spider</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "primary": "#c6c6c6",
+                "secondary-container": "#454747",
+                "primary-fixed": "#e2e2e2",
+                "on-surface-variant": "#cfc4c5",
+                "primary-container": "#000000",
+                "inverse-primary": "#5e5e5e",
+                "tertiary-fixed-dim": "#c6c6c6",
+                "secondary-fixed": "#e2e2e2",
+                "on-primary": "#303030",
+                "surface-container-high": "#030303",
+                "background": "#000000",
+                "secondary": "#c6c6c7",
+                "on-primary-container": "#757575",
+                "on-error": "#690005",
+                "surface-container-highest": "#080808",
+                "secondary-fixed-dim": "#c6c6c7",
+                "on-tertiary-container": "#757575",
+                "surface-variant": "#0a0a0a",
+                "surface-container": "#020202",
+                "on-error-container": "#ffdad6",
+                "surface-container-lowest": "#010101",
+                "on-tertiary": "#303030",
+                "on-primary-fixed": "#1b1b1b",
+                "outline": "#988e90",
+                "surface-tint": "#c6c6c6",
+                "on-secondary-container": "#b4b5b5",
+                "on-background": "#e2e2e2",
+                "error": "#ffb4ab",
+                "outline-variant": "#4c4546",
+                "on-secondary-fixed-variant": "#454747",
+                "surface-dim": "#000000",
+                "surface": "#000000",
+                "on-secondary-fixed": "#1a1c1c",
+                "on-primary-fixed-variant": "#474747",
+                "primary-fixed-dim": "#c6c6c6",
+                "on-tertiary-fixed-variant": "#474747",
+                "tertiary": "#c6c6c6",
+                "inverse-surface": "#e2e2e2",
+                "tertiary-fixed": "#e2e2e2",
+                "surface-container-low": "#020202",
+                "on-secondary": "#2f3131",
+                "surface-bright": "#0d0d0d",
+                "error-container": "#93000a",
+                "tertiary-container": "#000000",
+                "on-tertiary-fixed": "#1b1b1b",
+                "inverse-on-surface": "#303030",
+                "on-surface": "#e2e2e2"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "2xl": "1rem",
+                "3xl": "1.5rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "stack-lg": "32px",
+                "gutter": "24px",
+                "container-max": "1440px",
+                "margin-mobile": "16px",
+                "stack-sm": "8px",
+                "stack-md": "16px"
+        },
+        "fontFamily": {
+                "body-sm": ["Inter"],
+                "headline-lg": ["Inter"],
+                "code-label": ["JetBrains Mono"],
+                "body-lg": ["Inter"],
+                "headline-lg-mobile": ["Inter"],
+                "headline-md": ["Inter"]
+        },
+        "fontSize": {
+                "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                "code-label": ["13px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                "headline-lg-mobile": ["26px", { "lineHeight": "32px", "fontWeight": "700" }],
+                "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+        }
+      }
+    }
+  }
+</script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Improved Glass Panel for sharpness */
+        .glass-panel {
+            background: rgba(10, 10, 12, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        html:not(.dark) body {
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+
+        html:not(.dark) .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        html:not(.dark) .text-on-surface { color: #111827; }
+        html:not(.dark) .text-on-surface-variant { color: #4b5563; }
+        html:not(.dark) .border-white\/12 { border-color: rgba(0,0,0,0.1); }
+        html:not(.dark) .bg-white\/5 { background-color: rgba(0,0,0,0.02); }
+        html:not(.dark) .bg-white\/10 { background-color: rgba(0,0,0,0.05); }
+        html:not(.dark) .hover\:bg-white\/10:hover { background-color: rgba(0,0,0,0.08); }
+
+        /* Ultra-dark overrides: kill the foggy whites in dark mode */
+        html.dark .glass-panel { background: rgba(3, 3, 5, 0.75); border-color: rgba(255,255,255,0.04); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6); }
+        html.dark .bg-white\/5 { background-color: rgba(255,255,255,0.02); }
+        html.dark .bg-white\/10 { background-color: rgba(255,255,255,0.03); }
+        html.dark .hover\:bg-white\/10:hover { background-color: rgba(255,255,255,0.05); }
+        html.dark .border-white\/12 { border-color: rgba(255,255,255,0.05); }
+        html.dark .border-white\/10 { border-color: rgba(255,255,255,0.04); }
+        html.dark .bg-white\/20 { background-color: rgba(255,255,255,0.06); }
+        html.dark .border-white\/20 { border-color: rgba(255,255,255,0.06); }
+        html.dark .bg-on-surface { background-color: #00e1c1; }
+        html.dark .text-background { color: #000000; }
+        html.dark .hover\:bg-on-surface\/90:hover { background-color: rgba(0,225,193,0.9); }
+        html.dark body { background-color: #000000; }
+
+        /* Dark scrollbar */
+        html.dark .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); }
+        html.dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); }
+        html.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+        html.dark footer { border-color: rgba(255,255,255,0.06) !important; }
+        html.dark .stroke-white\/10 { stroke: rgba(255,255,255,0.08); }
+
+        /* Ultra-dark neon glow — softer */
+        html.dark .neon-text { text-shadow: 0 0 6px rgba(0, 255, 229, 0.5), 0 0 12px rgba(0, 255, 229, 0.25); color: #00e1c1; }
+        html.dark .neon-border { box-shadow: 0 0 10px rgba(0, 255, 229, 0.15), inset 0 0 6px rgba(0, 255, 229, 0.08); border-color: rgba(0, 255, 229, 0.3); }
+        html.dark .stroke-[#00ffff] { stroke: #00e1c1; }
+        html.dark .bg-[#00ffff] { background-color: #00e1c1; }
+        html.dark .bg-[#00e676] { background-color: #00e676; }
+        html.dark .bg-[#ffb4ab] { background-color: #ffb4ab; }
+
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        /* Language Toggle Classes */
+        .en-only { display: inline; }
+        .fa-only { display: none; }
+
+        html[lang="fa"] .en-only { display: none; }
+        html[lang="fa"] .fa-only { display: inline; }
+        html[lang="fa"] { font-family: Tahoma, Arial, sans-serif; }
+
+        .cfg-row {
+            cursor: pointer;
+        }
+        .cfg-row .cfg-text {
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(128, 128, 128, 0.1); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.3); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(128, 128, 128, 0.5); }
+
+        .loading { text-align: center; padding: 80px 20px; }
+        .error-box { text-align: center; padding: 60px 20px; color: var(--color-error); }
+        .ring-wrap { position: relative; }
+
+        /* ═══ ANIMATED NEON BACKGROUND ═══ */
+        .bg-fx {
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+            overflow: hidden;
+            pointer-events: none;
+            background:
+                radial-gradient(ellipse 900px 600px at 25% 20%, rgba(0,225,193,0.16) 0%, transparent 70%),
+                radial-gradient(ellipse 700px 500px at 75% 15%, rgba(64,120,255,0.12) 0%, transparent 60%),
+                radial-gradient(ellipse 600px 400px at 60% 75%, rgba(139,92,246,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse 500px 400px at 10% 80%, rgba(0,180,255,0.07) 0%, transparent 55%);
+        }
+        .bg-grid {
+            position: fixed;
+            inset: -2px;
+            z-index: -2;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(0,225,193,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,225,193,0.04) 1px, transparent 1px);
+            background-size: 48px 48px;
+            mask-image: radial-gradient(ellipse 90% 80% at 50% 45%, black 20%, transparent 70%);
+            -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 45%, black 20%, transparent 70%);
+            animation: grid-drift 36s linear infinite;
+        }
+        @keyframes grid-drift {
+            from { background-position: 0 0; }
+            to   { background-position: 48px 48px; }
+        }
+        /* Mouse neon trail */
+        .neon-trail {
+            position: fixed;
+            width: 520px;
+            height: 520px;
+            margin: -260px 0 0 -260px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: -1;
+            background: radial-gradient(circle,
+                rgba(0,225,193,0.18) 0%,
+                rgba(90,120,255,0.10) 30%,
+                rgba(139,92,246,0.05) 50%,
+                transparent 70%);
+            filter: blur(12px);
+            opacity: 0;
+            transform: scale(0.5);
+            transition: opacity 0.35s ease, transform 0.35s ease;
+            will-change: transform;
+        }
+        .neon-trail.visible { opacity: 1; transform: scale(1); }
+
+        /* Glass panel hover animation */
+        .glass-panel {
+            transition: transform 0.35s cubic-bezier(.22,1,.36,1), box-shadow 0.35s ease, border-color 0.35s ease;
+        }
+        .glass-panel:hover {
+            transform: translateY(-3px);
+            border-color: rgba(0,225,193,0.22);
+            box-shadow: 0 14px 44px rgba(0,0,0,0.65), 0 0 24px rgba(0,225,193,0.06);
+        }
+
+        /* Entrance animations */
+        @keyframes rise-in {
+            from { opacity: 0; transform: translateY(22px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .rise-in { animation: rise-in 0.7s cubic-bezier(.22,1,.36,1) both; }
+        .rise-in-1 { animation-delay: 0.08s; }
+        .rise-in-2 { animation-delay: 0.16s; }
+        .rise-in-3 { animation-delay: 0.24s; }
+        .rise-in-4 { animation-delay: 0.32s; }
+
+        /* Neon pulse for status dot */
+        @keyframes neon-pulse {
+            0%, 100% { box-shadow: 0 0 8px #00e1c1; }
+            50%      { box-shadow: 0 0 18px #00e1c1, 0 0 30px rgba(0,225,193,0.5); }
+        }
+        .pulse-dot { animation: neon-pulse 2.2s ease-in-out infinite; }
+
+        /* Shimmer for primary buttons */
+        @keyframes shimmer {
+            0%   { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .btn-shimmer {
+            background: linear-gradient(110deg, #00e1c1 20%, #00ffd9 40%, #00e1c1 60%);
+            background-size: 200% 100%;
+            animation: shimmer 3.5s linear infinite;
+        }
+
+        /* Ambient floating orbs (pure CSS, GPU cheap) */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -2;
+            pointer-events: none;
+            animation: orb-float 18s ease-in-out infinite alternate;
+            will-change: transform, opacity;
+        }
+        .orb-1 { width: 480px; height: 480px; top: -150px; left: -120px; background: #00e1c1; opacity: 0.18; }
+        .orb-2 { width: 420px; height: 420px; bottom: -140px; right: -100px; background: #5a78ff; opacity: 0.15; animation-delay: -4s; }
+        .orb-3 { width: 300px; height: 300px; top: 35%; left: 60%; background: #8b5cf6; opacity: 0.12; animation-delay: -8s; }
+        .orb-4 { width: 360px; height: 360px; top: 70%; left: -80px; background: #00b4d8; opacity: 0.10; animation-delay: -12s; }
+        @keyframes orb-float {
+            from { transform: translate3d(0, 0, 0) scale(1); opacity: 0.18; }
+            50%  { transform: translate3d(50px, -40px, 0) scale(1.15); opacity: 0.22; }
+            to   { transform: translate3d(-30px, 50px, 0) scale(1.1); opacity: 0.18; }
+        }
+    </style>
+<script>
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+        }
+
+        function toggleLanguage() {
+            const html = document.documentElement;
+            if (html.lang === 'en') {
+                html.lang = 'fa';
+                html.dir = 'rtl';
+            } else {
+                html.lang = 'en';
+                html.dir = 'ltr';
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen flex flex-col md:flex-row overflow-x-hidden transition-colors duration-300">
+<!-- ═══ ANIMATED BACKGROUND LAYERS ═══ -->
+<div class="bg-fx"></div>
+<div class="bg-grid"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+<div class="orb orb-4"></div>
+<div class="neon-trail" id="neonTrail"></div>
+<main class="flex-1 w-full max-w-[container-max] mx-auto px-margin-mobile md:px-gutter py-stack-lg min-h-screen flex flex-col">
+<!-- Header -->
+<header class="flex justify-between items-center mb-stack-lg">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[32px] text-on-surface" style="font-variation-settings: 'FILL' 1;">cloud</span>
+<h1 class="font-headline-lg text-headline-lg md:font-headline-lg md:text-headline-lg text-on-surface tracking-tight">Spider</h1>
+</div>
+<div class="flex gap-4 items-center">
+<button aria-label="Toggle Language" class="text-on-surface-variant hover:text-on-surface transition-colors p-2 rounded-full hover:bg-white/10 dark:hover:bg-white/10 hover:bg-black/5" onclick="toggleLanguage()">
+<span class="material-symbols-outlined">translate</span>
+</button>
+<button aria-label="Toggle Dark Mode" class="text-on-surface-variant hover:text-on-surface transition-colors p-2 rounded-full hover:bg-white/10 dark:hover:bg-white/10 hover:bg-black/5" onclick="toggleDarkMode()">
+<span class="material-symbols-outlined">dark_mode</span>
+</button>
+</div>
+</header>
+<div id="app" class="grid grid-cols-1 md:grid-cols-12 gap-gutter flex-1">
+<div class="md:col-span-12 loading">
+<div class="inline-block w-10 h-10 border-2 border-white/20 border-t-[#00ffff] rounded-full animate-spin"></div>
+<p class="mt-4 font-body-sm text-body-sm text-on-surface-variant">Loading...</p>
+</div>
+</div>
+<footer class="mt-stack-lg py-stack-md border-t border-black/10 dark:border-white/12 text-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">© 2024 Spider. EN/FA</span>
+</footer>
+</main>
+
+<script>
+(function() {
+  var uname = window.location.pathname.split('/').filter(Boolean).pop();
+  var apiUrl = '/api/sub/' + encodeURIComponent(uname);
+  var subUrl = window.location.origin + '/sub-sync/sub/' + uname;
+  var state = { data: null };
+
+  /* ═══ NEON MOUSE TRAIL ═══ */
+  var trail = document.getElementById('neonTrail');
+  var trailX = -999, trailY = -999, curX = -999, curY = -999, trailOn = false;
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (trail && !reduced) {
+    document.addEventListener('mousemove', function(e) {
+      trailX = e.clientX; trailY = e.clientY;
+      if (!trailOn) { trailOn = true; trail.classList.add('visible'); }
+    });
+    document.addEventListener('mouseleave', function() {
+      trailOn = false; trail.classList.remove('visible');
+    });
+    (function loop() {
+      curX += (trailX - curX) * 0.12;
+      curY += (trailY - curY) * 0.12;
+      trail.style.transform = 'translate3d(' + curX + 'px,' + curY + 'px,0) scale(1)';
+      requestAnimationFrame(loop);
+    })();
+  }
+
+  function fmtBytes(b) {
+    if (!b || b < 1) return '0 B';
+    var u = ['B', 'KB', 'MB', 'GB'];
+    var i = 0;
+    while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+    return b.toFixed(i ? 2 : 0) + ' ' + u[i];
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function toast(msg) {
+    var t = document.getElementById('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function() { t.classList.remove('show'); }, 2200);
+  }
+
+  function copyText(txt) {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(txt).then(function() { toast('Copied!'); }, function() { toast('Copy failed'); });
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = txt;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); toast('Copied!'); } catch (e) { toast('Copy failed'); }
+      document.body.removeChild(ta);
+    }
+  }
+
+  function ring(days, maxDays) {
+    var r = 54, c = 2 * Math.PI * r;
+    var pct = maxDays > 0 ? Math.min(1, days / maxDays) : 1;
+    var off = c * (1 - pct);
+    var num = (days === null || days === undefined) ? '∞' : String(days);
+    var unit = 'Days';
+    return '<div class="ring-wrap w-48 h-48 mx-auto relative flex items-center justify-center">' +
+      '<svg class="w-full h-full" viewBox="0 0 120 120">' +
+      '<circle class="stroke-white/10" cx="60" cy="60" fill="transparent" r="54" stroke-width="8"></circle>' +
+      '<circle class="stroke-[#00ffff] progress-ring__circle" cx="60" cy="60" fill="transparent" r="54" stroke-dasharray="' + c.toFixed(3) + '" stroke-dashoffset="' + off.toFixed(3) + '" stroke-linecap="round" stroke-width="8" style="filter: drop-shadow(0 0 4px rgba(0,255,255,0.4));"></circle>' +
+      '</svg>' +
+      '<div class="absolute flex flex-col items-center">' +
+      '<span class="font-headline-lg text-headline-lg text-on-surface neon-text">' + num + '</span>' +
+      '<span class="font-body-sm text-body-sm text-on-surface-variant uppercase tracking-widest">' + unit + '</span>' +
+      '</div></div>';
+  }
+
+  function render(d) {
+    var used = d.traffic_used_bytes || 0;
+    var limit = d.traffic_limit_bytes || 0;
+    var pct = limit > 0 ? Math.min(100, used / limit * 100) : 0;
+    var days = (d.expire_days === null || d.expire_days === undefined) ? null : d.expire_days;
+    var isActive = d.is_active !== false && d.status === 'active';
+    var cfg = d.config || d.vless_link || '';
+
+    // Left column: hero + stats
+    var left =
+      '<div class="glass-panel rounded-3xl p-stack-lg flex flex-col items-center justify-center relative overflow-hidden h-full min-h-[300px] rise-in rise-in-1">' +
+        '<div class="absolute inset-0 opacity-5 pointer-events-none" style="background-image: radial-gradient(circle at center, #00e1c1 0%, transparent 60%);"></div>' +
+        '<h2 class="font-headline-md text-headline-md text-on-surface mb-stack-md z-10">' +
+          '<span class="en-only">Time Left</span><span class="fa-only">زمان باقیمانده</span>' +
+        '</h2>' +
+        ring(days, 30) +
+        '<div class="mt-stack-md flex gap-2 items-center z-10">' +
+          '<div class="w-2 h-2 rounded-full bg-[#00ffff] pulse-dot"></div>' +
+          '<span class="font-code-label text-code-label text-on-surface-variant">' +
+            '<span class="en-only">' + (isActive ? 'Active' : 'Inactive') + '</span>' +
+            '<span class="fa-only">' + (isActive ? 'فعال' : 'غیرفعال') + '</span>' +
+          '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="glass-panel rounded-3xl p-stack-md flex flex-col gap-stack-md rise-in rise-in-2">' +
+        '<div>' +
+          '<div class="flex justify-between items-end mb-2">' +
+            '<span class="font-body-sm text-body-sm text-on-surface-variant">' +
+              '<span class="en-only">Traffic Used</span><span class="fa-only">ترافیک مصرفی</span>' +
+            '</span>' +
+            '<div class="text-right">' +
+              '<span class="font-headline-md text-headline-md text-on-surface">' + esc(fmtBytes(used)) + '</span>' +
+              '<span class="font-body-sm text-body-sm text-on-surface-variant"> / ' + (limit > 0 ? esc(fmtBytes(limit)) : '∞') + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="w-full h-1.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">' +
+            '<div class="h-full bg-on-surface rounded-full" style="width:' + pct.toFixed(1) + '%;box-shadow: 0 0 5px rgba(150,150,150,0.5);"></div>' +
+          '</div>' +
+        '</div>' +
+        '<hr class="border-black/10 dark:border-white/10 my-stack-sm"/>' +
+        '<div>' +
+          '<div class="flex justify-between items-end mb-2">' +
+            '<span class="font-body-sm text-body-sm text-on-surface-variant">' +
+              '<span class="en-only">Protocol</span><span class="fa-only">پروتکل</span>' +
+            '</span>' +
+            '<div class="text-right">' +
+              '<span class="font-headline-md text-headline-md text-on-surface" style="font-size:18px;">' + esc((d.protocol || 'vless').toUpperCase()) + '</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    // Right column: config
+    var right =
+      '<div class="glass-panel rounded-3xl p-stack-lg flex-1 flex flex-col rise-in rise-in-3">' +
+        '<div class="flex justify-between items-center mb-stack-lg">' +
+          '<h2 class="font-headline-md text-headline-md text-on-surface">' +
+            '<span class="en-only">Configuration</span><span class="fa-only">پیکربندی</span>' +
+          '</h2>' +
+          '<div class="flex gap-3">' +
+            (cfg ?
+              '<button onclick="window.open(\'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=\'+encodeURIComponent(unescape(window.__cfg)),\'_blank\')" class="flex items-center gap-2 px-4 py-2 border border-black/10 dark:border-white/12 rounded-lg font-code-label text-code-label text-on-surface hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-300 hover:scale-[1.02]">' +
+                '<span class="material-symbols-outlined text-[18px]">qr_code_2</span>' +
+                '<span class="en-only">QR Code</span><span class="fa-only">کد QR</span>' +
+              '</button>' : '') +
+            (cfg ?
+              '<button onclick="copyCfg()" class="flex items-center gap-2 px-4 py-2 bg-on-surface text-background rounded-lg font-code-label text-code-label hover:bg-on-surface/90 transition-all duration-300 hover:scale-[1.02]">' +
+                '<span class="material-symbols-outlined text-[18px]">content_copy</span>' +
+                '<span class="en-only">Copy</span><span class="fa-only">کپی</span>' +
+              '</button>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="flex flex-col gap-stack-md overflow-y-auto pr-2 custom-scrollbar">' +
+          (cfg ?
+            '<div class="group border border-black/5 dark:border-white/12 bg-black/5 dark:bg-white/5 rounded-2xl p-stack-md flex justify-between items-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer relative overflow-hidden" onclick="copyCfg()">' +
+              '<div class="absolute ltr:left-0 rtl:right-0 top-0 bottom-0 w-1 bg-[#00ffff] opacity-0 group-hover:opacity-100 transition-opacity neon-border"></div>' +
+              '<div class="flex flex-col gap-1 ltr:pl-2 rtl:pr-2 min-w-0">' +
+                '<div class="flex items-center gap-2">' +
+                  '<span class="font-code-label text-code-label text-on-surface font-bold ltr:text-left rtl:text-right" dir="ltr">' + esc((d.protocol || 'vless').toUpperCase()) + '</span>' +
+                  '<span class="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-code-label text-[10px] text-on-surface-variant">' + esc((d.transport_type || 'ws').toUpperCase()) + '</span>' +
+                '</div>' +
+                '<span class="cfg-text text-on-surface-variant truncate max-w-[200px] md:max-w-[400px] ltr:text-left rtl:text-right" dir="ltr">' + esc(cfg) + '</span>' +
+              '</div>' +
+              '<button aria-label="Copy config" class="p-2 text-on-surface-variant hover:text-on-surface transition-colors">' +
+                '<span class="material-symbols-outlined">content_copy</span>' +
+              '</button>' +
+            '</div>' : '') +
+          (cfg ?
+            '<div class="flex flex-wrap gap-2 mt-2">' +
+              '<button onclick="copySub()" class="flex items-center gap-2 px-4 py-2 border border-black/10 dark:border-white/12 rounded-lg font-code-label text-code-label text-on-surface hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-300 hover:scale-[1.02]">' +
+                '<span class="material-symbols-outlined text-[18px]">link</span>' +
+                '<span class="en-only">Copy Sub Link</span><span class="fa-only">کپی لینک ساب</span>' +
+              '</button>' +
+              '<button onclick="importSub()" class="flex items-center gap-2 px-4 py-2 btn-shimmer text-black rounded-lg font-code-label text-code-label hover:opacity-90 transition-all duration-300 hover:scale-[1.02]">' +
+                '<span class="material-symbols-outlined text-[18px]">download</span>' +
+                '<span class="en-only">Import Now</span><span class="fa-only">وارد کردن</span>' +
+              '</button>' +
+            '</div>' : '') +
+        '</div>' +
+      '</div>';
+
+    var app = document.getElementById('app');
+    app.innerHTML =
+      '<div class="md:col-span-4 flex flex-col gap-gutter">' + left + '</div>' +
+      '<div class="md:col-span-8 flex flex-col h-full">' + right + '</div>';
+  }
+
+  function renderError(msg) {
+    var app = document.getElementById('app');
+    app.innerHTML =
+      '<div class="md:col-span-12 error-box">' +
+        '<span class="material-symbols-outlined text-[48px] text-on-surface-variant" style="font-size:48px;">error</span>' +
+        '<h2 class="mt-4 font-headline-md text-headline-md text-on-surface">' + esc(uname) + '</h2>' +
+        '<p class="mt-2 font-body-sm text-body-sm text-on-surface-variant">' + esc(msg) + '</p>' +
+      '</div>';
+  }
+
+  async function load() {
+    try {
+      var r = await fetch(apiUrl);
+      if (!r.ok) {
+        if (r.status === 404) throw new Error('User not found');
+        throw new Error('Server error');
+      }
+      var d = await r.json();
+      state.data = d;
+      window.__cfg = d.config || d.vless_link || '';
+      document.title = 'Subscription | ' + (d.username || uname);
+      render(d);
+    } catch (e) {
+      renderError(e.message);
+    }
+  }
+
+  window.copyCfg = function() {
+    if (!window.__cfg) return;
+    copyText(window.__cfg);
+  };
+  window.copySub = function() {
+    copyText(subUrl);
+  };
+  window.importSub = function() {
+    window.open('v2rayng://install-sub?url=' + encodeURIComponent(subUrl), '_blank');
+  };
+
+  // Ping
+  async function ping() {
+    var btn = document.getElementById('pingBtn');
+    var res = document.getElementById('pingRes');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.textContent = 'Pinging...';
+    res.textContent = '';
+    var t0 = Date.now();
+    try {
+      var r = await fetch('/sub/' + uname + '/ping', { method: 'HEAD', cache: 'no-store' });
+      var ms = Date.now() - t0;
+      res.textContent = (ms < 150 ? 'GOOD' : ms < 400 ? 'OK' : 'SLOW') + ' ' + ms + ' ms';
+      res.className = 'mt-2 font-body-lg text-body-lg font-bold ' + (ms < 400 ? 'text-[#00e676]' : 'text-[#ffb4ab]');
+    } catch (e) {
+      res.textContent = 'TIMEOUT';
+      res.className = 'mt-2 font-body-lg text-body-lg font-bold text-[#ffb4ab]';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Ping Config';
+  }
+  window.doPing = ping;
+
+  load();
+})();
+</script>
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-2.5 rounded-full bg-on-surface text-background text-sm z-50 opacity-0 transition-opacity pointer-events-none"></div>
+<style>
+  #toast.show { opacity: 1; }
+</style>
+</body></html>

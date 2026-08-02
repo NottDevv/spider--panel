@@ -1,0 +1,1901 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" data-theme="dark" data-accent="red">
+<head>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Spider Panel v4</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<style>
+
+:root,[data-accent="red"]{
+  --teal:#00e1c1;--blue:#5a78ff;--spider-blue:#2B7FFF;--spider-purple:#7B61FF;--spider-red:#FF2352;
+  --neon:#00e1c1;--neon2:#5a78ff;--purple:#5a78ff;--green:#16A34A;--red:#FF2352;
+  --gold:#F59E0B;--success:#16A34A;--warning:#F59E0B;--danger:#FF2352;
+  --bg:#131313;--bg2:rgba(19,19,19,.85);--bg3:rgba(255,255,255,.07);--txt:#e2e2e2;--txt2:#b4b5b5;
+  --r:12px;--radius:16px;--radius-lg:20px;--radius-xl:28px;
+  --glass:rgba(19,19,19,.7);--surface-glass:rgba(19,19,19,.55);
+  --grad1:#00e1c1;--grad2:#5a78ff;--grad:linear-gradient(135deg,#00e1c1,#5a78ff);
+  --gradient:linear-gradient(90deg,#00e1c1,#5a78ff);
+  --border:rgba(255,255,255,.1);
+  --glow:0 0 40px rgba(0,225,193,.12);--glow-strong:0 0 50px rgba(0,225,193,.25);
+  --logo-shadow:drop-shadow(0 0 20px rgba(0,225,193,.4));
+  --tab-bg:#00e1c1;--tab-color:#000;--tab-glow:0 0 16px rgba(0,225,193,.35);
+  --nav-bg:rgba(0,225,193,.1);--nav-color:#00e1c1;
+  --border-glow:rgba(0,225,193,.25);--input-glow:rgba(0,225,193,.12);
+  --orb1:rgba(0,225,193,.08);--orb2:rgba(90,120,255,.07);
+  --surface:#FFFFFF;--text-primary:#e2e2e2;--text-secondary:#b4b5b5;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.2);--shadow-md:0 4px 16px rgba(0,0,0,.3);
+  --shadow-lg:0 16px 48px rgba(0,0,0,.5);--shadow-hover:0 8px 30px rgba(0,0,0,.4);
+}
+[data-accent="green"]{
+  --neon:#00e676;--neon2:#69f0ae;--glow:0 0 30px rgba(0,230,118,.15);--glow-strong:0 0 40px rgba(0,230,118,.25);
+  --grad1:#00e676;--grad2:#00c853;--grad:linear-gradient(135deg,#00e676,#00c853);
+  --logo-shadow:drop-shadow(0 0 20px rgba(0,230,118,.5));
+  --tab-bg:#00e676;--tab-color:#000;--tab-glow:0 0 16px rgba(0,230,118,.4);
+  --nav-bg:rgba(0,230,118,.1);--nav-color:#00e676;
+  --border-glow:rgba(0,230,118,.25);--input-glow:rgba(0,230,118,.15);
+  --orb1:rgba(0,230,118,.12);--orb2:rgba(0,200,80,.08);
+}
+[data-accent="blue"]{
+  --neon:#5a78ff;--neon2:#82b1ff;--glow:0 0 30px rgba(90,120,255,.15);--glow-strong:0 0 40px rgba(90,120,255,.25);
+  --grad1:#5a78ff;--grad2:#00e1c1;--grad:linear-gradient(135deg,#5a78ff,#00e1c1);
+  --logo-shadow:drop-shadow(0 0 20px rgba(90,120,255,.5));
+  --tab-bg:#5a78ff;--tab-color:#fff;--tab-glow:0 0 16px rgba(90,120,255,.4);
+  --nav-bg:rgba(90,120,255,.1);--nav-color:#5a78ff;
+  --border-glow:rgba(90,120,255,.25);--input-glow:rgba(90,120,255,.15);
+  --orb1:rgba(90,120,255,.12);--orb2:rgba(0,225,193,.08);
+}
+[data-theme="light"][data-accent="red"],
+[data-theme="light"]:not([data-accent]){
+  --bg:#f5f5f7;--bg2:rgba(255,255,255,.92);--bg3:rgba(0,0,0,.06);--txt:#1a1a1a;--txt2:#555555;
+  --neon:#009688;--glass:rgba(255,255,255,.8);--surface-glass:rgba(255,255,255,.72);
+  --border:rgba(0,0,0,.08);
+  --glow:0 0 20px rgba(0,225,193,.15);--shadow-sm:0 1px 3px rgba(0,0,0,.05);--shadow-md:0 4px 16px rgba(0,0,0,.07);--shadow-lg:0 12px 40px rgba(0,0,0,.1);
+}
+[data-theme="light"][data-accent="green"]{
+  --bg:#f0f7f3;--bg2:rgba(255,255,255,.92);--bg3:rgba(0,0,0,.06);--txt:#0a1a0a;--txt2:#447744;
+  --neon:#00c853;--glass:rgba(255,255,255,.8);--surface-glass:rgba(255,255,255,.72);--border:rgba(0,0,0,.08);
+}
+[data-theme="light"][data-accent="blue"]{
+  --bg:#f0f2f8;--bg2:rgba(255,255,255,.92);--bg3:rgba(0,0,0,.06);--txt:#0a0a2a;--txt2:#445588;
+  --neon:#5a78ff;--glass:rgba(255,255,255,.8);--surface-glass:rgba(255,255,255,.72);--border:rgba(0,0,0,.08);
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes neonPulse{0%,100%{box-shadow:0 0 5px var(--neon),0 0 10px var(--neon2)}50%{box-shadow:0 0 20px var(--neon),0 0 40px var(--neon2)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes particle{0%{transform:translateY(100vh) scale(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-10vh) scale(1);opacity:0}}
+@keyframes borderGlow{0%,100%{border-color:var(--border-glow)}50%{border-color:var(--neon)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes scaleIn{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+
+body{
+  font-family:'Vazirmatn','Segoe UI',system-ui,sans-serif;
+  background:var(--bg);color:var(--txt);overflow-x:hidden;
+  min-height:100vh;line-height:1.6;
+  transition:background .4s ease,color .4s ease;
+}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(43,127,255,.25);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:rgba(43,127,255,.45)}
+input,select,button,textarea{font-family:inherit}
+
+/* ═══ LOGIN — Modern Glassmorphism ═══ */
+        #particles{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.4}
+        .login-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        .login-bg {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+        }
+        #shader-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+        .login-card {
+            position: relative;
+            z-index: 1;
+            background: var(--surface-glass);
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 32px 28px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: var(--shadow-lg), var(--glow);
+            animation: scaleIn .5s ease;
+            overflow: hidden;
+        }
+        .login-card::before{
+          content:'';position:absolute;top:0;right:0;width:180px;height:180px;
+          background:radial-gradient(circle,rgba(43,127,255,.08),transparent 70%);pointer-events:none;
+        }
+        .login-card::after{
+          content:'';position:absolute;bottom:0;left:0;width:160px;height:160px;
+          background:radial-gradient(circle,rgba(123,97,255,.08),transparent 70%);pointer-events:none;
+        }
+        .login-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .login-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--grad);
+            box-shadow: 0 6px 18px rgba(0,225,193,.3);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+        .login-icon .material-symbols-outlined {
+            font-size: 28px;
+            color: #fff;
+        }
+        .login-title {
+            font-size: 22px;
+            font-weight: 800;
+            background: var(--grad);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 2px;
+        }
+        .login-subtitle {
+            font-size: 13px;
+            color: var(--txt2);
+        }
+        .error-msg {
+            background: rgba(255, 180, 171, 0.1);
+            border: 1px solid rgba(255, 180, 171, 0.3);
+            color: #ffb4ab;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 13px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+        .error-msg.show { display: flex; }
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .input-group label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--txt2);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .input-wrapper {
+            position: relative;
+        }
+        .input-wrapper .material-symbols-outlined {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+            color: var(--txt2);
+            pointer-events: none;
+        }
+        .input-glass {
+            width: 100%;
+            padding: 12px 16px 12px 48px;
+            background: rgba(255,255,255,.04);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--txt);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 300ms ease, box-shadow 300ms ease, background 300ms ease;
+            font-family: inherit;
+        }
+        .input-glass:focus {
+            border-color: var(--neon);
+            box-shadow: 0 0 0 4px var(--input-glow);
+            background: rgba(255,255,255,.06);
+        }
+        .input-glass::placeholder {
+            color: var(--txt2);
+            opacity:.6;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--grad);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 300ms ease;
+            font-family: inherit;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 6px 20px rgba(0,225,193,.25);
+        }
+        .login-btn::after{
+          content:'';position:absolute;inset:0;background:linear-gradient(90deg,#5a78ff,#00e1c1);opacity:0;transition:opacity .3s;
+        }
+        .login-btn span{position:relative;z-index:1;display:flex;align-items:center;gap:8px}
+        .login-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0,225,193,.35);
+        }
+        .login-btn:hover:not(:disabled)::after { opacity:1; }
+        .login-btn:active:not(:disabled) {
+            transform: translateY(0) scale(0.98);
+        }
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .btn-text, .btn-spinner {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-spinner { display: none; }
+        .btn-spinner .material-symbols-outlined { animation: spin 1s linear infinite; }
+        .btn-spinner.show { display: flex; }
+        .btn-text.hidden { display: none; }
+
+/* ═══ PROXY IP SELECTOR (map + IP list) ═══ */
+.px-map {
+  height: 220px; border-radius: var(--radius); overflow: hidden;
+  border: 1px solid var(--border); margin-bottom: 10px;
+  background: rgba(0,0,0,.3); z-index: 1; box-shadow: var(--shadow-sm);
+}
+.px-map .leaflet-container { background: #0B1121; font-family: inherit; }
+#px-map .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.9); }
+.px-country { fill: rgba(255,255,255,.12); stroke: rgba(255,255,255,.25); stroke-width: .5; cursor: pointer; transition: fill .15s; }
+.px-country:hover { fill: rgba(255,255,255,.25); }
+.px-country.has { fill: rgba(0,225,193,.35); stroke: rgba(0,225,193,.85); stroke-width: .6; }
+.px-country.sel { fill: var(--neon) !important; stroke: #fff !important; stroke-width: 1; }
+.px-ipbox { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; background: rgba(0,0,0,.3); max-height: 170px; overflow-y: auto; }
+.px-ip { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 10px; cursor: pointer; transition: all .15s; }
+.px-ip:hover { background: rgba(255,255,255,.04); }
+.px-ip.sel { background: rgba(0,225,193,.1); border: 1px solid rgba(0,225,193,.3); }
+.px-ip input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--neon); cursor: pointer; flex-shrink: 0; }
+.px-ip-ad { font-family: monospace; font-size: 12px; direction: ltr; color: var(--txt); }
+.px-ip-pt { font-family: monospace; font-size: 10px; color: var(--txt2); }
+.px-tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(0,225,193,.1); border: 1px solid rgba(0,225,193,.25); border-radius: 8px; font-size: 11px; color: var(--neon); margin: 3px 3px 0 0; }
+.px-tag .x { cursor: pointer; opacity: .6; }
+.px-tag .x:hover { opacity: 1; }
+.px-path {
+  direction: ltr; text-align: left; font-family: monospace; font-size: 11px;
+  background: rgba(0,0,0,.4); border: 1px solid var(--border); border-radius: 10px;
+  padding: 9px 12px; margin-top: 8px; word-break: break-all; color: var(--neon);
+}
+.px-path .dim { color: var(--txt2); }
+.px-tools { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.px-tools input { flex: 1; }
+.px-hint { font-size: 10px; color: var(--txt2); margin: 6px 0 8px; }
+.px-noselected { color: var(--txt2); font-size: 12px; padding: 14px; text-align: center; }
+.px-loading { color: var(--txt2); font-size: 12px; padding: 18px; text-align: center; }
+
+/* App Layout */
+.app-wrap{display:none;min-height:100vh;position:relative;z-index:1}
+.app-wrap.active{display:flex}
+
+/* Sidebar - Glass */
+.sidebar{
+  width:260px;background:var(--surface-glass);backdrop-filter:blur(28px) saturate(160%);
+  -webkit-backdrop-filter:blur(28px) saturate(160%);
+  border-left:1px solid var(--border);display:flex;flex-direction:column;
+  position:fixed;top:0;bottom:0;right:0;z-index:100;transition:transform .35s cubic-bezier(.4,0,.2,1);
+  overflow-y:auto;overflow-x:hidden;box-shadow:var(--shadow-sm);
+}
+.sb-brand{padding:22px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)}
+.sb-brand img{width:42px;height:42px;mix-blend-mode:screen;filter:drop-shadow(0 2px 8px rgba(43,127,255,.3))}
+.sb-brand-t{font-size:17px;font-weight:800;letter-spacing:3px;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sb-brand-t span{color:inherit;-webkit-text-fill-color:inherit}
+.sb-brand-s{font-size:10px;color:var(--txt2);letter-spacing:5px;margin-top:2px}
+.sb-nav{flex:1;padding:10px;overflow-y:auto}
+.nav-item{
+  padding:11px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;
+  font-size:13px;font-weight:500;color:var(--txt2);transition:all .2s;
+  border-radius:12px;margin:2px 0;position:relative;
+}
+.nav-item:hover{color:var(--txt);background:rgba(43,127,255,.06)}
+.nav-item.active{color:var(--nav-color);background:var(--nav-bg);border:1px solid var(--border-glow);box-shadow:0 0 16px rgba(43,127,255,.12)}
+.nav-item .nav-ic{width:20px;height:20px;display:inline-flex;flex-shrink:0}
+.sb-foot{padding:16px 22px;border-top:1px solid var(--border);font-size:11px;color:var(--txt2)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-left:6px;animation:pulse 2s infinite}
+
+/* Main area */
+.main-area{flex:1;margin-right:260px;display:flex;flex-direction:column;position:relative;z-index:1}
+.topbar{
+  padding:14px 24px;background:var(--surface-glass);backdrop-filter:blur(24px);
+  -webkit-backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:50;
+}
+.topbar-greet{font-size:14px}.topbar-greet strong{color:var(--neon)}
+.topbar-r{display:flex;gap:8px;align-items:center}
+.content{padding:20px 24px;flex:1;overflow-y:auto;position:relative;z-index:1}
+
+/* Cards - Glass */
+.panel{
+  background:var(--surface-glass);backdrop-filter:blur(20px) saturate(160%);
+  -webkit-backdrop-filter:blur(20px) saturate(160%);
+  border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px;
+  margin-bottom:16px;transition:all .3s;animation:fadeIn .4s ease;box-shadow:var(--shadow-sm);
+}
+.panel:hover{border-color:var(--border-glow);box-shadow:var(--shadow-md),var(--glow)}
+.panel-h{
+  font-size:15px;font-weight:700;margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;
+}
+.panel-h .glow{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat{
+  background:var(--surface-glass);backdrop-filter:blur(14px);
+  border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 16px;
+  text-align:center;transition:all .3s;animation:fadeIn .5s ease;position:relative;overflow:hidden;
+}
+.stat::after{content:'';position:absolute;top:0;right:0;width:4px;height:36px;background:var(--gradient);border-radius:0 0 0 6px}
+.stat:hover{border-color:var(--border-glow);transform:translateY(-3px);box-shadow:var(--shadow-md),var(--glow)}
+.stat-icon{margin-bottom:8px;color:var(--neon)}
+.stat-v{font-size:26px;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.stat-l{font-size:11px;color:var(--txt2);margin-top:4px}
+
+/* Buttons */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;padding:9px 18px;
+  border:none;border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;
+  transition:all .25s;font-family:inherit;text-decoration:none;position:relative;
+}
+.btn-p{background:var(--gradient);color:#fff;box-shadow:0 4px 16px rgba(43,127,255,.25)}
+.btn-p:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(43,127,255,.4)}
+.btn-g{background:var(--bg3);color:var(--txt);border:1px solid var(--border)}.btn-g:hover{background:rgba(43,127,255,.1);color:var(--txt)}
+.btn-r{background:rgba(255,35,82,.1);color:var(--spider-red);border:1px solid rgba(255,35,82,.2)}.btn-r:hover{background:rgba(255,35,82,.2)}
+.btn-gr{background:rgba(22,163,74,.1);color:var(--green);border:1px solid rgba(22,163,74,.2)}.btn-b{background:rgba(68,138,255,.1);color:var(--blue);border:1px solid rgba(68,138,255,.2)}
+.btn-sm{padding:5px 12px;font-size:11px;border-radius:10px}
+.btn-icon{width:36px;height:36px;padding:0;justify-content:center;border-radius:12px}
+
+/* Tables */
+.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--radius-lg);border:1px solid var(--border);background:var(--surface-glass);backdrop-filter:blur(14px)}
+table{width:100%;border-collapse:collapse}
+th{text-align:right;padding:12px;font-size:10px;color:var(--txt2);font-weight:700;border-bottom:1px solid var(--border);background:rgba(43,127,255,.04)}
+td{padding:12px;font-size:13px;border-bottom:1px solid var(--border)}
+tr:hover td{background:rgba(43,127,255,.03)}
+tr:last-child td{border-bottom:none}
+tr{animation:fadeIn .3s ease}
+.act-row{display:flex;gap:4px;flex-wrap:wrap}
+.badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:10px;font-weight:600}
+.badge-g{background:rgba(22,163,74,.15);color:var(--green)}
+.badge-r{background:rgba(255,35,82,.15);color:var(--red)}
+.badge-b{background:rgba(43,127,255,.15);color:var(--blue)}
+.badge-p{background:rgba(123,97,255,.15);color:var(--purple)}
+.empty{text-align:center;padding:40px;color:var(--txt2);font-size:13px}
+
+.pbar{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:5px}
+.pbar-f{height:100%;background:var(--gradient);border-radius:3px;transition:width .5s ease}
+
+.srv-bar{margin-bottom:6px}.srv-bar-h{display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px}
+.srv-bar-h strong{font-size:11px}.srv-bar-bg{height:7px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.srv-bar-f{height:100%;border-radius:4px;transition:width .5s ease}
+
+/* Modal - Glass */
+.modal{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(8px);
+  z-index:200;display:none;align-items:center;justify-content:center;padding:20px;
+}
+.modal.show{display:flex;animation:fadeIn .2s ease}
+.modal-c{
+  background:var(--surface-glass);backdrop-filter:blur(28px) saturate(180%);
+  -webkit-backdrop-filter:blur(28px) saturate(180%);
+  border:1px solid var(--border);border-radius:var(--radius-xl);padding:28px;
+  width:100%;max-width:480px;max-height:85vh;overflow-y:auto;
+  box-shadow:var(--shadow-lg),var(--glow);animation:scaleIn .3s ease;position:relative;
+}
+.modal-c::before{content:'';position:absolute;top:0;right:0;width:150px;height:150px;background:radial-gradient(circle,rgba(123,97,255,.08),transparent 70%);pointer-events:none}
+.modal-t{font-size:19px;font-weight:700;margin-bottom:18px;position:relative}
+.modal-t .glow{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.modal-btns{display:flex;gap:8px;margin-top:18px;position:relative}
+.modal-btns .btn{flex:1;justify-content:center;padding:11px}
+
+/* Form fields */
+.f-g{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;flex:1}
+.f-g label{font-size:11px;font-weight:600;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px}
+.f-g input,.f-g select,.f-g textarea{
+  width:100%;padding:11px 14px;background:rgba(255,255,255,.04);
+  border:1.5px solid var(--border);border-radius:var(--radius);
+  color:var(--txt);font-size:13px;outline:none;transition:all .2s;
+}
+.f-g input:focus,.f-g select:focus,.f-g textarea:focus{border-color:var(--neon);box-shadow:0 0 0 4px var(--input-glow)}
+.f-g select{cursor:pointer;appearance:none;-webkit-appearance:none}
+.f-g select option{background:#0B1121;color:var(--txt)}
+.f-r{display:flex;gap:10px;flex-wrap:wrap}
+
+/* Tabs */
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tab{
+  padding:8px 18px;border-radius:var(--radius);font-size:12px;font-weight:600;
+  cursor:pointer;color:var(--txt2);background:var(--bg3);border:1px solid var(--border);
+  font-family:inherit;transition:all .25s;
+}
+.tab:hover{color:var(--txt)}
+.tab.active{background:var(--tab-bg);color:var(--tab-color);box-shadow:var(--tab-glow);border-color:transparent}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:30px;left:50%;transform:translateX(-50%);
+  background:var(--surface-glass);backdrop-filter:blur(24px);
+  border:1px solid var(--border);color:var(--txt);padding:12px 28px;
+  border-radius:30px;font-size:13px;z-index:999;opacity:0;
+  transition:opacity .3s;pointer-events:none;box-shadow:var(--shadow-lg);
+}
+.toast.show{opacity:1;animation:slideUp .3s ease}
+
+.ip-addr{font-family:'Cascadia Code',monospace;font-size:13px;direction:ltr;color:var(--neon)}
+
+/* Config code */
+.cfg-code{
+  background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px;font-family:'Cascadia Code',monospace;font-size:12px;
+  direction:ltr;text-align:left;word-break:break-all;max-height:220px;
+  overflow-y:auto;margin-bottom:14px;white-space:pre-wrap;color:var(--neon);
+}
+
+/* Settings rows */
+.set-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)}
+.set-row:last-child{border-bottom:none}
+.set-lbl{font-size:13px;color:var(--txt2)}.set-val{font-size:13px;font-weight:600}
+
+/* Sub cards */
+.sub-card{background:var(--bg3);border-radius:var(--radius);padding:16px;margin-bottom:10px;transition:all .2s;border:1px solid var(--border)}
+.sub-card:hover{border:1px solid var(--border-glow)}
+.sub-card-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.sub-card-name{font-size:14px;font-weight:700}
+.sub-link{width:100%;padding:8px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;font-family:monospace;font-size:11px;direction:ltr;text-align:left;color:var(--txt2);margin-bottom:8px}
+.sub-acts{display:flex;gap:6px;flex-wrap:wrap}
+
+/* iOS-style switch */
+.ios-switch{
+  width:51px;height:31px;border-radius:999px;background:#39393d;
+  border:none;position:relative;cursor:pointer;flex-shrink:0;
+  transition:background .25s ease;padding:0;margin:0;
+  -webkit-tap-highlight-color:transparent;
+}
+.ios-switch::after{
+  content:'';position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;
+  background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.35),0 0 1px rgba(0,0,0,.4);
+  transition:transform .25s cubic-bezier(.3,1.4,.5,1);
+}
+.ios-switch.on{background:#34c759}
+.ios-switch.on::after{transform:translateX(20px)}
+[data-theme="light"] .ios-switch{background:#e9e9eb}
+[data-theme="light"] .ios-switch.on{background:#34c759}
+
+/* Theme selector in settings */
+.theme-dots{display:flex;gap:8px}
+.theme-dot{width:32px;height:32px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .2s;position:relative}
+.theme-dot:hover{transform:scale(1.15);border-color:var(--txt)}
+.theme-dot.active{border-color:var(--neon);box-shadow:0 0 12px var(--neon)}
+.theme-dot.red{background:#ff1744}.theme-dot.green{background:#00ff41}.theme-dot.blue{background:#448aff}
+
+.hidden{display:none!important}
+
+/* Separator */
+.divider{height:1px;background:var(--border);margin:16px 0}
+
+/* Copy button flash */
+@keyframes copyFlash{0%{background:var(--neon)}100%{background:transparent}}
+
+/* Mobile */
+@media(max-width:900px){
+  body{font-size:14px}
+  input,select,button,textarea{font-size:16px!important}
+  .sidebar{transform:translateX(100%);width:260px}.sidebar.open{transform:translateX(0)}
+  .main-area{margin-right:0}
+  .stats{grid-template-columns:repeat(2,1fr);gap:8px}
+  .stat{padding:14px 10px}.stat-v{font-size:20px}.stat-l{font-size:10px}
+  .topbar{padding:10px 14px}.content{padding:12px}
+  .panel{padding:14px;border-radius:12px}
+  .modal-c{padding:18px;border-radius:16px}
+  .btn{padding:10px 14px;font-size:12px}
+  .btn-sm{padding:6px 10px;font-size:11px}
+  td,th{padding:8px 6px;font-size:11px}
+  .sb-brand{padding:16px 14px}
+}
+/* Sidebar backdrop */
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
+@media(max-width:900px){.sidebar-backdrop.show{display:block}}
+.sidebar-tog{display:none}@media(max-width:900px){.sidebar-tog{display:inline-flex!important}}
+
+</style>
+</head>
+<body>
+
+<canvas id="particles"></canvas>
+
+<!-- ═══════ LOGIN ═══════ -->
+<div class="login-wrap" id="login-wrap" style="display:none">
+  <div class="login-bg">
+    <canvas id="shader-canvas"></canvas>
+  </div>
+  <div class="login-card">
+    <div class="login-header">
+      <div class="login-icon"><span class="material-symbols-outlined">cloud</span></div>
+      <div class="login-title">SPIDER PANEL</div>
+      <div class="login-subtitle">High Performance Panel</div>
+    </div>
+    <div class="error-msg" id="login-err">
+      <span class="material-symbols-outlined" style="font-size:18px;">error</span>
+      <span id="login-err-text"></span>
+    </div>
+    <form class="login-form" id="login-form">
+      <div class="input-group">
+        <label for="login-user">USERNAME</label>
+        <div class="input-wrapper">
+          <span class="material-symbols-outlined">person</span>
+          <input class="input-glass" id="login-user" type="text" placeholder="Enter username" value="admin" autocomplete="username"/>
+        </div>
+      </div>
+      <div class="input-group">
+        <label for="login-pw">PASSWORD</label>
+        <div class="input-wrapper">
+          <span class="material-symbols-outlined">lock</span>
+          <input class="input-glass" id="login-pw" type="password" placeholder="Enter password" value="admin" autocomplete="current-password"/>
+        </div>
+      </div>
+      <button class="login-btn" id="login-btn" type="submit">
+        <span class="btn-text" id="login-btn-text">Sign In <span class="material-symbols-outlined" style="font-size:20px;">arrow_forward</span></span>
+        <span class="btn-spinner" id="login-btn-spinner"><span class="material-symbols-outlined" style="font-size:20px;">progress_activity</span></span>
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════ APP ═══════ -->
+<div class="app-wrap" id="app-wrap">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-brand">
+      <img src="/static/spider-logo.png" alt="S" onerror="this.style.display='none'" style="background:transparent;mix-blend-mode:screen">
+      <div>
+        <div class="sb-brand-t"><span>S</span>PIDER</div>
+        <div class="sb-brand-s">PANEL v4</div>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <div class="nav-item active" onclick="switchTab('dashboard',this)">
+        <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></span>
+        داشبورد
+      </div>
+      <div class="nav-item" onclick="switchTab('users',this)">
+        <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2m8-10a4 4 0 100-8 4 4 0 000 8zm13 10v-2a4 4 0 00-3-3.87m-4-12a4 4 0 010 7.75"/></svg></span>
+        کاربران
+      </div>
+      <div class="nav-item" onclick="switchTab('inbounds',this)">
+        <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></span>
+        اینباندها
+      </div>
+      <div class="nav-item" onclick="switchTab('settings',this)">
+        <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></span>
+        تنظیمات
+      </div>
+      <div class="nav-item" onclick="doLogout()" style="color:var(--red)!important">
+        <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4m7 14l5-5-5-5m5 5H9"/></svg></span>
+        خروج
+      </div>
+    </nav>
+    <div class="sb-foot"><span class="dot"></span> Spider Panel v4.0</div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-area">
+    <div class="topbar">
+      <div class="topbar-greet" id="grt"></div>
+      <div class="topbar-r">
+        <button class="btn btn-sm btn-g sidebar-tog" onclick="toggleSidebar()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- DASHBOARD TAB -->
+      <div class="tab-content" id="tab-dashboard">
+        <div class="panel"><div class="panel-h"><span class="glow">داشبورد</span></div><div id="dashboard-content"><div class="empty">در حال بارگذاری...</div></div></div>
+      </div>
+
+      <!-- USERS TAB -->
+      <div class="tab-content hidden" id="tab-users">
+        <div class="panel">
+          <div class="panel-h" style="justify-content:space-between">
+            <span class="glow">مدیریت کاربران</span>
+            <button class="btn btn-p" onclick="openCreateUser()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              کاربر جدید
+            </button>
+          </div>
+          <div id="users-list"><div class="empty">در حال بارگذاری...</div></div>
+        </div>
+      </div>
+
+      <!-- INBOUNDS TAB -->
+      <div class="tab-content hidden" id="tab-inbounds">
+        <div class="panel">
+          <div class="panel-h" style="justify-content:space-between">
+            <span class="glow">مدیریت اینباندها</span>
+            <button class="btn btn-p" onclick="openCreateInbound()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              اینباند جدید
+            </button>
+          </div>
+          <div id="inbounds-list"><div class="empty">در حال بارگذاری...</div></div>
+        </div>
+
+        <!-- Domain Management -->
+        <div class="panel">
+          <div class="panel-h"><span class="glow">مدیریت دامنه</span></div>
+          <form onsubmit="saveDomainSettings(event)">
+            <div class="f-g"><label>دامنه</label><input type="text" id="set-domain" placeholder="example.com" dir="ltr"></div>
+            <button class="btn btn-p" style="width:100%;margin-top:8px">ذخیره دامنه</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- SETTINGS TAB -->
+      <div class="tab-content hidden" id="tab-settings">
+
+        <!-- Server Resources -->
+        <div class="panel" style="margin-bottom:14px">
+          <div class="panel-h"><span class="glow">Server Resources</span></div>
+          <div id="neon-bars">
+            <div class="set-row" style="flex-direction:column;align-items:stretch;gap:6px">
+              <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--txt2)">CPU</span><span id="cpu-val" style="color:var(--neon);font-family:monospace">--</span></div>
+              <div class="pbar" style="height:8px;border-radius:4px"><div class="pbar-f" id="cpu-bar" style="width:0%;background:linear-gradient(90deg,var(--neon),#ff6b6b);border-radius:4px;transition:width .5s"></div></div>
+            </div>
+            <div class="set-row" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:10px">
+              <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--txt2)">RAM</span><span id="ram-val" style="color:#ffab00;font-family:monospace">--</span></div>
+              <div class="pbar" style="height:8px;border-radius:4px"><div class="pbar-f" id="ram-bar" style="width:0%;background:linear-gradient(90deg,#ffab00,#ff6b00);border-radius:4px;transition:width .5s"></div></div>
+            </div>
+            <div class="set-row" style="flex-direction:column;align-items:stretch;gap:6px;margin-top:10px">
+              <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--txt2)">Disk</span><span id="disk-val" style="color:var(--blue);font-family:monospace">--</span></div>
+              <div class="pbar" style="height:8px;border-radius:4px"><div class="pbar-f" id="disk-bar" style="width:0%;background:linear-gradient(90deg,var(--blue),var(--purple));border-radius:4px;transition:width .5s"></div></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt2);margin-top:8px">
+              <span>Network: <b id="net-sent" style="color:var(--neon)">--</b> up / <b id="net-recv" style="color:var(--blue)">--</b> down</span>
+              <span>Uptime: <b id="sys-uptime" style="color:var(--gold)">--</b></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h"><span class="glow">تنظیمات ظاهری</span></div>
+
+          <div class="set-row"><span class="set-lbl">تم</span>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-sm btn-g" onclick="setTheme('dark')">تاریک</button>
+              <button class="btn btn-sm btn-g" onclick="setTheme('light')">روشن</button>
+            </div>
+          </div>
+
+          <div class="set-row"><span class="set-lbl">رنگ</span>
+            <div class="theme-dots">
+              <div class="theme-dot red" onclick="setAccent('red')" title="قرمز"></div>
+              <div class="theme-dot green" onclick="setAccent('green')" title="سبز"></div>
+              <div class="theme-dot blue" onclick="setAccent('blue')" title="آبی"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="panel">
+          <div class="panel-h"><span class="glow">Panel Music</span></div>
+          <div class="set-row"><span class="set-lbl">Background Music</span>
+            <button type="button" class="ios-switch on" id="audio-autoplay" onclick="togglePanelAudio()" title="روشن/خاموش"></button>
+          </div>
+          <div class="sub-link" id="audio-file" style="margin-top:8px;margin-bottom:0">static/music-panel.mp3</div>
+          <audio id="panel-audio-player" loop style="display:none"></audio>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h"><span class="glow">Change Password</span></div>
+          <form onsubmit="changePassword(event)">
+            <div class="f-g"><label>رمز فعلی</label><input type="password" id="cp-old" required></div>
+            <div class="f-g"><label>رمز جدید</label><input type="password" id="cp-new" required minlength="4"></div>
+            <button class="btn btn-p" style="width:100%">تغییر رمز</button>
+          </form>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main-area -->
+</div><!-- /app-wrap -->
+
+<!-- ═══════ MODALS ═══════ -->
+
+<!-- CREATE USER -->
+<div class="modal" id="mod-user"><div class="modal-c" style="max-width:680px">
+  <div class="modal-t"><span class="glow">ایجاد کاربر جدید</span></div>
+  <form onsubmit="submitCreateUser(event)">
+    <div class="f-r">
+      <div class="f-g"><label>نام کاربری</label><input type="text" id="cu-name" required></div>
+      <div class="f-g"><label>اتصال همزمان</label><input type="number" id="cu-conn" value="2"></div>
+    </div>
+    <div class="f-r">
+      <div class="f-g"><label>حجم</label><input type="number" id="cu-vol" value="20"></div>
+      <div class="f-g"><label>واحد</label><select id="cu-vol-u"><option value="GB">GB</option><option value="MB">MB</option></select></div>
+      <div class="f-g"><label>اعتبار</label><input type="number" id="cu-exp" value="30"></div>
+      <div class="f-g"><label>واحد</label><select id="cu-exp-u"><option value="days">روز</option><option value="months">ماه</option></select></div>
+    </div>
+    <div class="f-g"><label>اینباند</label><select id="cu-inbound"><option value="">-- پیش‌فرض --</option></select></div>
+
+    <div class="divider"></div>
+    <div class="f-g">
+      <label>کشور پروکسی</label>
+      <select id="cu-country" onchange="pxSelectFromDropdown(this.value)">
+        <option value="">-- بدون پروکسی --</option>
+      </select>
+    </div>
+    <div class="px-hint">کشور را روی نقشه کلیک کنید یا از فهرست بالا انتخاب کنید. سپس IP موردنظر را تیک بزنید.</div>
+    <div id="px-map-wrap">
+      <div class="px-map" id="px-map"></div>
+    </div>
+    <div class="px-tools">
+      <input class="f-g" type="text" id="px-search" placeholder="جستجوی IP..." oninput="pxFilterIPs()" style="padding:8px 12px;background:rgba(255,255,255,.04);border:1px solid var(--bg3);border-radius:9px;color:var(--txt)">
+      <button type="button" class="btn btn-sm btn-g" onclick="pxSelectAll()">انتخاب همه</button>
+      <button type="button" class="btn btn-sm btn-g" onclick="pxClearAll()">پاک کردن</button>
+    </div>
+    <div class="px-ipbox" id="px-ip-list"><div class="px-noselected">ابتدا یک کشور را انتخاب کنید</div></div>
+    <div id="px-tags" style="margin-top:8px"></div>
+    <div class="px-path" id="px-path"></div>
+    <div class="modal-btns">
+      <button type="button" class="btn btn-g" onclick="closeModal('mod-user')">انصراف</button>
+      <button type="submit" class="btn btn-p" id="cu-submit">ایجاد کاربر</button>
+    </div>
+  </form>
+</div></div>
+
+<!-- EDIT USER -->
+<div class="modal" id="mod-edit-user"><div class="modal-c">
+  <div class="modal-t"><span class="glow">ویرایش کاربر</span></div>
+  <form onsubmit="submitEditUser(event)">
+    <input type="hidden" id="eu-id">
+    <div class="f-g"><label>نام کاربری</label><input type="text" id="eu-name" required></div>
+    <div class="f-g"><label>حجم (GB - ۰=نامحدود)</label><input type="number" id="eu-vol" value="20"></div>
+    <div class="f-g"><label>روز اعتبار (۰=نامحدود)</label><input type="number" id="eu-exp" value="30"></div>
+    <div class="f-g"><label>اتصال همزمان</label><input type="number" id="eu-conn" value="2"></div>
+    <div class="f-g"><label>وضعیت</label><select id="eu-status"><option value="active">فعال</option><option value="inactive">غیرفعال</option></select></div>
+    <div class="f-g" style="display:flex;align-items:center;gap:8px">
+      <input type="checkbox" id="eu-reset" style="width:auto">
+      <label style="margin:0">بازنشانی ترافیک</label>
+    </div>
+    <div class="f-g"><label>Proxy Country</label><select id="eu-country"><option value="">-- None --</option></select></div>
+    <div class="modal-btns">
+      <button type="button" class="btn btn-g" onclick="closeModal('mod-edit-user')">انصراف</button>
+      <button type="submit" class="btn btn-p">ذخیره تغییرات</button>
+    </div>
+  </form>
+</div></div>
+
+<!-- INBOUND MODAL -->
+<div class="modal" id="mod-inbound"><div class="modal-c" style="max-width:560px">
+  <div class="modal-t"><span class="glow" id="ib-title">ایجاد اینباند جدید</span></div>
+  <form onsubmit="submitInbound(event)">
+    <input type="hidden" id="ib-id">
+    <!-- Common -->
+    <div class="f-g"><label>نام اینباند</label><input type="text" id="ib-name" required placeholder="مثال: Main-WS"></div>
+    <div class="f-r">
+      <div class="f-g"><label>پروتکل</label><select id="ib-proto" onchange="onInboundProtoChange()">
+        <option value="vless">VLESS</option>
+        <option value="vmess">VMess</option>
+        <option value="trojan">Trojan</option>
+      </select></div>
+      <div class="f-g"><label>پورت</label><input type="number" id="ib-port" required placeholder="443"></div>
+    </div>
+    <div class="f-r">
+      <div class="f-g"><label>پورت خارجی</label><input type="number" id="ib-ext-port" placeholder="اختیاری"></div>
+      <div class="f-g"><label>Fingerprint</label><select id="ib-fingerprint">
+        <option value="chrome">Chrome</option>
+        <option value="firefox">Firefox</option>
+        <option value="safari">Safari</option>
+        <option value="edge">Edge</option>
+        <option value="random">Random</option>
+      </select></div>
+    </div>
+
+    <!-- TLS / Reality Group -->
+    <div id="ib-sec-wrap" class="hidden">
+      <div class="f-g"><label>نوع امنیت</label><select id="ib-security" onchange="onSecurityChange()">
+        <option value="tls">TLS</option>
+        <option value="reality">Reality</option>
+        <option value="none">None</option>
+      </select></div>
+      <!-- TLS fields -->
+      <div id="ib-tls-fields">
+        <div class="f-g"><label>دامنه</label><input type="text" id="ib-domain" placeholder="example.com" dir="ltr" oninput="onDomainChange()"></div>
+        <div class="f-g"><label>SNI</label><input type="text" id="ib-sni" placeholder="example.com" dir="ltr"></div>
+      </div>
+      <!-- Reality fields -->
+      <div id="ib-reality-fields" class="hidden">
+        <div class="divider"></div>
+        <div style="font-size:11px;color:var(--neon);font-weight:700;margin-bottom:8px">تنظیمات Reality</div>
+        <div class="f-r">
+          <div class="f-g"><label>Private Key (x25519)</label><input type="text" id="ib-privkey" dir="ltr" placeholder="تولید خودکار"></div>
+          <div class="f-g"><label>Public Key</label><input type="text" id="ib-pubkey" dir="ltr" placeholder="تولید خودکار" readonly></div>
+        </div>
+        <button type="button" class="btn btn-sm btn-b" onclick="generateRealityKeysUI()" style="width:100%;margin-bottom:10px">تولید کلید Reality (x25519)</button>
+        <div class="f-g"><label>Destination</label><input type="text" id="ib-dest" value="is1-ssl.mzstatic.com:443" dir="ltr"></div>
+        <div class="f-g"><label>Server Names (SNI)</label><input type="text" id="ib-servernames" value="is1-ssl.mzstatic.com" dir="ltr" placeholder="با کاما جدا کنید"></div>
+        <div class="f-g"><label>Short IDs</label><div style="display:flex;gap:6px"><input type="text" id="ib-shortids" value="" dir="ltr" placeholder="هگز ۸ رقمی — خالی = تصادفی" style="flex:1"><button type="button" class="btn btn-sm" onclick="generateShortId()" style="white-space:nowrap">+ تولید</button></div></div>
+        <div class="f-g"><label>SpiderX</label><input type="text" id="ib-spiderx" dir="ltr" placeholder="/" value="/"></div>
+        <div class="f-g"><label>External Domain</label><input type="text" id="ib-extdomain" dir="ltr" placeholder="دامنه خارجی برای کانفیگ کلاینت"></div>
+        <div class="f-g"><label>External Port</label><input type="number" id="ib-extport" value="443" dir="ltr" placeholder="443"></div>
+      </div>
+    </div>
+
+    <!-- Network group -->
+    <div class="divider"></div>
+    <div id="ib-net-wrap">
+      <div class="f-g"><label>شبکه</label><select id="ib-network" onchange="onNetworkChange()">
+        <option value="tcp">TCP</option>
+        <option value="ws">WebSocket</option>
+        <option value="xhttp">XHTTP</option>
+        <option value="grpc">gRPC</option>
+      </select></div>
+      <!-- WS fields -->
+      <div id="ib-ws-fields" class="hidden"><div class="f-g"><label>Path</label><input type="text" id="ib-wspath" value="/" dir="ltr"></div></div>
+      <!-- XHTTP fields -->
+      <div id="ib-xhttp-fields" class="hidden">
+        <div class="f-g"><label>Path</label><input type="text" id="ib-xhttppath" value="/" dir="ltr"></div>
+        <div class="f-r">
+          <div class="f-g"><label>Mode</label><select id="ib-xhttp-mode"><option value="auto">auto</option><option value="packet-up">packet-up</option><option value="stream-one">stream-one</option></select></div>
+        </div>
+      </div>
+      <!-- gRPC fields -->
+      <div id="ib-grpc-fields" class="hidden"><div class="f-g"><label>Service Name</label><input type="text" id="ib-grpc-svc" value="grpc" dir="ltr"></div></div>
+    </div>
+
+    <div class="modal-btns">
+      <button type="button" class="btn btn-g" onclick="closeModal('mod-inbound')">انصراف</button>
+      <button type="submit" class="btn btn-p" id="ib-submit">ایجاد اینباند</button>
+    </div>
+  </form>
+</div></div>
+
+<!-- CONFIG VIEWER -->
+<div class="modal" id="mod-cfg"><div class="modal-c">
+  <div class="modal-t"><span class="glow">کانفیگ</span></div>
+  <pre class="cfg-code" id="cfg-code"></pre>
+  <div class="modal-btns">
+    <button class="btn btn-p" onclick="copyCfg()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+      کپی
+    </button>
+    <button class="btn btn-g" onclick="closeModal('mod-cfg')">بستن</button>
+  </div>
+</div></div>
+
+<!-- QR MODAL -->
+<div class="modal" id="mod-qr"><div class="modal-c" style="max-width:340px;text-align:center">
+  <div class="modal-t"><span class="glow">QR Code</span></div>
+  <img id="qr-img" src="" style="width:260px;height:260px;background:#fff;border-radius:12px;margin:12px auto;display:block" alt="QR">
+  <button class="btn btn-g" onclick="closeModal('mod-qr')" style="width:100%">بستن</button>
+</div></div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+
+// ─── State ───
+var $ = qs => document.querySelector(qs);
+var $id = id => document.getElementById(id);
+var curCfg = '';
+var ALL_IB = [];
+var ALL_USERS = [];
+
+var selectedAccent = localStorage.getItem('spider-accent') || 'red';
+var selectedTheme = localStorage.getItem('spider-theme') || 'dark';
+
+// ─── API ───
+async function api(url, opts) {
+  opts = opts || {};
+  opts.credentials = 'same-origin';
+  opts.headers = opts.headers || {};
+  if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(opts.body);
+  }
+  var r = await fetch(url, opts);
+  if (!r.ok) {
+    var txt = await r.text();
+    try { var j = JSON.parse(txt); throw new Error(j.detail || j.error || txt); } catch(e) { if (e.message && e.message !== txt) throw e; }
+    throw new Error('خطای سرور: ' + r.status);
+  }
+  return r.json();
+}
+
+// ─── Toast ───
+var toastTimer;
+function toast(msg, type) {
+  var el = $id('toast');
+  el.textContent = msg;
+  el.style.color = type === 'err' ? 'var(--red)' : type === 'ok' ? 'var(--green)' : 'var(--txt)';
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { el.classList.remove('show'); }, 2800);
+}
+
+// ─── Init ───
+document.addEventListener('DOMContentLoaded', function() {
+  loadAccent();
+  loadTheme();
+  initLoginShader();
+  initParticles();
+  checkAuth();
+});
+
+function initParticles() {
+  var c = $id('particles'), ctx = c.getContext('2d');
+  var w, h, particles = [];
+  function resize() { w = c.width = window.innerWidth; h = c.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+
+  for (var i = 0; i < 40; i++) {
+    particles.push({
+      x: Math.random() * w, y: Math.random() * h,
+      r: Math.random() * 1.5 + 0.5,
+      vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3,
+      alpha: Math.random() * 0.5 + 0.1
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    var color = getComputedStyle(document.documentElement).getPropertyValue('--neon').trim();
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = color.replace(')', ', ' + p.alpha + ')').replace('rgb', 'rgba');
+      if (color.startsWith('#')) {
+        var hex = color.replace('#', '');
+        var rr = parseInt(hex.substring(0,2), 16), gg = parseInt(hex.substring(2,4), 16), bb = parseInt(hex.substring(4,6), 16);
+        ctx.fillStyle = 'rgba(' + rr + ',' + gg + ',' + bb + ',' + p.alpha + ')';
+      }
+      ctx.fill();
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > w) p.vx *= -1;
+      if (p.y < 0 || p.y > h) p.vy *= -1;
+      // Draw connections
+      for (var j = i + 1; j < particles.length; j++) {
+        var p2 = particles[j], dx = p.x - p2.x, dy = p.y - p2.y, dist = Math.sqrt(dx*dx+dy*dy);
+        if (dist < 120) {
+          ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y);
+          ctx.strokeStyle = 'rgba(255,255,255,' + (0.03 * (1 - dist/120)) + ')';
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// ─── Theme ───
+function loadAccent() { setAccent(selectedAccent); }
+function loadTheme() { setTheme(selectedTheme); }
+function setAccent(a) {
+  selectedAccent = a;
+  document.documentElement.setAttribute('data-accent', a);
+  localStorage.setItem('spider-accent', a);
+  // Update active dot
+  document.querySelectorAll('.theme-dot').forEach(function(d) { d.classList.remove('active'); });
+  var dot = document.querySelector('.theme-dot.' + a);
+  if (dot) dot.classList.add('active');
+}
+
+function setTheme(t) {
+  selectedTheme = t;
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('spider-theme', t);
+}
+
+// ─── Auth ───
+async function checkAuth() {
+  try {
+    var r = await api('/api/me');
+    if (r.authenticated) { showApp(); return; }
+  } catch(e) {}
+  showLogin();
+}
+
+function showLogin() { $id('login-wrap').style.display = 'flex'; $id('app-wrap').classList.remove('active'); }
+function showApp() {
+  $id('login-wrap').style.display = 'none';
+  $id('app-wrap').classList.add('active');
+  loadAll();
+  updateGreeting();
+}
+
+async function doLogin() {
+  var btnText = $id('login-btn-text'), btnSpinner = $id('login-btn-spinner'), errEl = $id('login-err'), errText = $id('login-err-text'), btn = $id('login-btn');
+  btn.disabled = true; btnText.classList.add('hidden'); btnSpinner.classList.add('show'); errEl.classList.remove('show');
+  try {
+    var r = await api('/api/login', {method: 'POST', body: {username: $id('login-user').value, password: $id('login-pw').value}});
+    if (r.ok || r.success) { showApp(); return; }
+    errText.textContent = r.detail || 'Login failed'; errEl.classList.add('show');
+  } catch(e) {
+    errText.textContent = e.message || 'Connection error'; errEl.classList.add('show');
+  }
+  btn.disabled = false; btnText.classList.remove('hidden'); btnSpinner.classList.remove('show');
+}
+
+// ─── Shader Canvas Init ───
+function initLoginShader() {
+  var canvas = $id('shader-canvas');
+  if (!canvas) return;
+  function syncSize() {
+    var w = canvas.clientWidth || 1280;
+    var h = canvas.clientHeight || 720;
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  }
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(syncSize).observe(canvas);
+  syncSize();
+  var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  if (!gl) return;
+  var vs = 'attribute vec2 a_position; varying vec2 v_texCoord; void main() { v_texCoord = a_position * 0.5 + 0.5; gl_Position = vec4(a_position, 0.0, 1.0); }';
+  var fs = 'precision highp float; uniform float u_time; uniform vec2 u_resolution; uniform vec2 u_mouse; varying vec2 v_texCoord; float noise(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); } float smoothNoise(vec2 p) { vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f); float a = noise(i); float b = noise(i + vec2(1.0, 0.0)); float c = noise(i + vec2(0.0, 1.0)); float d = noise(i + vec2(1.0, 1.0)); return mix(mix(a, b, f.x), mix(c, d, f.x), f.y); } void main() { vec2 uv = v_texCoord; vec2 p1 = uv * 3.0 + u_time * 0.05; vec2 p2 = uv * 5.0 - u_time * 0.08; float n = smoothNoise(p1) * 0.5 + smoothNoise(p2) * 0.3; float wave = sin(uv.y * 10.0 + n * 5.0 + u_time * 0.2) * 0.5 + 0.5; wave *= sin(uv.x * 8.0 - u_time * 0.1) * 0.5 + 0.5; vec3 c1 = vec3(0.047, 0.047, 0.047); vec3 c2 = vec3(0.106, 0.106, 0.106); vec3 fc = mix(c1, c2, wave * 0.4); float d = distance(uv, u_mouse / u_resolution); fc += 0.03 * (1.0 - smoothstep(0.0, 0.5, d)); gl_FragColor = vec4(fc, 1.0); }';
+  function cs(type, src) { var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; }
+  var prog = gl.createProgram(); gl.attachShader(prog, cs(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, cs(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(prog); gl.useProgram(prog);
+  var buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+  var pos = gl.getAttribLocation(prog, 'a_position'); gl.enableVertexAttribArray(pos); gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+  var uTime = gl.getUniformLocation(prog, 'u_time'), uRes = gl.getUniformLocation(prog, 'u_resolution'), uMouse = gl.getUniformLocation(prog, 'u_mouse');
+  var mouse = {x: canvas.width / 2, y: canvas.height / 2};
+  canvas.addEventListener('mousemove', function(e) {
+    var rect = canvas.getBoundingClientRect();
+    if (rect.width && rect.height) {
+      mouse.x = (e.clientX - rect.left) / rect.width * canvas.width;
+      mouse.y = (1.0 - (e.clientY - rect.top) / rect.height) * canvas.height;
+    }
+  });
+  (function render(t) {
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    if (uTime) gl.uniform1f(uTime, t * 0.001);
+    if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
+    if (uMouse) gl.uniform2f(uMouse, mouse.x, mouse.y);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    requestAnimationFrame(render);
+  })(0);
+}
+
+async function doLogout() {
+  try { await api('/api/logout', {method: 'POST'}); } catch(e) {}
+  localStorage.removeItem('spider_session');
+  $id('app-wrap').classList.remove('active');
+  showLogin();
+}
+
+function updateGreeting() {
+  var h = new Date().getHours(), g = h < 12 ? 'صبح بخیر' : h < 17 ? 'ظهر بخیر' : 'عصر بخیر';
+  $id('grt').innerHTML = g + '، <strong>ادمین</strong>';
+}
+
+// ─── Navigation ───
+function switchTab(tab, el) {
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.add('hidden'); });
+  var target = $id('tab-' + tab);
+  if (target) target.classList.remove('hidden');
+  stopLiveStats();
+  if (tab === 'dashboard') loadDashboard();
+  if (tab === 'users') loadUsers();
+  if (tab === 'inbounds') loadInbounds();
+  // Close sidebar on mobile
+  closeSidebar();
+}
+
+function openSidebar() { $id('sidebar').classList.add('open'); $id('sidebar-backdrop').classList.add('show'); }
+function closeSidebar() { $id('sidebar').classList.remove('open'); $id('sidebar-backdrop').classList.remove('show'); }
+function toggleSidebar() { $id('sidebar').classList.contains('open') ? closeSidebar() : openSidebar(); }
+
+// ─── Load All ───
+async function loadAll() {
+  loadDashboard();
+  loadUsers();
+  loadInbounds();
+  loadProxyCountries();
+}
+
+// ─── Dashboard ───
+var liveInterval = null;
+
+function startLiveStats() {
+  if (liveInterval) clearInterval(liveInterval);
+  refreshLiveStats();
+  liveInterval = setInterval(refreshLiveStats, 4000);
+}
+
+function stopLiveStats() {
+  if (liveInterval) { clearInterval(liveInterval); liveInterval = null; }
+}
+
+async function loadDashboard() {
+  try {
+    var s = await api('/stats');
+    var html = '<div class="stats">';
+    html += statCard(iconUsers, '<span id="dash-users">' + s.active_users + ' / ' + s.total_users + '</span>', 'کاربران فعال/کل');
+    html += statCard(iconTraffic, '<span id="dash-traffic">' + fmtBytes(s.traffic_usage_gb * 1073741824) + '</span>', 'ترافیک مصرفی');
+    html += statCard(iconConn, '<span id="dash-conn">' + (s.active_connections || '۰') + '</span>', 'اتصالات فعال');
+    html += statCard(iconUptime, '<span id="dash-uptime">...</span>', 'زمان فعالیت');
+    html += '</div>';
+    html += '<div class="panel"><div class="panel-h" style="align-items:center"><span class="glow">وضعیت زنده سرور</span><span class="badge badge-g" style="margin-right:auto;font-size:9px;animation:pulse 1.5s infinite">● LIVE</span></div>';
+    html += '<div class="srv-bar"><div class="srv-bar-h"><strong>پردازنده</strong><span id="live-cpu">--</span>%</div><div class="srv-bar-bg"><div class="srv-bar-f" id="bar-cpu" style="width:0%"></div></div></div>';
+    html += '<div class="srv-bar"><div class="srv-bar-h"><strong>حافظه رم</strong><span id="live-ram">--</span></div><div class="srv-bar-bg"><div class="srv-bar-f" id="bar-ram" style="width:0%"></div></div></div>';
+    html += '<div class="srv-bar"><div class="srv-bar-h"><strong>دیسک</strong><span id="live-disk">--</span></div><div class="srv-bar-bg"><div class="srv-bar-f" id="bar-disk" style="width:0%"></div></div></div>';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--txt2);margin-top:12px;padding-top:10px;border-top:1px solid var(--bg3)">';
+    html += '<span>ارسال: <strong style="color:var(--neon)" id="live-net-sent">...</strong></span>';
+    html += '<span>دریافت: <strong style="color:var(--neon)" id="live-net-recv">...</strong></span>';
+    html += '<span>Uptime: <strong style="color:var(--neon)" id="live-uptime">...</strong></span>';
+    html += '</div></div>';
+    $id('dashboard-content').innerHTML = html;
+    startLiveStats();
+  } catch(e) { $id('dashboard-content').innerHTML = '<div class="empty">خطا در بارگذاری آمار</div>'; }
+}
+
+async function refreshLiveStats() {
+  try {
+    var st = await api('/api/server/stats');
+    // Update bar fills
+    var barCpu = $id('bar-cpu'); if (barCpu) barCpu.style.width = Math.min(st.cpu_percent||0, 100) + '%';
+    var barRam = $id('bar-ram'); if (barRam) barRam.style.width = Math.min(st.ram_percent||0, 100) + '%';
+    var barDisk = $id('bar-disk'); if (barDisk) barDisk.style.width = Math.min(st.disk_percent||0, 100) + '%';
+    // Update text labels
+    var cpuEl = $id('live-cpu'); if (cpuEl) cpuEl.textContent = (st.cpu_percent||'--');
+    var ramEl = $id('live-ram'); if (ramEl) ramEl.textContent = (st.ram_used_gb||'?') + ' / ' + (st.ram_total_gb||'?') + ' GB';
+    var diskEl = $id('live-disk'); if (diskEl) diskEl.textContent = (st.disk_used_gb||'?') + ' / ' + (st.disk_total_gb||'?') + ' GB';
+    var sentEl = $id('live-net-sent'); if (sentEl) sentEl.textContent = (st.net_sent_mb||'0') + ' MB';
+    var recvEl = $id('live-net-recv'); if (recvEl) recvEl.textContent = (st.net_recv_mb||'0') + ' MB';
+    var uptEl = $id('live-uptime'); if (uptEl) uptEl.textContent = fmtUptime(st.uptime_seconds);
+    var duptEl = $id('dash-uptime'); if (duptEl) duptEl.textContent = fmtUptime(st.uptime_seconds);
+  } catch(e) { /* keep old values */ }
+}
+
+function statCard(icon, val, label) {
+  return '<div class="stat"><div class="stat-icon">' + icon + '</div><div class="stat-v">' + val + '</div><div class="stat-l">' + label + '</div></div>';
+}
+
+function srvBar(label, val, color, suffix) {
+  var p = Math.min(parseFloat(val) || 0, 100);
+  return '<div class="srv-bar"><div class="srv-bar-h"><strong>' + label + '</strong><span>' + suffix + '</span></div><div class="srv-bar-bg"><div class="srv-bar-f" style="width:' + p + '%;background:' + color + '"></div></div></div>';
+}
+
+// ─── Users ───
+async function loadUsers() {
+  try {
+    var d = await api('/api/users');
+    ALL_USERS = d.users || [];
+    renderUsers();
+  } catch(e) { $id('users-list').innerHTML = '<div class="empty">خطا در بارگذاری کاربران</div>'; }
+}
+
+function renderUsers() {
+  var el = $id('users-list');
+  if (!ALL_USERS.length) { el.innerHTML = '<div class="empty">هیچ کاربری وجود ندارد</div>'; return; }
+  var html = '<div class="tbl"><table><thead><tr><th>نام کاربری</th><th>حجم</th><th>انقضا</th><th>اتصال</th><th>وضعیت</th><th>اینباند</th><th>عملیات</th></tr></thead><tbody>';
+  for (var i = 0; i < ALL_USERS.length; i++) {
+    var u = ALL_USERS[i];
+    var used = u.traffic_used_bytes || 0, limit = u.traffic_limit_bytes || 0;
+    var pct = limit > 0 ? Math.min((used / limit) * 100, 100) : 0;
+    var exp = u.expire_at ? Math.ceil((new Date(u.expire_at) - new Date()) / 86400000) : null;
+    var expText = exp === null ? 'نامحدود' : exp <= 0 ? '<span style="color:var(--red)">منقضی</span>' : exp + ' روز';
+    var statusBadge = u.status === 'active' ? '<span class="badge badge-g">فعال</span>' : '<span class="badge badge-r">غیرفعال</span>';
+    var inboundName = u.inbound_name || (u.inbound_id ? u.inbound_id.substring(0,8) : 'پیش‌فرض');
+    html += '<tr>';
+    html += '<td><strong>' + esc(u.username) + '</strong></td>';
+    html += '<td>' + fmtBytes(used) + ' / ' + (limit ? fmtBytes(limit) : 'نامحدود') + '<div class="pbar"><div class="pbar-f" style="width:' + pct + '%"></div></div></td>';
+    html += '<td>' + expText + '</td>';
+    html += '<td>' + (u.concurrent_connections || '۲') + '</td>';
+    html += '<td>' + statusBadge + '</td>';
+    html += '<td><span class="badge badge-b">' + esc(inboundName) + '</span></td>';
+    if (u.proxy_country) html += ' <span class="badge badge-p">' + esc(u.proxy_country) + '</span>';
+    html += '<td><div class="act-row">';
+    html += '<button class="btn btn-sm btn-g" onclick="viewCfg(\'' + u.user_id + '\')" title="Config">'+iconCfg+'</button>';
+    html += '<button class="btn btn-sm btn-g" onclick="viewSub(\'' + u.username + '\')" title="Sub Link">'+iconLink+'</button>';
+    html += '<button class="btn btn-sm btn-b" onclick="viewQR(\'' + u.user_id + '\')" title="QR Code">'+iconQr+'</button>';
+    html += '<button class="btn btn-sm btn-b" onclick="editUser(\'' + u.user_id + '\')" title="Edit">'+iconEdit+'</button>';
+    html += '<button class="btn btn-sm btn-r" onclick="toggleUser(\'' + u.user_id + '\')" title="Toggle">'+iconToggle+'</button>';
+    html += '<button class="btn btn-sm btn-r" onclick="deleteUser(\'' + u.user_id + '\')" title="Delete">'+iconTrash+'</button>';
+    html += '</div></td>';
+    html += '</tr>';
+  }
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+// ─── User CRUD (SIMPLIFIED) ───
+function openCreateUser() {
+  populateInboundSelects();
+  $id('cu-name').value = '';
+  $id('cu-vol').value = '20';
+  $id('cu-vol-u').value = 'GB';
+  $id('cu-exp').value = '30';
+  $id('cu-exp-u').value = 'days';
+  $id('cu-conn').value = '2';
+  $id('cu-country').value = '';
+  pxReset();
+  pxInitMap();
+  openModal('mod-user');
+  setTimeout(function(){ if (PX.map) PX.map.invalidateSize(); }, 150);
+}
+
+async function submitCreateUser(e) {
+  e.preventDefault();
+  var btn = $id('cu-submit'); btn.disabled = true; btn.textContent = 'در حال ایجاد...';
+  var v = parseFloat($id('cu-vol').value) || 0, vu = $id('cu-vol-u').value;
+  var ex = parseInt($id('cu-exp').value) || 0, eu = $id('cu-exp-u').value;
+  var proxy_ips = Object.keys(PX.selected || {});
+  var proxy_ip = proxy_ips.length ? proxy_ips[0] : '';
+  try {
+    var r = await api('/api/users', {method: 'POST', body: {
+      username: $id('cu-name').value,
+      traffic_limit_gb: vu === 'GB' ? v : v / 1024,
+      expire_days: eu === 'months' ? ex * 30 : ex,
+      concurrent_connections: parseInt($id('cu-conn').value) || 2,
+      inbound_id: $id('cu-inbound').value || null,
+      proxy_country: ($id('cu-country')||{}).value||'',
+      proxy_ip: proxy_ip,
+      proxy_ips: proxy_ips
+    }});
+    toast('کاربر ' + r.username + ' با موفقیت ایجاد شد', 'ok');
+    closeModal('mod-user');
+    loadAll();
+  } catch(e) { toast(e.message || 'خطا', 'err'); }
+  btn.disabled = false; btn.textContent = 'ایجاد کاربر';
+}
+
+function editUser(uid) {
+  var u = ALL_USERS.find(function(x) { return x.user_id === uid; });
+  if (!u) return;
+  $id('eu-id').value = uid;
+  $id('eu-name').value = u.username || '';
+  $id('eu-vol').value = (u.traffic_limit_bytes ? (u.traffic_limit_bytes / 1073741824).toFixed(0) : '0');
+  $id('eu-exp').value = u.expire_at ? Math.ceil((new Date(u.expire_at) - new Date()) / 86400000) : 0;
+  $id('eu-status').value = u.status || 'active';
+  $id('eu-conn').value = u.concurrent_connections || 2;
+  $id('eu-country').value = u.proxy_country || '';
+  openModal('mod-edit-user');
+}
+
+async function submitEditUser(e) {
+  e.preventDefault();
+  var uid = $id('eu-id').value;
+  try {
+    await api('/api/users/' + uid, {method: 'PATCH', body: {
+      username: $id('eu-name').value,
+      traffic_limit_gb: $id('eu-vol').value ? parseFloat($id('eu-vol').value) : 0,
+      expire_days: parseInt($id('eu-exp').value) || 0,
+      concurrent_connections: parseInt($id('eu-conn').value) || 2,
+      status: $id('eu-status').value,
+      reset_traffic: $id('eu-reset') ? $id('eu-reset').checked : false
+      ,proxy_country: ($id('eu-country')||{}).value||''
+    }});
+    toast('کاربر بروزرسانی شد', 'ok');
+    closeModal('mod-edit-user');
+    loadAll();
+  } catch(e) { toast(e.message || 'خطا', 'err'); }
+}
+
+async function toggleUser(uid) {
+  try { await api('/api/users/' + uid + '/toggle', {method: 'PATCH'}); loadUsers(); toast('وضعیت کاربر تغییر کرد', 'ok'); } catch(e) { toast(e.message, 'err'); }
+}
+
+async function deleteUser(uid) {
+  if (!confirm('آیا از حذف این کاربر اطمینان دارید؟')) return;
+  try { await api('/api/users/' + uid, {method: 'DELETE'}); toast('کاربر حذف شد', 'ok'); loadAll(); } catch(e) { toast(e.message, 'err'); }
+}
+
+// ─── Config & Sub ───
+async function viewCfg(uid) {
+  try {
+    var d = await api('/api/users/' + uid + '/config');
+    curCfg = d.config || '';
+    $id('cfg-code').textContent = curCfg || 'کانفیگی موجود نیست';
+    openModal('mod-cfg');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+function copyCfg() {
+  navigator.clipboard.writeText(curCfg).then(function() { toast('کانفیگ کپی شد', 'ok'); }).catch(function() { toast('خطا در کپی', 'err'); });
+}
+
+function viewSub(username) { window.open('/sub/' + username, '_blank'); }
+function viewQR(userId) { $id('qr-img').src = '/api/users/' + userId + '/qr?t=' + Date.now(); openModal('mod-qr'); }
+
+// ─── Inbounds ───
+async function loadInbounds() {
+  try {
+    var d = await api('/api/inbounds');
+    ALL_IB = d.inbounds || [];
+    renderInbounds();
+    populateInboundSelects();
+  } catch(e) {
+    $id('inbounds-list').innerHTML = '<div class="empty">خطا در بارگذاری اینباندها</div>';
+  }
+}
+
+function renderInbounds() {
+  var el = $id('inbounds-list');
+  if (!ALL_IB.length) { el.innerHTML = '<div class="empty">هیچ اینباندی وجود ندارد</div>'; return; }
+  var html = '<div class="stats" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">';
+  for (var i = 0; i < ALL_IB.length; i++) {
+    var ib = ALL_IB[i];
+    var protoBadge = ib.protocol === 'reality' ? 'badge-p' : 'badge-b';
+    html += '<div class="stat" style="text-align:right">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
+    html += '<strong>' + esc(ib.name) + '</strong><span class="badge ' + protoBadge + '">' + (ib.protocol || 'vless').toUpperCase() + '</span>';
+    html += '</div>';
+    html += '<div style="font-size:11px;color:var(--txt2);line-height:1.8">';
+    if (ib.domain) html += 'دامنه: ' + esc(ib.domain) + '<br>';
+    html += 'پورت: ' + (ib.port || '-') + (ib.external_port ? ' / خارجی: ' + ib.external_port : '') + '<br>';
+    html += 'شبکه: ' + (ib.network || 'tcp') + ' | امنیت: ' + (ib.security || 'none') + '<br>';
+    html += 'کاربران: ' + (ib.users_count || 0);
+    html += '</div>';
+    html += '<div style="margin-top:10px;display:flex;gap:4px">';
+    html += '<button class="btn btn-sm btn-b" onclick="editInbound(\'' + ib.inbound_id + '\')">ویرایش</button>';
+    html += '<button class="btn btn-sm btn-r" onclick="deleteInbound(\'' + ib.inbound_id + '\')">حذف</button>';
+    html += '</div></div>';
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function populateInboundSelects() {
+  var opts = '<option value="">-- پیش‌فرض --</option>' + ALL_IB.map(function(ib) {
+    return '<option value="' + ib.inbound_id + '" data-proto="' + (ib.protocol||'') + '">' + esc(ib.name) + ' (' + (ib.protocol||'vless').toUpperCase() + ')</option>';
+  }).join('');
+  var sel = $id('cu-inbound');
+  if (sel) sel.innerHTML = opts;
+}
+
+function openCreateInbound() {
+  $id('ib-title').textContent = 'ایجاد اینباند جدید';
+  $id('ib-id').value = '';
+  $id('ib-name').value = '';
+  $id('ib-proto').value = 'vless';
+  $id('ib-port').value = '';
+  $id('ib-ext-port').value = '';
+  $id('ib-domain').value = '';
+  $id('ib-sni').value = '';
+  $id('ib-network').value = 'ws';
+  $id('ib-security').value = 'tls';
+  $id('ib-fingerprint').value = 'chrome';
+  $id('ib-submit').textContent = 'ایجاد اینباند';
+  onInboundProtoChange();
+  openModal('mod-inbound');
+}
+
+function editInbound(iid) {
+  var ib = ALL_IB.find(function(x) { return x.inbound_id === iid; });
+  if (!ib) return;
+  $id('ib-title').textContent = 'ویرایش اینباند';
+  $id('ib-id').value = iid;
+  $id('ib-name').value = ib.name || '';
+  $id('ib-proto').value = ib.protocol || 'vless';
+  $id('ib-port').value = ib.port || '';
+  $id('ib-ext-port').value = ib.external_port || '';
+  $id('ib-domain').value = ib.domain || '';
+  $id('ib-sni').value = ib.sni || '';
+  $id('ib-network').value = ib.network || 'ws';
+  $id('ib-security').value = ib.security || 'tls';
+  $id('ib-fingerprint').value = ib.fingerprint || 'chrome';
+  $id('ib-submit').textContent = 'بروزرسانی اینباند';
+  onInboundProtoChange();
+  openModal('mod-inbound');
+}
+
+function onInboundProtoChange() {
+  var p = $id('ib-proto').value;
+  var secWrap = $id('ib-sec-wrap');
+  if (p === 'vless' || p === 'vmess' || p === 'trojan') {
+    secWrap.classList.remove('hidden');
+    $id('ib-security').value = 'tls';
+  } else {
+    secWrap.classList.add('hidden');
+  }
+  onSecurityChange();
+}
+
+function onSecurityChange() {
+  var sec = $id('ib-security').value;
+  var tlsF = $id('ib-tls-fields'), realF = $id('ib-reality-fields');
+  if (sec === 'reality') { tlsF.classList.add('hidden'); realF.classList.remove('hidden'); }
+  else if (sec === 'tls') { tlsF.classList.remove('hidden'); realF.classList.add('hidden'); }
+  else { tlsF.classList.add('hidden'); realF.classList.add('hidden'); }
+}
+
+function onNetworkChange() {
+  var net = $id('ib-network').value;
+  toggleById('ib-ws-fields', net === 'ws');
+  toggleById('ib-xhttp-fields', net === 'xhttp');
+  toggleById('ib-grpc-fields', net === 'grpc');
+}
+
+function toggleById(id, show) { var el = $id(id); if (el) { if (show) el.classList.remove('hidden'); else el.classList.add('hidden'); } }
+
+function onDomainChange() {
+  var d = $id('ib-domain').value;
+  if (d) $id('ib-sni').value = d;
+}
+
+async function generateRealityKeysUI() {
+  try {
+    var r = await api('/api/tools/generate-reality-keys', {method: 'POST'});
+    $id('ib-privkey').value = r.private_key || '';
+    $id('ib-pubkey').value = r.public_key || '';
+    toast('کلیدهای Reality تولید شد', 'ok');
+  } catch(e) { toast('خطا در تولید کلید', 'err'); }
+}
+
+async function generateShortId() {
+  var iid = $id('ib-id').value;
+  if (!iid) {
+    // Creating new inbound — generate locally
+    var hex = ''; for(var i=0;i<10;i++) hex += '0123456789abcdef'[Math.floor(Math.random()*16)];
+    $id('ib-shortids').value = hex;
+    toast('Short ID تولید شد', 'ok');
+    return;
+  }
+  // Editing existing — call API
+  try {
+    var r = await api('/api/inbounds/' + iid + '/generate-short-id', {method: 'POST'});
+    $id('ib-shortids').value = r.short_id || '';
+    toast('Short ID جدید تولید شد', 'ok');
+  } catch(e) { toast('خطا', 'err'); }
+}
+
+function openCreateInbound() {
+  $id('ib-title').textContent = 'ایجاد اینباند جدید';
+  $id('ib-id').value = '';
+  $id('ib-name').value = '';
+  $id('ib-port').value = '';
+  $id('ib-ext-port').value = '';
+  $id('ib-domain').value = '';
+  $id('ib-sni').value = '';
+  $id('ib-extdomain').value = '';
+  $id('ib-extport').value = '';
+  $id('ib-privkey').value = '';
+  $id('ib-pubkey').value = '';
+  $id('ib-shortids').value = '';
+  $id('ib-spiderx').value = '/';
+  $id('ib-extdomain').value = '';
+  $id('ib-extport').value = '443';
+  $id('ib-dest').value = 'is1-ssl.mzstatic.com:443';
+  $id('ib-servernames').value = 'is1-ssl.mzstatic.com';
+  $id('ib-proto').value = 'vless';
+  $id('ib-security').value = 'tls';
+  $id('ib-network').value = 'tcp';
+  $id('ib-fingerprint').value = 'chrome';
+  $id('ib-wspath').value = '/';
+  $id('ib-xhttppath').value = '/';
+  $id('ib-xhttp-mode').value = 'auto';
+  $id('ib-grpc-svc').value = 'grpc';
+  $id('ib-submit').textContent = 'ایجاد اینباند';
+  onInboundProtoChange();
+  onNetworkChange();
+  openModal('mod-inbound');
+}
+
+function editInbound(iid) {
+  var ib = ALL_IB.find(function(x) { return x.inbound_id === iid; });
+  if (!ib) return;
+  $id('ib-title').textContent = 'ویرایش اینباند';
+  $id('ib-id').value = iid;
+  $id('ib-name').value = ib.name || '';
+  $id('ib-port').value = ib.port || '';
+  $id('ib-ext-port').value = ib.external_port || '';
+  $id('ib-domain').value = ib.domain || '';
+  $id('ib-sni').value = ib.sni || '';
+  $id('ib-proto').value = ib.protocol || 'vless';
+  $id('ib-security').value = ib.security || 'tls';
+  $id('ib-network').value = ib.network || 'tcp';
+  $id('ib-fingerprint').value = ib.fingerprint || 'chrome';
+  var rs = ib.reality_settings || {};
+  $id('ib-privkey').value = (rs || {}).private_key || ib.private_key || '';
+  $id('ib-pubkey').value = (rs || {}).public_key || ib.public_key || '';
+  $id('ib-shortids').value = (rs || {}).short_ids || '';
+  $id('ib-spiderx').value = (rs || {}).spiderx || '/';
+  $id('ib-extdomain').value = ib.external_domain || '';
+  $id('ib-extport').value = ib.external_port || '443';
+  $id('ib-dest').value = (rs || {}).dest || 'is1-ssl.mzstatic.com:443';
+  $id('ib-servernames').value = (rs || {}).server_names || (rs || {}).sni || 'is1-ssl.mzstatic.com';
+  var ws = ib.ws_settings || {}; var xh = ib.xhttp_settings || {};
+  $id('ib-wspath').value = ws.path || '/';
+  $id('ib-xhttppath').value = xh.path || '/';
+  $id('ib-xhttp-mode').value = xh.mode || 'auto';
+  $id('ib-grpc-svc').value = (ib.grpc_settings || {}).serviceName || 'grpc';
+  $id('ib-submit').textContent = 'بروزرسانی اینباند';
+  onInboundProtoChange();
+  onNetworkChange();
+  openModal('mod-inbound');
+}
+
+async function submitInbound(e) {
+  e.preventDefault();
+  var btn = $id('ib-submit'); btn.disabled = true;
+  btn.textContent = 'در حال ذخیره...';
+  var iid = $id('ib-id').value;
+  var proto = $id('ib-proto').value;
+  var network = $id('ib-network').value;
+  var security = $id('ib-security').value;
+  var domain = $id('ib-domain').value;
+  var sni = $id('ib-sni').value || domain;
+  var fp = $id('ib-fingerprint').value || 'chrome';
+
+  var body = {
+    name: $id('ib-name').value,
+    protocol: proto,
+    port: parseInt($id('ib-port').value) || 0,
+    external_port: parseInt($id('ib-extport').value) || null,
+    external_domain: $id('ib-extdomain').value || '',
+    network: network,
+    security: security,
+    domain: domain,
+    sni: sni,
+    fingerprint: fp
+  };
+
+  // Reality settings
+  if (security === 'reality') {
+    body.reality_settings = {
+      private_key: $id('ib-privkey').value || '',
+      public_key: $id('ib-pubkey').value || '',
+      dest: $id('ib-dest').value || 'is1-ssl.mzstatic.com:443',
+      server_names: ($id('ib-servernames').value || '').split(',').map(function(s){return s.trim()}).filter(Boolean),
+      short_ids: $id('ib-shortids').value || '',
+      spiderx: $id('ib-spiderx').value || '/',
+      fingerprint: fp
+    };
+  }
+
+  // Network settings
+  if (network === 'ws') {
+    body.ws_settings = { path: $id('ib-wspath').value || '/' };
+  } else if (network === 'xhttp') {
+    body.xhttp_settings = {
+      path: $id('ib-xhttppath').value || '/',
+      mode: $id('ib-xhttp-mode').value || 'auto'
+    };
+  } else if (network === 'grpc') {
+    body.grpc_settings = { serviceName: $id('ib-grpc-svc').value || 'grpc' };
+  }
+
+  try {
+    var url = '/api/inbounds' + (iid ? '/' + iid : '');
+    await api(url, {method: iid ? 'PATCH' : 'POST', body: body});
+    toast(iid ? 'اینباند بروزرسانی شد' : 'اینباند ایجاد شد', 'ok');
+    closeModal('mod-inbound');
+    loadInbounds();
+  } catch(e) { toast(e.message || 'خطا', 'err'); }
+  btn.disabled = false; btn.textContent = iid ? 'بروزرسانی اینباند' : 'ایجاد اینباند';
+}
+
+async function deleteInbound(iid) {
+  if (!confirm('آیا از حذف این اینباند اطمینان دارید؟')) return;
+  try { await api('/api/inbounds/' + iid, {method: 'DELETE'}); toast('اینباند حذف شد', 'ok'); loadInbounds(); } catch(e) { toast(e.message, 'err'); }
+}
+
+// ─── Settings ───
+function loadSettings() {
+  // Already handled by theme pickers in HTML
+}
+
+async function changePassword(e) {
+  e.preventDefault();
+  try {
+    await api('/api/change-password', {method: 'POST', body: {
+      current_password: $id('cp-old').value,
+      new_password: $id('cp-new').value
+    }});
+    toast('رمز عبور تغییر کرد', 'ok');
+    $id('cp-old').value = ''; $id('cp-new').value = '';
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function saveDomainSettings(e) {
+  e.preventDefault();
+  try {
+    await api('/api/tools/settings', {method: 'POST', body: {
+      domain: $id('set-domain').value
+    }});
+    toast('تنظیمات دامنه ذخیره شد', 'ok');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ─── Modal ───
+function openModal(id) { $id(id).classList.add('show'); }
+function closeModal(id) { $id(id).classList.remove('show'); }
+
+// ─── Helpers ───
+function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtBytes(b) {
+  if (!b || b === 0) return '۰ B';
+  var u = ['B','KB','MB','GB','TB'], i = 0;
+  while (b >= 1024 && i < 4) { b /= 1024; i++; }
+  return b.toFixed(i === 0 ? 0 : 1) + ' ' + u[i];
+}
+function fmtUptime(s) {
+  if (!s) return '۰s';
+  var d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+  return (d ? d + 'd ' : '') + h + 'h ' + m + 'm';
+}
+
+// ─── SVG Icons ───
+var iconUsers = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2m8-10a4 4 0 100-8 4 4 0 000 8z"/><circle cx="17" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg>';
+var iconTraffic = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>';
+var iconConn = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>';
+var iconUptime = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+var iconCfg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>';
+var iconLink = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>';
+var iconQr = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><line x1="14" y1="14" x2="14" y2="14.01"/><line x1="18" y1="14" x2="18" y2="14.01"/><line x1="21" y1="14" x2="21" y2="14.01"/><line x1="14" y1="17" x2="14" y2="17.01"/><line x1="16" y1="17" x2="16" y2="21"/><line x1="14" y1="21" x2="21" y2="21"/></svg>';
+var iconEdit = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+var iconToggle = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>';
+var iconTrash = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
+var iconCheck = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+var iconRefresh = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>';
+
+// --- Neon Server Resource Bars ---
+function updateNeonBars(){
+  api('/api/server/resources').then(function(d){
+    if(d.error) return;
+    $id('cpu-val').textContent = d.cpu_percent.toFixed(0)+'% / '+d.cpu_count+' cores';
+    $id('cpu-bar').style.width = d.cpu_percent+'%';
+    $id('ram-val').textContent = d.ram_used_gb.toFixed(1)+' / '+d.ram_total_gb.toFixed(1)+' GB';
+    $id('ram-bar').style.width = d.ram_percent+'%';
+    $id('disk-val').textContent = d.disk_percent.toFixed(0)+'% / '+d.disk_total_gb.toFixed(0)+' GB';
+    $id('disk-bar').style.width = d.disk_percent+'%';
+    $id('net-sent').textContent = d.net_sent_mb.toFixed(0)+' MB';
+    $id('net-recv').textContent = d.net_recv_mb.toFixed(0)+' MB';
+    $id('sys-uptime').textContent = fmtUptime(d.uptime_seconds);
+  }).catch(function(){});
+  setTimeout(updateNeonBars, 3000);
+}
+
+// --- Panel Audio (auto-play from static folder) ---
+function togglePanelAudio(){var p=$id('panel-audio-player');var sw=$id('audio-autoplay');sw.classList.toggle('on');var on=sw.classList.contains('on');if(on){p.play().catch(function(){})}else{p.pause()};localStorage.setItem('spider_audio', on?'1':'0')}
+(function initPanelAudio(){var p=$id('panel-audio-player');p.src='/static/music-panel.mp3';p.volume=0.3;var sw=$id('audio-autoplay');var saved=localStorage.getItem('spider_audio');sw.classList.toggle('on', saved!=='0');if(saved!=='0'){p.play().catch(function(){})}})();
+
+function loadProxyCountries(){
+  api('/api/proxy-ips/countries').then(function(d){
+    PX.countries = d.countries || [];
+    PX.countrySet = {};
+    PX.countries.forEach(function(c){ PX.countrySet[c.code] = true; });
+    var opts = PX.countries.map(function(c){
+      return '<option value="'+c.code+'">'+c.code+' — '+(A2NAME[c.code]||c.code)+' ('+c.count+' IP)</option>';
+    }).join('');
+    var empty='<option value="">-- بدون پروکسی --</option>';
+    var cuSel=$id('cu-country');if(cuSel)cuSel.innerHTML=empty+opts;
+    var euSel=$id('eu-country');if(euSel)euSel.innerHTML=empty+opts;
+  }).catch(function(){});
+}
+
+// ═══ PROXY IP SELECTOR (Leaflet map + IP list) ═══
+var NUM2A2 = {
+  20:'AD',784:'AE',8:'AL',51:'AM',32:'AR',40:'AT',36:'AU',31:'AZ',70:'BA',50:'BD',
+  56:'BE',100:'BG',48:'BH',76:'BR',112:'BY',124:'CA',756:'CH',152:'CL',156:'CN',170:'CO',
+  196:'CY',203:'CZ',276:'DE',208:'DK',214:'DO',233:'EE',818:'EG',724:'ES',246:'FI',250:'FR',
+  826:'GB',268:'GE',292:'GI',300:'GR',344:'HK',191:'HR',348:'HU',360:'ID',372:'IE',376:'IL',
+  356:'IN',368:'IQ',364:'IR',352:'IS',380:'IT',392:'JP',404:'KE',417:'KG',410:'KR',414:'KW',
+  398:'KZ',438:'LI',440:'LT',442:'LU',428:'LV',504:'MA',498:'MD',807:'MK',496:'MN',480:'MU',
+  484:'MX',458:'MY',566:'NG',528:'NL',578:'NO',524:'NP',554:'NZ',604:'PE',608:'PH',586:'PK',
+  616:'PL',630:'PR',620:'PT',634:'QA',642:'RO',688:'RS',643:'RU',682:'SA',690:'SC',752:'SE',
+  702:'SG',705:'SI',703:'SK',760:'SY',260:'TF',764:'TH',792:'TR',158:'TW',804:'UA',840:'US',
+  860:'UZ',704:'VN',710:'ZA',716:'ZW'
+};
+var A2NAME = {
+  AD:'آندورا',AE:'امارات متحده',AL:'آلبانی',AM:'ارمنستان',AR:'آرژانتین',AT:'اتریش',AU:'استرالیا',AZ:'آذربایجان',
+  BA:'بوسنی و هرزگوین',BD:'بنگلادش',BE:'بلژیک',BG:'بلغارستان',BH:'بحرین',BR:'برزیل',BY:'بلاروس',CA:'کانادا',
+  CH:'سوئیس',CL:'شیلی',CN:'چین',CO:'کلمبیا',CY:'قبرس',CZ:'جمهوری چک',DE:'آلمان',DK:'دانمارک',DO:'دومینیکن',
+  EE:'استونی',EG:'مصر',ES:'اسپانیا',FI:'فنلاند',FR:'فرانسه',GB:'بریتانیا',GE:'گرجستان',GI:'جبل‌الطارق',
+  GR:'یونان',HK:'هنگ‌کنگ',HR:'کرواسی',HU:'مجارستان',ID:'اندونزی',IE:'ایرلند',IL:'اسرائیل',IN:'هند',
+  IQ:'عراق',IR:'ایران',IS:'ایسلند',IT:'ایتالیا',JP:'ژاپن',KE:'کنیا',KG:'قرقیزستان',KR:'کره جنوبی',
+  KW:'کویت',KZ:'قزاقستان',LI:'لیختن‌اشتاین',LT:'لیتوانی',LU:'لوکزامبورگ',LV:'لتونی',MA:'مراکش',MD:'مولداوی',
+  MK:'مقدونیه شمالی',MN:'مغولستان',MU:'موریس',MX:'مکزیک',MY:'مالزی',NG:'نیجریه',NL:'هلند',NO:'نروژ',
+  NP:'نپال',NZ:'نیوزیلند',PE:'پرو',PH:'فیلیپین',PK:'پاکستان',PL:'لهستان',PR:'پورتوریکو',PT:'پرتغال',
+  QA:'قطر',RO:'رومانی',RS:'صربستان',RU:'روسیه',SA:'عربستان سعودی',SC:'سیشل',SE:'سوئد',SG:'سنگاپور',
+  SI:'اسلوونی',SK:'اسلواکی',SY:'سوریه',TF:'سرزمین‌های جنوبی فرانسه',TH:'تایلند',TR:'ترکیه',TW:'تایوان',
+  UA:'اوکراین',US:'ایالات متحده',UZ:'ازبکستان',VN:'ویتنام',ZA:'آفریقای جنوبی',ZW:'زیمبابوه'
+};
+var PX = { map:null, countries:[], countrySet:{}, paths:{}, selectedCountry:'', ips:[], selected:{}, filter:'' };
+
+function pxReset(){
+  PX.selectedCountry='';
+  PX.ips=[];
+  PX.selected={};
+  PX.filter='';
+  var ip = $id('px-ip-list'); if(ip) ip.innerHTML = '<div class="px-noselected">ابتدا یک کشور را انتخاب کنید</div>';
+  var tags = $id('px-tags'); if(tags) tags.innerHTML='';
+  var path = $id('px-path'); if(path) path.innerHTML='';
+  var sea = $id('px-search'); if(sea) sea.value='';
+  var sel = $id('cu-country'); if(sel) sel.value='';
+  pxClearMapSelection();
+}
+
+function pxClearMapSelection(){
+  for (var c in PX.paths){ PX.paths[c].setStyle({fill: PX.countrySet[c] ? 'rgba(255,23,68,.35)' : 'rgba(255,255,255,.12)'}); }
+}
+
+function pxInitMap(){
+  if (PX.map) return;
+  if (typeof window.L === 'undefined' || typeof window.topojson === 'undefined'){
+    var w=$id('px-map-wrap'); if(w) w.innerHTML='<div class="px-hint">نقشه در دسترس نیست (اینترنت/CDN). از فهرست کشور بالا استفاده کنید.</div>';
+    return;
+  }
+  PX.map = L.map('px-map', { scrollWheelZoom:false, zoomControl:true, attributionControl:true }).setView([20, 0], 2);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 6, minZoom: 2, attribution:''
+  }).addTo(PX.map);
+  fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+    .then(function(r){ return r.json(); })
+    .then(function(topo){
+      var geojson = topojson.feature(topo, topo.objects.countries);
+      L.geoJSON(geojson, {
+        style: function(feature){
+          var a2 = NUM2A2[parseInt(feature.id)];
+          var has = a2 && PX.countrySet[a2];
+          return { className:'px-country'+(has?' has':''), fillColor: has ? 'rgba(255,23,68,.35)' : 'rgba(255,255,255,.12)', fillOpacity:1, color: has ? 'rgba(255,23,68,.8)' : 'rgba(255,255,255,.25)', weight:.6 };
+        },
+        onEachFeature: function(feature, layer){
+          var a2 = NUM2A2[parseInt(feature.id)];
+          var name = (feature.properties && feature.properties.name) || a2 || '';
+          if (a2) PX.paths[a2] = layer;
+          layer.on('click', function(){
+            if (a2 && PX.countrySet[a2]) pxSelectCountry(a2);
+            else if (a2) toast('برای این کشور پروکسی موجود نیست', 'err');
+          });
+          layer.bindTooltip((a2 && A2NAME[a2]) || name || '', { sticky:true });
+        }
+      }).addTo(PX.map);
+    })
+    .catch(function(){
+      var w=$id('px-map-wrap'); if(w) w.innerHTML='<div class="px-hint">خطا در بارگذاری نقشه. از فهرست کشور استفاده کنید.</div>';
+    });
+}
+
+function pxSelectCountry(code){
+  PX.selectedCountry = code;
+  var sel=$id('cu-country'); if(sel) sel.value = code;
+  pxClearMapSelection();
+  if (code && PX.paths[code]) PX.paths[code].setStyle({ fillColor:'var(--neon)', fillOpacity:1, color:'#fff', weight:1.2 });
+  pxLoadIPs(code);
+}
+
+function pxSelectFromDropdown(code){
+  if (!code){ pxReset(); return; }
+  pxSelectCountry(code);
+}
+
+function pxLoadIPs(code){
+  var box = $id('px-ip-list');
+  PX.ips=[]; PX.selected={}; PX.filter='';
+  var sea=$id('px-search'); if(sea) sea.value='';
+  pxRenderPreview();
+  if (!box) return;
+  box.innerHTML = '<div class="px-loading">در حال بارگذاری IP ها...</div>';
+  api('/api/proxy-ips/' + code).then(function(d){
+    PX.ips = (d.proxies || []).map(function(p){ return p.ip + ':' + p.port; });
+    pxRenderIPs();
+    pxRenderPreview();
+  }).catch(function(){
+    box.innerHTML = '<div class="px-noselected">IP ای برای این کشور یافت نشد</div>';
+  });
+}
+
+function pxFilterIPs(){ PX.filter = ($id('px-search').value || '').toLowerCase(); pxRenderIPs(); }
+
+function pxSelectAll(){ PX.ips.forEach(function(ip){ PX.selected[ip]=true; }); pxRenderIPs(); pxRenderPreview(); }
+function pxClearAll(){ PX.selected={}; pxRenderIPs(); pxRenderPreview(); }
+
+function pxToggleIP(ip){
+  if (PX.selected[ip]) delete PX.selected[ip];
+  else PX.selected[ip] = true;
+  pxRenderPreview();
+  var chk = document.querySelector('.px-ip[data-ip="'+ip+'"] input');
+  if (chk) chk.checked = !!PX.selected[ip];
+  var it = document.querySelector('.px-ip[data-ip="'+ip+'"]');
+  if (it) it.classList.toggle('sel', !!PX.selected[ip]);
+}
+
+function pxRenderIPs(){
+  var list=$id('px-ip-list'), q=PX.filter, html='', shown=0;
+  PX.ips.forEach(function(ip){
+    if (q && ip.indexOf(q)===-1) return;
+    shown++;
+    var sel = PX.selected[ip];
+    var parts = ip.split(':');
+    html += '<div class="px-ip'+(sel?' sel':'')+'" data-ip="'+ip+'" onclick="pxToggleIP(\''+ip+'\')">'+
+      '<input type="checkbox" '+(sel?'checked':'')+' onclick="event.stopPropagation()">'+
+      '<span class="px-ip-ad">'+parts[0]+'</span>'+
+      '<span class="px-ip-pt">:'+(parts[1]||'')+'</span></div>';
+  });
+  if (!PX.ips.length) html = '<div class="px-noselected">کشور را انتخاب کنید</div>';
+  else if (!shown) html = '<div class="px-noselected">نتیجه‌ای یافت نشد</div>';
+  list.innerHTML = html + '<div style="font-size:10px;color:var(--txt2);padding:6px 4px 2px">' + shown + ' IP — ' + Object.keys(PX.selected).length + ' انتخاب شده</div>';
+}
+
+function pxRenderPreview(){
+  var tags=$id('px-tags'), pathEl=$id('px-path');
+  var keys=Object.keys(PX.selected);
+  if (tags){
+    tags.innerHTML = keys.length ? '<div style="font-size:10px;color:var(--txt2);margin-bottom:2px">IP های انتخابی:</div>' +
+      keys.map(function(ip){ return '<span class="px-tag">'+ip+' <span class="x" onclick="event.stopPropagation();pxToggleIP(\''+ip+'\')">✕</span></span>'; }).join('') : '';
+  }
+  if (pathEl){
+    var code = PX.selectedCountry;
+    if (keys.length && code){
+      var ip = keys[0];
+      pathEl.innerHTML = '<span class="dim">پیش‌نمایش path کانفیگ:</span><br>/proxyIP/<span style="color:var(--neon)">'+ip+'</span>/ws/<span class="dim">&lt;uuid&gt;</span>';
+      pathEl.style.display='block';
+    } else {
+      pathEl.innerHTML = '';
+      pathEl.style.display='none';
+    }
+  }
+}
+
+// Start neon bars when tab opens
+setTimeout(updateNeonBars, 500);
+
+// Login form submit
+var loginFormEl = $id('login-form');
+if (loginFormEl) {
+  loginFormEl.addEventListener('submit', function(e) { e.preventDefault(); doLogin(); });
+}
+
+</script>
+</body>
+</html>
