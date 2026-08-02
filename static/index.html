@@ -760,6 +760,21 @@ tr{animation:fadeIn .3s ease}
         </div>
 
         <div class="panel">
+          <div class="panel-h"><span class="glow">Proxy List</span></div>
+          <div class="set-row">
+            <span class="set-lbl">لیست پروکسی‌های کشورها</span>
+            <button class="btn btn-p" id="proxy-refresh-btn" onclick="refreshProxyList()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
+              به‌روزرسانی لیست
+            </button>
+          </div>
+          <div class="set-row" style="border-bottom:none;flex-direction:column;align-items:stretch;gap:6px">
+            <span class="set-lbl" id="proxy-refresh-status" style="font-size:11px">پروکسی‌های رایگان سریع از بین می‌روند — برای تازه نگه‌داشتن لیست، گاهی به‌روزرسانی کنید.</span>
+            <span class="set-lbl" id="proxy-refresh-result" style="font-size:11px;color:var(--txt2)"></span>
+          </div>
+        </div>
+
+        <div class="panel">
           <div class="panel-h"><span class="glow">Panel Music</span></div>
           <div class="set-row"><span class="set-lbl">Background Music</span>
             <button type="button" class="ios-switch on" id="audio-autoplay" onclick="togglePanelAudio()" title="روشن/خاموش"></button>
@@ -1758,6 +1773,32 @@ function updateNeonBars(){
 // --- Panel Audio (auto-play from static folder) ---
 function togglePanelAudio(){var p=$id('panel-audio-player');var sw=$id('audio-autoplay');sw.classList.toggle('on');var on=sw.classList.contains('on');if(on){p.play().catch(function(){})}else{p.pause()};localStorage.setItem('spider_audio', on?'1':'0')}
 (function initPanelAudio(){var p=$id('panel-audio-player');p.src='/static/music-panel.mp3';p.volume=0.3;var sw=$id('audio-autoplay');var saved=localStorage.getItem('spider_audio');sw.classList.toggle('on', saved!=='0');if(saved!=='0'){p.play().catch(function(){})}})();
+
+async function refreshProxyList(){
+  var btn = $id('proxy-refresh-btn');
+  var status = $id('proxy-refresh-status');
+  var result = $id('proxy-refresh-result');
+  if (btn){ btn.disabled = true; }
+  if (status){ status.textContent = 'در حال به‌روزرسانی لیست پروکسی‌ها... (ممکن است ۱-۲ دقیقه طول بکشد)'; }
+  if (result){ result.textContent = ''; }
+  try {
+    var r = await api('/api/proxy-ips/refresh', {method: 'POST'});
+    if (status){ status.textContent = 'لیست به‌روزرسانی شد ✓'; }
+    if (result){
+      result.textContent = r.candidates + ' کاندید بررسی شد → ' + r.working + ' پروکسی کارا پیدا شد';
+      result.style.color = 'var(--green)';
+    }
+    // Refresh the country dropdown so new countries appear
+    loadProxyCountries();
+    toast('لیست پروکسی به‌روزرسانی شد: ' + r.working + ' پروکسی', 'ok');
+  } catch(e) {
+    if (status){ status.textContent = 'خطا در به‌روزرسانی لیست'; }
+    if (result){ result.textContent = e.message || 'خطا'; result.style.color = 'var(--red)'; }
+    toast(e.message || 'خطا در به‌روزرسانی', 'err');
+  } finally {
+    if (btn){ btn.disabled = false; }
+  }
+}
 
 function loadProxyCountries(){
   api('/api/proxy-ips/countries').then(function(d){

@@ -371,6 +371,37 @@ async def _proxy_refresh_loop():
             logger.warning(f"proxy refresh failed: {e}")
         await asyncio.sleep(PROXY_REFRESH_INTERVAL)
 
+
+@app.post("/api/proxy-ips/refresh")
+async def refresh_proxy_ips(_=Depends(require_auth)):
+    """Manually re-run fetch_proxies.py and report how many proxies were found."""
+    import subprocess
+    script = Path(os.path.dirname(os.path.abspath(__file__))) / "fetch_proxies.py"
+    if not script.exists():
+        raise HTTPException(status_code=404, detail="fetch_proxies.py not found")
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            sys.executable, str(script), "--limit", "300",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        out, _ = await asyncio.wait_for(proc.communicate(), timeout=180)
+        text = out.decode("utf-8", "ignore")
+        total = found = 0
+        for line in text.splitlines():
+            if "total unique candidates:" in line:
+                total = int(line.split(":", 1)[1].strip())
+            if "working proxies:" in line:
+                found = int(line.split(":", 1)[1].strip().split("/")[0])
+        # Clear ping cache so the new list is re-tested
+        async with _PROXY_PING_CACHE_LOCK:
+            _PROXY_PING_CACHE.clear()
+        return {"ok": True, "candidates": total, "working": found, "log": text[-800:]}
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="refresh timed out")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.on_event("shutdown")
 async def shutdown():
     await save_state()
