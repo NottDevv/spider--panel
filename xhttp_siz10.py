@@ -176,10 +176,12 @@ def _req_client_ip(request: Request) -> str:
     return request.client.host if request.client else "نامشخص"
 
 
-async def _open_tcp_from_header(first_chunk: bytes):
+async def _open_tcp_from_header(first_chunk: bytes, uuid: str = ""):
     command, address, port, payload = await parse_vless_header(first_chunk)
+    # Route outbound through the user's proxy IP (same as WS relay).
+    from main import proxy_connect as _proxy_connect
     reader, writer = await asyncio.wait_for(
-        asyncio.open_connection(address, port), timeout=TCP_CONNECT_TIMEOUT
+        _proxy_connect(uuid, address, port), timeout=TCP_CONNECT_TIMEOUT
     )
     _tune_socket(writer)
     if payload:
@@ -312,7 +314,7 @@ async def _pump_tcp_to_queue(session_id: str, uuid: str, reader: asyncio.StreamR
 
 async def _open_tcp_for_session(session_id: str, uuid: str, sess: dict, first_chunk: bytes):
     """تونل TCP رو از روی هدر VLESS باز می‌کنه و پمپ دانلینک رو راه می‌اندازه."""
-    reader, writer, address, port = await _open_tcp_from_header(first_chunk)
+    reader, writer, address, port = await _open_tcp_from_header(first_chunk, uuid)
     logger.info(f"connect XHTTP[{sess['mode']}] [{session_id[:8]}] -> {address}:{port}")
     sess["writer"] = writer
     sess["tcp_open"] = True

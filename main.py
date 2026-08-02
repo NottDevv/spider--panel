@@ -2115,7 +2115,7 @@ async def api_user_sub(username: str):
         "server": user.get("server", ""),
         "proxy_ips": user.get("proxy_ips", []),
         "proxy_country": user.get("proxy_country", ""),
-        "max_ip_per_user": int(SETTINGS.get("max_ip_per_user", 3) or 3),
+        "max_ip_per_user": int(user.get("concurrent_connections", SETTINGS.get("max_ip_per_user", 3) or 3)),
         "used_ips": len(USER_IP_MAP.get(user.get("user_id", ""), set())),
     }
 
@@ -2830,6 +2830,61 @@ async def _resolve_user_id_for_link(uuid: str) -> str | None:
     if uuid in USERS:
         return uuid
     return None
+
+
+async def proxy_connect(uuid: str, address: str, port: int):
+    """Open an outbound TCP connection, routed through the user's proxy IP.
+
+    If the user picked proxy IP(s) (proxy_ips), we first connect to that proxy
+    and speak HTTP CONNECT (the pool entries are HTTP CONNECT proxies that
+    already answer raw TCP connects), so the peer sees the proxy IP as the
+    source — not the Railway host. Otherwise a direct connection is used.
+    """
+    import random as _rnd
+
+    user_id = await _resolve_user_id_for_link(uuid)
+    proxy_tgt = None
+    if user_id:
+        async with USERS_LOCK:
+            u = USERS.get(user_id)
+            if u:
+                plist = u.get("proxy_ips") or []
+                if plist:
+                    entry = _rnd.choice(plist)
+                    if ":" in entry:
+                        pip, pport = entry.rsplit(":", 1)
+                    else:
+                        pip, pport = entry, "80"
+                    proxy_tgt = (pip.strip(), pport.strip())
+
+    if proxy_tgt:
+        try:
+            p_reader, p_writer = await asyncio.wait_for(
+                asyncio.open_connection(proxy_tgt[0], int(proxy_tgt[1])), timeout=8.0
+            )
+            host_header = address if ":" not in address else f"[{address}]"
+            connect_req = f"CONNECT {host_header}:{port} HTTP/1.1\r\nHost: {host_header}:{port}\r\n\r\n"
+            p_writer.write(connect_req.encode())
+            await p_writer.drain()
+            status_line = await asyncio.wait_for(p_reader.readline(), timeout=8.0)
+            # Skip any extra headers up to the empty line
+            while True:
+                hdr = await asyncio.wait_for(p_reader.readline(), timeout=8.0)
+                if hdr in (b"\r\n", b"\n", b""):
+                    break
+            if b" 200 " not in status_line and not status_line.startswith(b"HTTP/1.1 200"):
+                p_writer.close()
+                try:
+                    await p_writer.wait_closed()
+                except Exception:
+                    pass
+                # Fall back to direct if CONNECT refused
+                return await asyncio.wait_for(asyncio.open_connection(address, port), timeout=10.0)
+            logger.info(f"proxy_connect via {proxy_tgt[0]}:{proxy_tgt[1]} → {address}:{port}")
+            return p_reader, p_writer
+        except Exception:
+            return await asyncio.wait_for(asyncio.open_connection(address, port), timeout=10.0)
+    return await asyncio.wait_for(asyncio.open_connection(address, port), timeout=10.0)
 
 
 async def enforce_ip_limit_for_link(uuid: str, ip: str) -> bool:

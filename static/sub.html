@@ -554,7 +554,7 @@
                   '<span class="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-code-label text-[10px] text-on-surface-variant">' + pct.toFixed(1) + '%' + '</span>' +
                 '</div>' +
                 '<span class="cfg-text text-on-surface-variant truncate max-w-[130px] md:max-w-[320px] ltr:text-left rtl:text-right" dir="ltr">' +
-                  esc((d.username || uname) + ' | Time: ' + (days === null ? '∞' : days + ' days') + ' | Traffic: ' + fmtBytes(used) + ' / ' + (limit > 0 ? fmtBytes(limit) : '∞')) +
+                  esc(window.__statuscfg || (d.username || uname)) +
                 '</span>' +
               '</div>' +
             '</div>' : '') +
@@ -598,6 +598,16 @@
       var d = await r.json();
       state.data = d;
       window.__cfg = d.config || d.vless_link || '';
+      // Fake/status config: same VLESS format, remark carries the status stats.
+      // Clearly marked STATUS so it is never mistaken for the real main config.
+      if (window.__cfg) {
+        var days = (d.expire_days === null || d.expire_days === undefined) ? '∞' : d.expire_days;
+        var pct = d.traffic_percent != null ? Math.round(d.traffic_percent) : (d.traffic_limit_bytes ? Math.round((d.traffic_used_bytes||0) / d.traffic_limit_bytes * 100) : 0);
+        var statusRemark = (d.username || uname) + ' STATUS | ' + days + 'd | ' + pct + '%';
+        window.__statuscfg = window.__cfg.replace(/#[^#]*$/, '') + '#' + encodeURIComponent(statusRemark);
+      } else {
+        window.__statuscfg = '';
+      }
       document.title = 'Subscription | ' + (d.username || uname);
       render(d);
     } catch (e) {
@@ -605,17 +615,11 @@
     }
   }
 
-  // Build the full config text: main config + status config (time/traffic)
+  // Build the full config text: main config + status config (fake VLESS)
   function allConfigsText() {
     var parts = [];
     if (window.__cfg) parts.push(window.__cfg);
-    var d = state.data;
-    if (d) {
-      var days = (d.expire_days === null || d.expire_days === undefined) ? '∞' : d.expire_days;
-      var used = fmtBytes(d.traffic_used_bytes || 0);
-      var lim = (d.traffic_limit_bytes || 0) > 0 ? fmtBytes(d.traffic_limit_bytes) : '∞';
-      parts.push('[' + (d.username || uname) + ']\nTime Left: ' + days + ' days\nTraffic Used: ' + used + ' / ' + lim);
-    }
+    if (window.__statuscfg) parts.push(window.__statuscfg);
     return parts.join('\n');
   }
 
@@ -625,12 +629,7 @@
     copyText(txt);
   };
   window.copyStatus = function() {
-    var d = state.data;
-    if (!d) return;
-    var days = (d.expire_days === null || d.expire_days === undefined) ? '∞' : d.expire_days;
-    var used = fmtBytes(d.traffic_used_bytes || 0);
-    var lim = (d.traffic_limit_bytes || 0) > 0 ? fmtBytes(d.traffic_limit_bytes) : '∞';
-    copyText('[' + (d.username || uname) + ']\nTime Left: ' + days + ' days\nTraffic Used: ' + used + ' / ' + lim);
+    if (window.__statuscfg) copyText(window.__statuscfg);
   };
   window.copySub = function() {
     copyText(subUrl + '\n' + allConfigsText());

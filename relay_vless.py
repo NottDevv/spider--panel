@@ -179,10 +179,9 @@ async def websocket_tunnel(ws: WebSocket, uuid: str):
         connections[conn_id]["bytes"] += len(first_chunk)
         logger.info(f"[{conn_id}] → {address}:{port}")
 
-        reader, writer = await asyncio.wait_for(
-            asyncio.open_connection(address, port),
-            timeout=10.0
-        )
+        # Route the outbound connection through the user's selected proxy IP(s),
+        # so egress shows the proxy IP instead of the Railway host.
+        reader, writer = await m.proxy_connect(uuid, address, port)
         sock = writer.transport.get_extra_info('socket')
         if sock:
             import socket
