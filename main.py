@@ -343,6 +343,33 @@ async def startup():
             log_activity("inbound", "اینباند پیش‌فرض VLESS+WS ساخته شد", "ok")
     log_activity("system", "سرور راه‌اندازی شد", "ok")
     logger.info(f"Spider Gateway v9.2 started on port {CONFIG['port']}")
+    asyncio.create_task(_proxy_refresh_loop())
+
+PROXY_REFRESH_INTERVAL = 1800  # seconds (30 min) — free proxies die fast
+
+
+async def _proxy_refresh_loop():
+    """Periodically re-run fetch_proxies.py so the country proxy lists stay
+    fresh. Free public proxies churn in minutes; without this the panel
+    keeps showing dead proxies. Failures are swallowed and retried next tick."""
+    import subprocess
+    script = Path(os.path.dirname(os.path.abspath(__file__))) / "fetch_proxies.py"
+    if not script.exists():
+        logger.warning("fetch_proxies.py not found; proxy refresh disabled")
+        return
+    py = sys.executable
+    while True:
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                py, str(script), "--limit", "200",
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            await asyncio.wait_for(proc.communicate(), timeout=120)
+            logger.info("proxy list refreshed")
+        except Exception as e:
+            logger.warning(f"proxy refresh failed: {e}")
+        await asyncio.sleep(PROXY_REFRESH_INTERVAL)
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -3997,6 +4024,10 @@ async def ping_country_proxies(country: str, request: Request, _=Depends(require
                     if line.startswith(b"ip="):
                         egress_ip = line[3:].decode("utf-8", "ignore").strip()
                         break
+                # 127.0.0.1 means the request did not actually traverse the
+                # proxy — treat as tcp-only (not a working proxy).
+                if egress_ip in ("127.0.0.1", "::1", ""):
+                    egress_ip = ""
                 latency = int((time.time() - t0) * 1000)
                 try:
                     wtr.close()
