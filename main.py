@@ -2832,18 +2832,268 @@ async def _resolve_user_id_for_link(uuid: str) -> str | None:
     return None
 
 
+def _parse_proxy_entry(entry: str) -> dict | None:
+    """Parse a proxy entry like the BPB worker does.
+
+    Accepts: ip:port, user:pass@ip:port, socks5://user:pass@ip:port,
+    http://ip:port, https://ip:port. Auth may be plain "user:pass" or a
+    base64 blob. Returns {protocol, username, password, hostname, port}
+    or None on invalid input.
+    """
+    import base64 as _b64
+    import re as _re
+
+    if not entry:
+        return None
+    e = str(entry).strip()
+    # Strip leading protocol
+    proto = "http"
+    m = _re.match(r"^(socks5|socks4|http|https|turn|sstp)://", e, _re.I)
+    if m:
+        proto = m.group(1).lower()
+        e = e[m.end():]
+    # Drop fragment
+    e = e.split("#")[0].strip()
+
+    at = e.rfind("@")
+    hostpart = e[at + 1:] if at != -1 else e
+    authpart = e[:at] if at != -1 else ""
+    username = password = None
+    if authpart:
+        # base64-encoded auth (worker supports it)
+        b64re = _re.compile(r"^(?:[A-Z0-9+/]{4})*(?:[A-Z0-9+/]{2}==|[A-Z0-9+/]{3}=)?$", _re.I)
+        a = authpart.replace("%3D", "=")
+        if ":" not in a and b64re.match(a):
+            try:
+                a = _b64.b64decode(a).decode("utf-8", "ignore")
+            except Exception:
+                a = authpart
+        if ":" in a:
+            username, password = a.split(":", 1)
+        else:
+            return None
+    if hostpart.startswith("["):
+        # IPv6 [::1]:port
+        if "]:" in hostpart:
+            h, _, rest = hostpart.partition("]:")
+            hostname = h + "]"
+            pport = rest.strip()
+        else:
+            hostname, pport = hostpart, ""
+    elif ":" in hostpart:
+        hostname, _, pport = hostpart.rpartition(":")
+    else:
+        hostname, pport = hostpart, ""
+    try:
+        port = int(pport) if pport else 80
+    except ValueError:
+        return None
+    if not hostname:
+        return None
+    return {"protocol": proto, "username": username, "password": password,
+            "hostname": hostname, "port": port}
+
+
+async def _close_writer_safely(wtr):
+    try:
+        wtr.close()
+        await wtr.wait_closed()
+    except Exception:
+        pass
+
+
+async def _socks5_connect(proxy: dict, address: str, port: int):
+    """SOCKS5 CONNECT through the proxy, mirroring the worker's socks5Connect."""
+    import socket as _sock
+    rdr, wtr = await asyncio.wait_for(
+        asyncio.open_connection(proxy["hostname"], proxy["port"]), timeout=8.0
+    )
+    try:
+        # Method negotiation
+        methods = bytes([0x05, 0x02, 0x00, 0x02]) if proxy.get("username") else bytes([0x05, 0x01, 0x00])
+        wtr.write(methods)
+        await wtr.drain()
+        resp = await asyncio.wait_for(rdr.readexactly(2), timeout=8.0)
+        if resp[1] == 0x02:
+            if not proxy.get("username"):
+                raise ConnectionError("socks5 requires auth")
+            ub = proxy["username"].encode()
+            pb = proxy["password"].encode()
+            wtr.write(bytes([0x01, len(ub)]) + ub + bytes([len(pb)]) + pb)
+            await wtr.drain()
+            auth = await asyncio.wait_for(rdr.readexactly(2), timeout=8.0)
+            if auth[1] != 0x00:
+                raise ConnectionError("socks5 auth failed")
+        elif resp[1] != 0x00:
+            raise ConnectionError(f"socks5 unsupported auth method {resp[1]}")
+        return await _socks5_connect_send(proxy, address, port, rdr, wtr, _sock)
+    except BaseException:
+        await _close_writer_safely(wtr)
+        raise
+
+
+async def _socks5_connect_send(proxy: dict, address: str, port: int, rdr, wtr, _sock):
+    """Send the SOCKS5 CONNECT packet and consume the full reply."""
+    # CONNECT
+    try:
+        try:
+            hb = _sock.inet_aton(address)
+            atyp = 0x01
+        except OSError:
+            if ":" in address:  # IPv6
+                atyp, hb = 0x04, _sock.inet_pton(_sock.AF_INET6, address)
+            else:  # domain
+                eb = address.encode()
+                atyp, hb = 0x03, bytes([len(eb)]) + eb
+        pkt = bytes([0x05, 0x01, 0x00, atyp]) + hb + bytes([port >> 8, port & 0xff])
+        wtr.write(pkt)
+        await wtr.drain()
+        resp = await asyncio.wait_for(rdr.readexactly(4), timeout=8.0)
+        if resp[1] != 0x00:
+            raise ConnectionError(f"socks5 connect failed code={resp[1]}")
+        # Consume the reply's BND.ADDR + BND.PORT so those bytes don't leak into
+        # the relay's first read of the tunneled stream (RFC 1928 reply = VER REP
+        # RSV ATYP BND.ADDR BND.PORT). ATYP of the reply drives the length.
+        ratyp = resp[3]
+        if ratyp == 0x01:
+            await asyncio.wait_for(rdr.readexactly(4 + 2), timeout=8.0)
+        elif ratyp == 0x04:
+            await asyncio.wait_for(rdr.readexactly(16 + 2), timeout=8.0)
+        elif ratyp == 0x03:
+            ln = (await asyncio.wait_for(rdr.readexactly(1), timeout=8.0))[0]
+            await asyncio.wait_for(rdr.readexactly(ln + 2), timeout=8.0)
+        return rdr, wtr
+    except BaseException:
+        await _close_writer_safely(wtr)
+        raise
+
+
+async def _http_connect(proxy: dict, address: str, port: int, tls: bool = False):
+    """HTTP CONNECT through the proxy, mirroring the worker's httpConnect."""
+    rdr, wtr = await asyncio.wait_for(
+        asyncio.open_connection(proxy["hostname"], proxy["port"]), timeout=8.0
+    )
+    try:
+        host_header = f"[{address}]" if ":" in address else address
+        auth = ""
+        if proxy.get("username"):
+            import base64 as _b64
+            token = _b64.b64encode(f"{proxy['username']}:{proxy.get('password') or ''}".encode()).decode()
+            auth = f"Proxy-Authorization: Basic {token}\r\n"
+        req = (f"CONNECT {host_header}:{port} HTTP/1.1\r\n"
+               f"Host: {host_header}:{port}\r\n{auth}"
+               f"User-Agent: Mozilla/5.0\r\nConnection: keep-alive\r\n\r\n")
+        wtr.write(req.encode())
+        await wtr.drain()
+        status = await asyncio.wait_for(rdr.readline(), timeout=8.0)
+        # Skip headers
+        while True:
+            line = await asyncio.wait_for(rdr.readline(), timeout=8.0)
+            if line in (b"\r\n", b"\n", b""):
+                break
+        if not re.search(rb"HTTP/\d\.\d 200", status):
+            raise ConnectionError(f"http connect failed {status.decode().strip()}")
+        return rdr, wtr
+    except BaseException:
+        await _close_writer_safely(wtr)
+        raise
+
+
+_PROXY_DOH_CACHE: dict = {}   # (host, type) -> list[str]
+
+
+async def _resolve_proxy_targets(token: str):
+    """Mirror the BPB worker's 解析地址端口.
+
+    Given a proxy token ("IP:PORT", ".tp...", or a DOMAIN that carries proxy
+    IPs in its A records / TXT), expand it to a sorted list of (ip, port).
+    The worker uses DoH (cloudflare-dns.com); here we use plain DNS A records,
+    which is equivalent for turning a domain into its proxy IP list.
+    """
+    import ipaddress as _ipa
+    import random as _rnd
+
+    token = str(token or "").strip()
+    if not token:
+        return []
+    host = token
+    port = 443
+    # port from "host:port"
+    if "]" in host:
+        if "]:" in host:
+            host, _, resto = host.partition("]:")
+            host = host + "]"
+            try:
+                port = int(resto.strip())
+            except ValueError:
+                port = 443
+    elif ":" in host:
+        host, _, resto = host.rpartition(":")
+        try:
+            port = int(resto.strip())
+        except ValueError:
+            port = 443
+    # .tpN at the end -> port override like worker (domain.tp8443 -> :8443)
+    tp_m = re.search(r"\.tp(\d+)$", host)
+    if tp_m:
+        port = int(tp_m.group(1))
+        host = re.sub(r"\.tp\d+$", "", host)
+
+    def _is_ip(h: str) -> bool:
+        try:
+            _ipa.ip_address(h.replace("[", "").replace("]", ""))
+            return True
+        except ValueError:
+            return False
+
+    if _is_ip(host):
+        return [[host.replace("[", "").replace("]", ""), port]]
+
+    # Domain -> DNS A records (worker would DoH TXT/A/AAAA first; A is enough)
+    cache_key = (host.lower(), "A")
+    cache_hit = _PROXY_DOH_CACHE.get(cache_key)
+    if cache_hit and cache_hit["expires"] > time.time():
+        return [[ip, port] for ip in cache_hit["ips"]]
+    try:
+        infos = await asyncio.wait_for(
+            asyncio.to_thread(
+                lambda: [i[4][0] for i in socket.getaddrinfo(host, None)]
+            ),
+            timeout=3.0,
+        )
+        ips = list(dict.fromkeys(infos))
+        # Only cache non-empty results so a transient DNS failure retries next time.
+        if ips:
+            _PROXY_DOH_CACHE[cache_key] = {"ips": ips, "expires": time.time() + 300}
+        return [[ip, port] for ip in ips]
+    except Exception:
+        # No A records / DNS failure — worker falls back to the domain name.
+        return [[host, port]]
+
+
+def _expand_proxy_tokens(tokens):
+    """Mirror worker's 整理成数组: split on comma/tab/newline/quote -> clean list."""
+    if isinstance(tokens, (list, tuple)):
+        raw = ",".join(str(t) for t in tokens)
+    else:
+        raw = str(tokens or "")
+    cleaned = re.sub(r'[\t"\'\r\n]+', ",", raw)
+    cleaned = re.sub(r",+", ",", cleaned)
+    return [p.strip() for p in cleaned.split(",") if p.strip()]
+
+
 async def proxy_connect(uuid: str, address: str, port: int):
     """Open an outbound TCP connection, routed through the user's proxy IP.
 
-    If the user picked proxy IP(s) (proxy_ips), we first connect to that proxy
-    and speak HTTP CONNECT (the pool entries are HTTP CONNECT proxies that
-    already answer raw TCP connects), so the peer sees the proxy IP as the
-    source — not the Railway host. Otherwise a direct connection is used.
+    Mirrors the BPB worker approach: parse the proxy entry (protocol + auth),
+    then try SOCKS5 first, then HTTP CONNECT, and fall back to a direct
+    connection only if the proxy is not a working proxy. When a working
+    proxy is used, the peer sees the proxy's IP instead of the Railway host.
     """
     import random as _rnd
 
     user_id = await _resolve_user_id_for_link(uuid)
-    proxy_tgt = None
+    entry = None
     if user_id:
         async with USERS_LOCK:
             u = USERS.get(user_id)
@@ -2851,40 +3101,44 @@ async def proxy_connect(uuid: str, address: str, port: int):
                 plist = u.get("proxy_ips") or []
                 if plist:
                     entry = _rnd.choice(plist)
-                    if ":" in entry:
-                        pip, pport = entry.rsplit(":", 1)
-                    else:
-                        pip, pport = entry, "80"
-                    proxy_tgt = (pip.strip(), pport.strip())
 
-    if proxy_tgt:
-        try:
-            p_reader, p_writer = await asyncio.wait_for(
-                asyncio.open_connection(proxy_tgt[0], int(proxy_tgt[1])), timeout=8.0
-            )
-            host_header = address if ":" not in address else f"[{address}]"
-            connect_req = f"CONNECT {host_header}:{port} HTTP/1.1\r\nHost: {host_header}:{port}\r\n\r\n"
-            p_writer.write(connect_req.encode())
-            await p_writer.drain()
-            status_line = await asyncio.wait_for(p_reader.readline(), timeout=8.0)
-            # Skip any extra headers up to the empty line
-            while True:
-                hdr = await asyncio.wait_for(p_reader.readline(), timeout=8.0)
-                if hdr in (b"\r\n", b"\n", b""):
-                    break
-            if b" 200 " not in status_line and not status_line.startswith(b"HTTP/1.1 200"):
-                p_writer.close()
-                try:
-                    await p_writer.wait_closed()
-                except Exception:
-                    pass
-                # Fall back to direct if CONNECT refused
-                return await asyncio.wait_for(asyncio.open_connection(address, port), timeout=10.0)
-            logger.info(f"proxy_connect via {proxy_tgt[0]}:{proxy_tgt[1]} → {address}:{port}")
-            return p_reader, p_writer
-        except Exception:
-            return await asyncio.wait_for(asyncio.open_connection(address, port), timeout=10.0)
+    if entry:
+        # Expand the picked token (IP or domain) to concrete targets like the
+        # worker's 解析地址端口, then try each until one connects.
+        targets = await _resolve_proxy_targets(entry)
+        for tg in targets:
+            te = f"{tg[0]}:{tg[1]}"
+            proxy = _parse_proxy_entry(te)
+            if not proxy:
+                continue
+            got = await _try_proxy_order(proxy, address, port)
+            if got:
+                return got
+        logger.warning(f"proxy_connect all targets failed for {entry}")
+        return await asyncio.wait_for(asyncio.open_connection(address, port), timeout=10.0)
+
     return await asyncio.wait_for(asyncio.open_connection(address, port), timeout=10.0)
+
+
+def _order_for(proto: str):
+    if proto in ("socks5", "socks4"):
+        return ["socks5", "http"]
+    return ["http", "socks5"]
+
+
+async def _try_proxy_order(proxy, address, port):
+    for p in _order_for(proxy.get("protocol", "http")):
+        try:
+            if p == "socks5":
+                rdr, wtr = await _socks5_connect(proxy, address, port)
+            else:
+                rdr, wtr = await _http_connect(proxy, address, port,
+                                               tls=(proxy.get("protocol") == "https"))
+            logger.info(f"proxy_connect[{p}] via {proxy['hostname']}:{proxy['port']} → {address}:{port}")
+            return rdr, wtr
+        except Exception:
+            continue
+    return None
 
 
 async def enforce_ip_limit_for_link(uuid: str, ip: str) -> bool:
@@ -3706,16 +3960,52 @@ async def ping_country_proxies(country: str, request: Request, _=Depends(require
         async with sem:
             t0 = time.time()
             try:
-                rdr, wtr = await asyncio.wait_for(
-                    asyncio.open_connection(host, port), timeout=2.0
-                )
+                # Real proxy test (like the BPB worker): CONNECT through the
+                # candidate to cloudflare.com and read /cdn-cgi/trace so we can
+                # report the proxy's actual egress IP. If CONNECT succeeds the
+                # entry is a working HTTP/SOCKS proxy.
+                entry = {"hostname": host, "port": port, "protocol": "http",
+                         "username": None, "password": None}
+                try:
+                    rdr, wtr = await asyncio.wait_for(
+                        _socks5_connect(entry, "cloudflare.com", 443), timeout=2.5
+                    )
+                    proto_used = "socks5"
+                except Exception:
+                    rdr, wtr = await asyncio.wait_for(
+                        _http_connect(entry, "cloudflare.com", 443), timeout=2.5
+                    )
+                    proto_used = "http"
+                # Fetch /cdn-cgi/trace through the tunnel to learn real egress IP
+                req = (b"GET /cdn-cgi/trace HTTP/1.1\r\nHost: cloudflare.com\r\n"
+                       b"User-Agent: Mozilla/5.0\r\nConnection: close\r\n\r\n")
+                wtr.write(req)
+                await wtr.drain()
+                buf = b""
+                try:
+                    while True:
+                        chunk = await asyncio.wait_for(rdr.read(2048), timeout=2.5)
+                        if not chunk:
+                            break
+                        buf += chunk
+                        if b"ip=" in buf:
+                            break
+                except Exception:
+                    pass
+                egress_ip = ""
+                for line in buf.split(b"\n"):
+                    if line.startswith(b"ip="):
+                        egress_ip = line[3:].decode("utf-8", "ignore").strip()
+                        break
                 latency = int((time.time() - t0) * 1000)
                 try:
                     wtr.close()
                     await wtr.wait_closed()
                 except Exception:
                     pass
-                return {"ip": host, "port": str(port), "latency_ms": latency, "status": "ok"}
+                status = "ok" if egress_ip else "tcp-only"
+                return {"ip": host, "port": str(port), "latency_ms": latency,
+                        "status": status, "proxy_proto": proto_used, "egress_ip": egress_ip}
             except asyncio.TimeoutError:
                 return {"ip": host, "port": str(port), "latency_ms": None, "status": "timeout"}
             except Exception:

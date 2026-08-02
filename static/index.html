@@ -1937,7 +1937,13 @@ function pxPingHtml(ip){
   if (!r) return '';
   if (r.status === 'ok' && r.latency_ms != null){
     var cls = r.latency_ms < 150 ? '#00e676' : r.latency_ms < 400 ? '#ffab00' : '#ff6b6b';
-    return '<span class="px-ping" style="color:'+cls+'" title="پینگ">'+r.latency_ms+'ms</span>';
+    var proto = r.proxy_proto === 'socks5' ? 'S5' : 'HTTP';
+    var tip = (r.egress_ip ? 'IP خروجی: ' + r.egress_ip + ' (' + proto + ')' : 'پروکسی فعال (' + proto + ')');
+    return '<span class="px-ping" style="color:'+cls+'" title="'+tip+'">'+
+      (r.egress_ip ? r.egress_ip : r.latency_ms+'ms') + '</span>';
+  }
+  if (r.status === 'tcp-only' && r.latency_ms != null){
+    return '<span class="px-ping" style="color:#ffab00" title="فقط TCP (پروکسی نیست — IP تغییر نمی‌کند)">TCP ' + r.latency_ms + 'ms</span>';
   }
   return '<span class="px-ping" style="color:#ff6b6b" title="عدم دسترسی">✗</span>';
 }
