@@ -1552,7 +1552,7 @@ async def create_user(request: Request, _=Depends(require_auth)):
     inbound_id = str(body.get("inbound_id") or "").strip() or None
     proxy_ip = str(body.get("proxy_ip") or "").strip()
     proxy_country = str(body.get("proxy_country") or "").strip()
-    proxy_ips = [str(x).strip() for x in (body.get("proxy_ips") or []) if str(x).strip()][:20]
+    proxy_ips = [str(x).strip() for x in (body.get("proxy_ips") or []) if str(x).strip()][:3]
 
     if transport_type not in ("ws", "grpc", "tcp", "xhttp", "reality"):
         transport_type = "ws"
@@ -1621,9 +1621,9 @@ async def create_user(request: Request, _=Depends(require_auth)):
             "proxy_country": proxy_country,
             "proxy_ips": proxy_ips,
             "path": path_custom if path_custom else (
-                f"/proxyIP/{proxy_ip}/xhttp-siz10/stream-up/{config_uuid}" if transport_type == "xhttp" and proxy_ip else
+                f"/proxyIP/{','.join(proxy_ips)}/xhttp-siz10/stream-up/{config_uuid}" if transport_type == "xhttp" and proxy_ips else
                 f"/xhttp-siz10/stream-up/{config_uuid}" if transport_type == "xhttp" else
-                f"/proxyIP/{proxy_ip}/ws/{config_uuid}" if proxy_ip else
+                f"/proxyIP/{','.join(proxy_ips)}/ws/{config_uuid}" if proxy_ips else
                 f"/ws/{config_uuid}"
             ),
             "transport_type": transport_type,
@@ -2107,6 +2107,10 @@ async def api_user_sub(username: str):
         "transport_type": user.get("transport_type", "ws"),
         "concurrent_connections": user.get("concurrent_connections", 3),
         "server": user.get("server", ""),
+        "proxy_ips": user.get("proxy_ips", []),
+        "proxy_country": user.get("proxy_country", ""),
+        "max_ip_per_user": int(SETTINGS.get("max_ip_per_user", 3) or 3),
+        "used_ips": len(USER_IP_MAP.get(user.get("user_id", ""), set())),
     }
 
 
@@ -3563,6 +3567,84 @@ async def get_country_proxies(country: str, _=Depends(require_auth)):
     if len(proxies) > 50:
         proxies = random.sample(proxies, 50)
     return {"country": code, "proxies": proxies, "total": len(proxies)}
+
+
+# ── Per-IP ping (TCP connect latency) with short cache ──
+_PROXY_PING_CACHE: dict = {}
+_PROXY_PING_CACHE_LOCK = asyncio.Lock()
+_PROXY_PING_TTL = 45  # seconds
+
+
+@app.get("/api/proxy-ips/{country}/ping")
+async def ping_country_proxies(country: str, _=Depends(require_auth)):
+    """Measure TCP-connect latency to each ip:port in the country list.
+
+    Uses asyncio.open_connection with a short timeout so dead IPs fail fast.
+    Results are cached for _PROXY_PING_TTL seconds to avoid hammering the pool.
+    """
+    import random as _random
+    code = country.strip().upper()
+    fpath = _COUNTRY_PROXY_DIR / f"{code}.txt"
+    if not fpath.is_file():
+        raise HTTPException(status_code=404, detail=f"country proxy list not found: {code}")
+
+    proxies = []
+    try:
+        async with aiofiles.open(fpath, "r", encoding="utf-8", errors="ignore") as fh:
+            async for line in fh:
+                line = line.strip()
+                if not line or " " not in line:
+                    continue
+                ip, port = line.split(" ", 1)
+                ip = ip.strip()
+                port = port.strip()
+                if not ip or not port:
+                    continue
+                proxies.append({"ip": ip, "port": port})
+    except Exception as e:
+        logger.warning(f"Could not read country proxy list {code}: {e}")
+        raise HTTPException(status_code=500, detail=f"could not read proxy list: {code}")
+    if len(proxies) > 50:
+        proxies = _random.sample(proxies, 50)
+
+    now = time.time()
+    key = code
+    async with _PROXY_PING_CACHE_LOCK:
+        cached = _PROXY_PING_CACHE.get(key)
+    if cached and now - cached["at"] < _PROXY_PING_TTL:
+        return {"country": code, "results": cached["results"], "cached": True}
+
+    sem = asyncio.Semaphore(15)
+
+    async def probe(p):
+        host = p["ip"]
+        try:
+            port = int(p["port"])
+        except ValueError:
+            port = 443
+        async with sem:
+            t0 = time.time()
+            try:
+                rdr, wtr = await asyncio.wait_for(
+                    asyncio.open_connection(host, port), timeout=2.0
+                )
+                latency = int((time.time() - t0) * 1000)
+                try:
+                    wtr.close()
+                    await wtr.wait_closed()
+                except Exception:
+                    pass
+                return {"ip": host, "port": str(port), "latency_ms": latency, "status": "ok"}
+            except asyncio.TimeoutError:
+                return {"ip": host, "port": str(port), "latency_ms": None, "status": "timeout"}
+            except Exception:
+                return {"ip": host, "port": str(port), "latency_ms": None, "status": "unreachable"}
+
+    results = await asyncio.gather(*(probe(p) for p in proxies))
+    results.sort(key=lambda x: x["latency_ms"] if x["latency_ms"] is not None else 10 ** 9)
+    async with _PROXY_PING_CACHE_LOCK:
+        _PROXY_PING_CACHE[key] = {"at": now, "results": results}
+    return {"country": code, "results": results, "cached": False}
 
 
 app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")

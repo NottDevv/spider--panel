@@ -778,7 +778,7 @@ tr{animation:fadeIn .3s ease}
         <option value="">-- بدون پروکسی --</option>
       </select>
     </div>
-    <div class="px-hint">کشور را روی نقشه کلیک کنید یا از فهرست بالا انتخاب کنید. سپس IP موردنظر را تیک بزنید.</div>
+    <div class="px-hint">کشور را روی نقشه کلیک کنید یا از فهرست بالا انتخاب کنید. سپس IP موردنظر را تیک بزنید — حداکثر ۳ IP.</div>
     <div id="px-map-wrap">
       <div class="px-map" id="px-map"></div>
     </div>
@@ -786,6 +786,7 @@ tr{animation:fadeIn .3s ease}
       <input class="f-g" type="text" id="px-search" placeholder="جستجوی IP..." oninput="pxFilterIPs()" style="padding:8px 12px;background:rgba(255,255,255,.04);border:1px solid var(--bg3);border-radius:9px;color:var(--txt)">
       <button type="button" class="btn btn-sm btn-g" onclick="pxSelectAll()">انتخاب همه</button>
       <button type="button" class="btn btn-sm btn-g" onclick="pxClearAll()">پاک کردن</button>
+      <button type="button" class="btn btn-sm btn-g" id="px-ping-btn" onclick="pxLoadPings()">بررسی پینگ</button>
     </div>
     <div class="px-ipbox" id="px-ip-list"><div class="px-noselected">ابتدا یک کشور را انتخاب کنید</div></div>
     <div id="px-tags" style="margin-top:8px"></div>
@@ -1750,13 +1751,15 @@ var A2NAME = {
   SI:'اسلوونی',SK:'اسلواکی',SY:'سوریه',TF:'سرزمین‌های جنوبی فرانسه',TH:'تایلند',TR:'ترکیه',TW:'تایوان',
   UA:'اوکراین',US:'ایالات متحده',UZ:'ازبکستان',VN:'ویتنام',ZA:'آفریقای جنوبی',ZW:'زیمبابوه'
 };
-var PX = { map:null, countries:[], countrySet:{}, paths:{}, selectedCountry:'', ips:[], selected:{}, filter:'' };
+var PX = { map:null, countries:[], countrySet:{}, paths:{}, selectedCountry:'', ips:[], selected:{}, filter:'', pings:{} };
+var PX_MAX = 3;
 
 function pxReset(){
   PX.selectedCountry='';
   PX.ips=[];
   PX.selected={};
   PX.filter='';
+  PX.pings={};
   var ip = $id('px-ip-list'); if(ip) ip.innerHTML = '<div class="px-noselected">ابتدا یک کشور را انتخاب کنید</div>';
   var tags = $id('px-tags'); if(tags) tags.innerHTML='';
   var path = $id('px-path'); if(path) path.innerHTML='';
