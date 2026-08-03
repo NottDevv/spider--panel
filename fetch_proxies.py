@@ -2,21 +2,19 @@
 """
 Fetch real HTTP/SOCKS5 proxy IPs, verify they actually work as proxies
 (CONNECT to cloudflare.com and read /cdn-cgi/trace, exactly like the BPB
-worker's proxy test), then write the working ones into data/country_proxies/.
+worker's proxy test), geo-locate each working proxy's egress IP, and write it
+into data/country_proxies/<CC>.txt.
 
-Only genuinely-working proxies are kept, so a user's picked proxy really
-changes the egress IP (instead of the Railway host).
+On every run the country proxy files are REBUILT from scratch — old entries
+are wiped so the panel always reflects the current live pool.
 
 Usage:
-    .venv/bin/python fetch_proxies.py                 # fetch + verify + save
-    .venv/bin/python fetch_proxies.py --verify-only    # only re-verify saved ones
-    .venv/bin/python fetch_proxies.py --limit 20       # cap candidate count
+    .venv/bin/python fetch_proxies.py                 # fetch + verify + geo + save
+    .venv/bin/python fetch_proxies.py --limit 300     # cap candidate count
 """
 import asyncio
 import argparse
 import random
-import socket
-import sys
 import time
 from pathlib import Path
 
@@ -26,27 +24,39 @@ BASE = Path(__file__).resolve().parent
 PROXY_DIR = BASE / "data" / "country_proxies"
 PROXY_DIR.mkdir(parents=True, exist_ok=True)
 
+# Files that are not per-country (keep them, don't wipe/parse as countries)
+_NON_COUNTRY = {"01_last_update.txt", "02_proxies.csv", "03_proxies.txt"}
+
 CONNECT_TEST_HOST = "cloudflare.com"
 CONNECT_TEST_PORT = 443
 CONNECT_TIMEOUT = 4.0
 MAX_CONCURRENT = 25
+GEO_BATCH = 100  # ip-api.com allows 100 IPs per batch POST
 
 # Free sources of proxy lists (raw text, "host:port" per line)
 SOURCES = [
-    # proxyscrape (http, no auth)
     "https://api.proxyscrape.com/v3/free-proxy-list/get?request=display_proxies&protocol=http&timeout=5000&country=all",
-    # geonode free
-    "https://proxylist.geonode.com/api/proxy-list?limit=200&page=1&sort_by=lastChecked&sort_type=desc&protocols=http",
-    "https://proxylist.geonode.com/api/proxy-list?limit=200&page=1&sort_by=lastChecked&sort_type=desc&protocols=socks5",
-    # free-proxy-list.net style (text)
+    "https://api.proxyscrape.com/v3/free-proxy-list/get?request=display_proxies&protocol=socks5&timeout=5000&country=all",
+    "https://proxylist.geonode.com/api/proxy-list?limit=300&page=1&sort_by=lastChecked&sort_type=desc&protocols=http",
+    "https://proxylist.geonode.com/api/proxy-list?limit=300&page=1&sort_by=lastChecked&sort_type=desc&protocols=socks5",
     "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt",
     "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks5.txt",
     "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/http.txt",
     "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/socks5.txt",
-    "https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt",
 ]
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+
+
+def wipe_country_files():
+    """Remove every per-country file so the pool is rebuilt from scratch."""
+    removed = 0
+    for f in PROXY_DIR.glob("*.txt"):
+        if f.name in _NON_COUNTRY:
+            continue
+        f.unlink(missing_ok=True)
+        removed += 1
+    print(f"[i] cleared {removed} old country file(s)")
 
 
 def parse_candidates(text: str):
@@ -73,13 +83,11 @@ def parse_candidates(text: str):
                     out.append(f"{proto_str}://{ip}:{p}" if "socks" in str(proto_str) else f"{ip}:{p}")
             return out
         if isinstance(data, list):
-            return out  # not handled here
-    # plain text: lines of "host:port" (optionally prefixed with protocol://)
+            return out
     for line in t.splitlines():
         line = line.strip()
         if not line:
             continue
-        # strip protocol prefix
         for pr in ("http://", "https://", "socks5://", "socks4://"):
             if line.lower().startswith(pr):
                 rest = line[len(pr):]
@@ -105,9 +113,7 @@ async def fetch_candidates(client: httpx.AsyncClient):
                     cands.extend(parsed)
         except Exception as e:
             print(f"[-] {url.split('/')[2]:28} error: {e}")
-    # dedup, cap
-    seen = set()
-    uniq = []
+    seen, uniq = set(), []
     for c in cands:
         key = c.lower()
         if key not in seen:
@@ -120,7 +126,7 @@ async def try_connect_through(proxy_host: str, proxy_port: int, proto: str):
     """Try to open a CONNECT tunnel to cloudflare.com through the proxy.
 
     Returns (ok, egress_ip, latency_ms) — egress_ip from /cdn-cgi/trace
-    confirms the proxy actually routes traffic (not just accepts TCP).
+    confirms the proxy actually routes traffic.
     """
     try:
         rdr, wtr = await asyncio.wait_for(
@@ -131,7 +137,6 @@ async def try_connect_through(proxy_host: str, proxy_port: int, proto: str):
     t0 = time.time()
     try:
         if proto == "socks5":
-            # minimal SOCKS5 handshake + CONNECT (no auth)
             wtr.write(b"\x05\x01\x00")
             await wtr.drain()
             resp = await asyncio.wait_for(rdr.readexactly(2), timeout=CONNECT_TIMEOUT)
@@ -145,7 +150,6 @@ async def try_connect_through(proxy_host: str, proxy_port: int, proto: str):
             hdr = await asyncio.wait_for(rdr.readexactly(4), timeout=CONNECT_TIMEOUT)
             if hdr[1] != 0x00:
                 return False, "", 0
-            # consume BND.ADDR/PORT
             atyp = hdr[3]
             if atyp == 0x01:
                 await asyncio.wait_for(rdr.readexactly(6), timeout=CONNECT_TIMEOUT)
@@ -155,7 +159,6 @@ async def try_connect_through(proxy_host: str, proxy_port: int, proto: str):
                 ln = (await asyncio.wait_for(rdr.readexactly(1), timeout=CONNECT_TIMEOUT))[0]
                 await asyncio.wait_for(rdr.readexactly(ln + 2), timeout=CONNECT_TIMEOUT)
         else:
-            # HTTP CONNECT
             req = (f"CONNECT {CONNECT_TEST_HOST}:{CONNECT_TEST_PORT} HTTP/1.1\r\n"
                    f"Host: {CONNECT_TEST_HOST}:{CONNECT_TEST_PORT}\r\n"
                    f"User-Agent: {USER_AGENT}\r\nConnection: keep-alive\r\n\r\n")
@@ -169,7 +172,6 @@ async def try_connect_through(proxy_host: str, proxy_port: int, proto: str):
             if b"200" not in status:
                 return False, "", 0
 
-        # Now read /cdn-cgi/trace through the tunnel to learn the egress IP
         wtr.write(b"GET /cdn-cgi/trace HTTP/1.1\r\nHost: cloudflare.com\r\n"
                   b"User-Agent: Mozilla/5.0\r\nConnection: close\r\n\r\n")
         await wtr.drain()
@@ -209,7 +211,6 @@ async def verify_proxy(candidate: str):
     if s.lower().startswith("socks"):
         proto = "socks5"
         s = s.split("://", 1)[1] if "://" in s else s
-    # strip auth
     if "@" in s:
         s = s.rsplit("@", 1)[1]
     if ":" in s:
@@ -220,35 +221,44 @@ async def verify_proxy(candidate: str):
         port = int(port_s)
     except ValueError:
         return None
-    # only test public v4 quickly; skip obviously-bad
     ok, egress, latency = await try_connect_through(host, port, proto)
     if ok:
         return {"host": host, "port": port, "proto": proto, "egress": egress, "latency": latency}
     return None
 
 
+async def geo_locate_egress(client: httpx.AsyncClient, egress_ips):
+    """Return {egress_ip: countryCode} via ip-api.com batch (100 per call)."""
+    mapping = {}
+    for i in range(0, len(egress_ips), GEO_BATCH):
+        batch = egress_ips[i:i + GEO_BATCH]
+        try:
+            r = await client.post(
+                "http://ip-api.com/batch?fields=query,countryCode,status",
+                json=batch,
+            )
+            if r.status_code == 200:
+                for item in r.json():
+                    if item.get("status") == "success":
+                        mapping[item["query"]] = (item.get("countryCode") or "ZZ").upper()
+        except Exception:
+            continue
+    return mapping
+
+
 async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0, help="cap candidate count (0=all)")
-    ap.add_argument("--verify-only", action="store_true",
-                    help="re-verify existing saved proxies instead of fetching new")
     args = ap.parse_args()
 
-    if args.verify_only:
-        # Load existing saved entries, re-verify
-        candidates = []
-        for f in sorted(PROXY_DIR.glob("??.txt")):
-            for line in f.read_text(errors="ignore").splitlines():
-                line = line.strip()
-                if line and " " in line:
-                    ip, port = line.split(" ", 1)
-                    candidates.append(f"{ip}:{port}")
-    else:
-        async with httpx.AsyncClient(headers={"User-Agent": USER_AGENT}) as client:
-            candidates = await fetch_candidates(client)
-            if args.limit and len(candidates) > args.limit:
-                candidates = random.sample(candidates, args.limit)
-        print(f"[i] total unique candidates: {len(candidates)}")
+    # Start fresh: remove all old per-country files.
+    wipe_country_files()
+
+    async with httpx.AsyncClient(headers={"User-Agent": USER_AGENT}, timeout=10.0) as client:
+        candidates = await fetch_candidates(client)
+        if args.limit and len(candidates) > args.limit:
+            candidates = random.sample(candidates, args.limit)
+    print(f"[i] total unique candidates: {len(candidates)}")
 
     print("[i] verifying proxies (CONNECT -> cloudflare /cdn-cgi/trace)...")
     sem = asyncio.Semaphore(MAX_CONCURRENT)
@@ -261,63 +271,35 @@ async def main():
     working = [r for r in results if r]
     print(f"[+] working proxies: {len(working)} / {len(candidates)}")
 
-    # Group by egress country via the egress IP? We can't geo-lookup offline
-    # reliably, so bucket by first octet of egress as a coarse split, but
-    # keep it simple: write all to a 'RO.txt' catch-all and let the panel's
-    # country filter treat them via existing country files. Instead, we write
-    # them all under 'GLOBAL.txt' (the panel reads XX.txt) — so we need a 2-letter
-    # code. Use egress-based country via ip-api batch is overkill here; write
-    # everything into a single 'US.txt'? No — better: keep per-source buckets.
-
-    # Simplest robust approach: write all working ones into 'RO.txt' (row /
-    # catch-all). The panel shows countries from file names; a single file
-    # named 'RO' would show as "RO" country. To make countries meaningful we
-    # would need geo-lookup. We'll geo-lookup the egress IPs in a batch via
-    # ip-api.com (like the worker does) and bucket by countryCode.
-    buckets = {}
+    # Geo-locate each working proxy's egress IP so it lands in the right
+    # country file. Keep every proxy (multiple proxies can share an egress IP).
+    cc_for = {}
     if working:
-        egress_ips = [w["egress"] for w in working]
-        try:
-            async with httpx.AsyncClient(timeout=8.0) as gc:
-                # ip-api.com/batch — POST up to 100
-                for i in range(0, len(egress_ips), 100):
-                    batch = egress_ips[i:i + 100]
-                    try:
-                        r = await gc.post(
-                            "http://ip-api.com/batch?fields=query,countryCode,status",
-                            json=batch,
-                        )
-                        if r.status_code == 200:
-                            for item in r.json():
-                                if item.get("status") == "success":
-                                    cc = (item.get("countryCode") or "ZZ").upper()
-                                    buckets.setdefault(cc, []).append(item["query"])
-                    except Exception:
-                        pass
-        except Exception:
-            pass
-        # Map working proxy -> bucket
-        by_egress = {}
-        for w in working:
-            by_egress[w["egress"]] = w
-        cc_for = {}
-        for cc, ips in buckets.items():
-            for ip in ips:
-                cc_for[ip] = cc
-        # Write files
-        by_cc = {}
-        for w in working:
-            cc = cc_for.get(w["egress"], "ZZ")
-            by_cc.setdefault(cc, []).append(f"{w['host']} {w['port']}")
-        for cc, lines in by_cc.items():
-            fname = PROXY_DIR / f"{cc}.txt"
-            with open(fname, "w", encoding="utf-8") as f:
-                f.write("\n".join(lines) + "\n")
-            print(f"[+] wrote {len(lines)} proxies -> {cc}.txt")
-        # update last-update marker
-        with open(PROXY_DIR / "01_last_update.txt", "w", encoding="utf-8") as f:
-            f.write(time.strftime("%Y-%m-%d %H:%M:%S"))
-        print("[i] done")
+        egress_ips = list(dict.fromkeys(w["egress"] for w in working))
+        async with httpx.AsyncClient(timeout=8.0) as gc:
+            cc_for = await geo_locate_egress(gc, egress_ips)
+
+    by_cc = {}
+    unknown = 0
+    for w in working:
+        cc = cc_for.get(w["egress"], "ZZ")
+        if cc == "ZZ":
+            unknown += 1
+        by_cc.setdefault(cc, []).append(f"{w['host']} {w['port']}")
+
+    total_written = 0
+    for cc, lines in sorted(by_cc.items()):
+        fname = PROXY_DIR / f"{cc}.txt"
+        with open(fname, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+        total_written += len(lines)
+        print(f"[+] {len(lines):4} proxies -> {cc}.txt")
+
+    with open(PROXY_DIR / "01_last_update.txt", "w", encoding="utf-8") as f:
+        f.write(time.strftime("%Y-%m-%d %H:%M:%S"))
+
+    print(f"[i] done: {total_written} proxies into {len(by_cc)} countries "
+          f"({unknown} had unknown country -> ZZ.txt)")
 
 
 if __name__ == "__main__":

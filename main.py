@@ -3953,6 +3953,9 @@ async def clean_ip_repo(_=Depends(require_auth)):
     except Exception:
         return {"ok": False, "ips": []}
     return {"ok": True, "source": "country_proxies", "ips": out[:200]}
+
+
+@app.get("/api/proxy-ips/countries")
 async def list_country_proxies(_=Depends(require_auth)):
     """List all countries with proxy IP counts (XX.txt files under country_proxies)."""
     try:
