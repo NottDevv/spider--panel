@@ -498,6 +498,36 @@ tr{animation:fadeIn .3s ease}
 .sub-link{width:100%;padding:8px 12px;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;font-family:monospace;font-size:11px;direction:ltr;text-align:left;color:var(--txt2);margin-bottom:8px}
 .sub-acts{display:flex;gap:6px;flex-wrap:wrap}
 
+/* Animated inbound picker cards */
+.ib-pick{
+  display:flex;align-items:center;gap:10px;flex:1;min-width:200px;cursor:pointer;
+  padding:10px 12px;background:var(--surface-glass);border:1.5px solid var(--border);
+  border-radius:var(--radius);transition:all .25s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden;
+}
+.ib-pick::before{
+  content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--neon),var(--neon2));
+  opacity:0;transition:opacity .25s;z-index:0;
+}
+.ib-pick:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.ib-pick.selected{border-color:var(--neon);box-shadow:0 0 0 1px var(--neon),var(--glow)}
+.ib-pick.selected::before{opacity:.12}
+.ib-pick > *{position:relative;z-index:1}
+.ib-pick-ic{
+  width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  background:rgba(43,127,255,.12);color:var(--neon);flex-shrink:0;transition:all .25s;
+}
+.ib-pick.selected .ib-pick-ic{background:var(--gradient);color:#fff;box-shadow:0 4px 12px rgba(43,127,255,.35)}
+.ib-pick-ic .material-symbols-outlined{font-size:18px}
+.ib-pick-info{flex:1;min-width:0}
+.ib-pick-name{font-size:13px;font-weight:700;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib-pick-meta{font-size:10px;color:var(--txt2);direction:ltr;text-align:right}
+.ib-pick-check{
+  width:22px;height:22px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;transition:all .25s;color:transparent;
+}
+.ib-pick.selected .ib-pick-check{background:var(--gradient);border-color:transparent;color:#fff;animation:scaleIn .25s ease}
+.ib-pick-check .material-symbols-outlined{font-size:14px}
+
 /* iOS-style switch */
 .ios-switch{
   width:51px;height:31px;border-radius:999px;background:#39393d;
@@ -833,7 +863,10 @@ tr{animation:fadeIn .3s ease}
       <div class="f-g"><label>اعتبار</label><input type="number" id="cu-exp" value="30"></div>
       <div class="f-g"><label>واحد</label><select id="cu-exp-u"><option value="days">روز</option><option value="months">ماه</option></select></div>
     </div>
-    <div class="f-g"><label>اینباند</label><select id="cu-inbound"><option value="">-- پیش‌فرض --</option></select></div>
+    <div class="f-g">
+      <label>اینباندها (چندتایی)</label>
+      <div id="cu-inbound" class="f-r" style="gap:6px"></div>
+    </div>
 
     <div class="divider"></div>
     <div class="f-g">
@@ -921,7 +954,7 @@ tr{animation:fadeIn .3s ease}
       <!-- TLS fields -->
       <div id="ib-tls-fields">
         <div class="f-g"><label>دامنه</label><input type="text" id="ib-domain" placeholder="example.com" dir="ltr" oninput="onDomainChange()"></div>
-        <div class="f-g"><label>SNI</label><input type="text" id="ib-sni" placeholder="example.com" dir="ltr"></div>
+        <div class="f-g"><label>SNI</label><input type="text" id="ib-sni" value="is1-ssl.mzstatic.com" dir="ltr" readonly title="SNI هدف ثابت"></div>
       </div>
       <!-- Reality fields -->
       <div id="ib-reality-fields" class="hidden">
@@ -944,6 +977,11 @@ tr{animation:fadeIn .3s ease}
     <!-- Network group -->
     <div class="divider"></div>
     <div id="ib-net-wrap">
+      <div class="f-r">
+        <div class="f-g"><label>پورت داخلی (Xray listen)</label><input type="number" id="ib-port" value="8443" dir="ltr"></div>
+        <div class="f-g"><label>پورت خارجی (کانفیگ)</label><input type="number" id="ib-extport2" value="25459" dir="ltr"></div>
+      </div>
+      <div style="font-size:10px;color:var(--txt2);margin-bottom:10px">پورت داخلی = پورتی که Xray روی آن گوش میدهد. پورت خارجی = پورتی که در کانفیگ ظاهر میشود (آدرس کانفیگ: domain:external_port).</div>
       <div class="f-g"><label>شبکه</label><select id="ib-network" onchange="onNetworkChange()">
         <option value="tcp">TCP</option>
         <option value="ws">WebSocket</option>
@@ -1352,7 +1390,7 @@ async function submitCreateUser(e) {
       traffic_limit_gb: vu === 'GB' ? v : v / 1024,
       expire_days: eu === 'months' ? ex * 30 : ex,
       concurrent_connections: parseInt($id('cu-conn').value) || 2,
-      inbound_id: $id('cu-inbound').value || null,
+      inbound_ids: selectedInboundIds(),
       proxy_country: ($id('cu-country')||{}).value||'',
       proxy_ip: proxy_ip,
       proxy_ips: proxy_ips
@@ -1461,11 +1499,34 @@ function renderInbounds() {
 }
 
 function populateInboundSelects() {
-  var opts = '<option value="">-- پیش‌فرض --</option>' + ALL_IB.map(function(ib) {
-    return '<option value="' + ib.inbound_id + '" data-proto="' + (ib.protocol||'') + '">' + esc(ib.name) + ' (' + (ib.protocol||'vless').toUpperCase() + ')</option>';
+  var wrap = $id('cu-inbound');
+  if (!wrap) return;
+  var html = ALL_IB.map(function(ib) {
+    var proto = (ib.protocol||'vless').toUpperCase();
+    var net = (ib.network||'tcp').toUpperCase();
+    var sec = (ib.security||'tls').toUpperCase();
+    var checked = ALL_IB.length === 1 ? ' selected' : '';
+    var ic = proto === 'REALITY' ? 'shield' : (net === 'XHTTP' ? 'swap_horiz' : 'cloud');
+    return '<div class="ib-pick' + checked + '" data-id="' + esc(ib.inbound_id) + '" onclick="toggleIbPick(this)">' +
+      '<div class="ib-pick-ic"><span class="material-symbols-outlined">' + ic + '</span></div>' +
+      '<div class="ib-pick-info">' +
+        '<div class="ib-pick-name">' + esc(ib.name) + '</div>' +
+        '<div class="ib-pick-meta">' + proto + ' · ' + net + ' · ' + sec + '</div>' +
+      '</div>' +
+      '<div class="ib-pick-check"><span class="material-symbols-outlined">check</span></div>' +
+    '</div>';
   }).join('');
-  var sel = $id('cu-inbound');
-  if (sel) sel.innerHTML = opts;
+  wrap.innerHTML = html || '<span style="font-size:11px;color:var(--txt2)">اینباندی وجود ندارد</span>';
+}
+
+function toggleIbPick(el) {
+  el.classList.toggle('selected');
+}
+
+function selectedInboundIds() {
+  var ids = [];
+  document.querySelectorAll('.ib-pick.selected').forEach(function(c){ ids.push(c.getAttribute('data-id')); });
+  return ids;
 }
 
 function openCreateInbound() {
@@ -1645,8 +1706,8 @@ async function submitInbound(e) {
   var body = {
     name: $id('ib-name').value,
     protocol: proto,
-    port: parseInt($id('ib-port').value) || 0,
-    external_port: parseInt($id('ib-extport').value) || null,
+    port: parseInt($id('ib-port').value) || 8443,
+    external_port: parseInt($id('ib-extport2').value) || parseInt($id('ib-extport').value) || null,
     external_domain: $id('ib-extdomain').value || '',
     network: network,
     security: security,

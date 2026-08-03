@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+xray/xray
+xray/config.json
+xray/xray.zip
+data/country_proxies/
+data/spider_state.json
+.venv/

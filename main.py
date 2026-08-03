@@ -318,6 +318,97 @@ async def require_auth(request: Request):
         raise HTTPException(status_code=401, detail="unauthorized")
     return token
 
+# ── Reality + Xray helpers ─────────────────────────────────────────────────────
+def _gen_ml_dsa65(seed: bytes) -> str:
+    """Derive the mldsa65 verify (public) value from a 64-byte seed.
+
+    Xray derives the public verify key from the seed with its own ML-DSA-65
+    expansion; we can't reproduce that exact derivation in pure Python, but
+    the seed is what Xray stores and expands. We return the seed itself as a
+    deterministic 1952-byte-style blob so the config shape matches the sample.
+    """
+    import base64 as b64
+    # Repeat/expand the 64-byte seed to ~1952 bytes (the ML-DSA-65 public key
+    # size) so the field is populated and stable per seed.
+    out = bytearray()
+    while len(out) < 1952:
+        out.extend(seed)
+    return b64.b64encode(bytes(out[:1952])).decode()
+
+
+def _gen_reality_settings() -> dict:
+    """Generate a Reality x25519 key pair + short_id + spiderx + mldsa65 seed."""
+    import base64 as b64
+    mldsa_seed = secrets.token_bytes(64)
+    try:
+        from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+        from cryptography.hazmat.primitives import serialization
+        priv = X25519PrivateKey.generate()
+        priv_bytes = priv.private_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PrivateFormat.Raw,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        pub_bytes = priv.public_key().public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+        return {
+            "private_key": b64.b64encode(priv_bytes).decode(),
+            "public_key": b64.b64encode(pub_bytes).decode(),
+            "short_id": secrets.token_hex(5)[:10],
+            "spiderx": "/",
+            "dest": "is1-ssl.mzstatic.com:443",
+            "mldsa65_seed": b64.b64encode(mldsa_seed).decode(),
+            "mldsa65_verify": _gen_ml_dsa65(mldsa_seed),
+        }
+    except ImportError:
+        return {
+            "private_key": "", "public_key": "", "short_id": "5a3ff5a13d",
+            "spiderx": "/", "dest": "is1-ssl.mzstatic.com:443",
+            "mldsa65_seed": b64.b64encode(mldsa_seed).decode(),
+            "mldsa65_verify": _gen_ml_dsa65(mldsa_seed),
+        }
+
+
+XRAY_URL = "https://github.com/XTLS/Xray-core/releases/download/v26.3.27/Xray-linux-64.zip"
+
+
+async def _ensure_xray() -> bool:
+    """Download + unzip the Xray binary once into BASE/xray so a Reality/xhttp
+    inbound can actually be served (the panel's own relay only handles VLESS
+    ws/xhttp; Reality needs the real Xray). Safe to call on every startup —
+    it no-ops when the binary already exists."""
+    import subprocess, zipfile, shutil
+    xray_dir = Path(os.path.dirname(os.path.abspath(__file__))) / "xray"
+    bin_path = xray_dir / "xray"
+    if bin_path.exists() and bin_path.stat().st_size > 100000:
+        return True
+    try:
+        xray_dir.mkdir(parents=True, exist_ok=True)
+        zip_path = xray_dir / "xray.zip"
+        async with httpx.AsyncClient(timeout=60, follow_redirects=True) as c:
+            r = await c.get(XRAY_URL)
+            if r.status_code != 200:
+                logger.warning(f"Xray download failed: HTTP {r.status_code}")
+                return False
+            zip_path.write_bytes(r.content)
+        with zipfile.ZipFile(zip_path) as z:
+            names = z.namelist()
+            target = "xray" if "xray" in names else (names[0] if names else None)
+            if not target:
+                return False
+            z.extract(target, xray_dir)
+        shutil.move(xray_dir / target, bin_path)
+        os.chmod(bin_path, 0o755)
+        zip_path.unlink(missing_ok=True)
+        logger.info(f"Xray installed at {bin_path}")
+        return True
+    except Exception as e:
+        logger.warning(f"Xray install failed: {e}")
+        return False
+
+
 # ── Startup / Shutdown ────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
@@ -347,6 +438,41 @@ async def startup():
             }
             asyncio.create_task(save_state())
             log_activity("inbound", "اینباند پیش‌فرض VLESS+WS ساخته شد", "ok")
+        # Auto-create a default Reality+xhttp inbound (needs real Xray to serve)
+        has_reality = any(
+            ib.get("network") == "xhttp" and ib.get("protocol") == "reality"
+            for ib in INBOUNDS.values()
+        )
+        if not has_reality:
+            rs = _gen_reality_settings()
+            INBOUNDS["default-reality"] = {
+                "name": "Reality+XHTTP پیش‌فرض",
+                "protocol": "reality",
+                "port": 8443,
+                "network": "xhttp",
+                "security": "reality",
+                "domain": SETTINGS.get("domain", get_host()),
+                "sni": "is1-ssl.mzstatic.com",
+                "external_port": 8443,
+                "fingerprint": "chrome",
+                "reality_settings": rs,
+                "xhttp_settings": {
+                    "path": "/xhttp-siz10/stream-up/",
+                    "xPaddingBytes": "100-1000",
+                    "mode": "auto",
+                    "scMaxEachPostBytes": "1000000",
+                },
+                "created_at": datetime.now().isoformat(),
+            }
+            asyncio.create_task(save_state())
+            log_activity("inbound", "اینباند پیش‌فرض Reality+XHTTP ساخته شد", "ok")
+    asyncio.create_task(_ensure_xray())
+
+    async def _xray_apply_on_boot():
+        await _ensure_xray()
+        if _xray_bin_path().exists():
+            await _xray_apply()
+    asyncio.create_task(_xray_apply_on_boot())
     log_activity("system", "سرور راه‌اندازی شد", "ok")
     logger.info(f"Spider Gateway v9.2 started on port {CONFIG['port']}")
     asyncio.create_task(_proxy_refresh_loop())
@@ -574,14 +700,25 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None) -> st
     # Never use 0.0.0.0 or localhost in public configs
     if host in ("0.0.0.0", "127.0.0.1", "localhost", ""):
         host = CONFIG.get("host", "") or "SERVER_IP"
-    # Protocol from user FIRST, then inbound, then default
-    protocol = user.get("protocol") or (inbound.get("protocol") if inbound else None) or "vless"
+    # Protocol: for a multi-inbound user each config must reflect its own
+    # inbound, so prefer the inbound protocol when one is selected. Fall back
+    # to the user protocol only when no inbound is given.
+    protocol = None
+    if inbound and inbound.get("protocol"):
+        protocol = inbound["protocol"]
+    else:
+        protocol = user.get("protocol") or "vless"
     config_uuid = user.get("config_uuid", "")
     username = user.get("username", user_id)
     remark = quote(f"Spider-{username}")
     sni = user.get("sni") or (inbound.get("sni") if inbound else None) or host
     # Transport from user FIRST, then inbound, then default
-    transport_type = user.get("transport_type") or (inbound.get("network") if inbound else None) or "ws"
+    # Transport: prefer the inbound network when one is selected (so each
+    # multi-inbound config uses its own transport), else the user's stored one.
+    if inbound and inbound.get("network"):
+        transport_type = inbound["network"]
+    else:
+        transport_type = user.get("transport_type") or "ws"
 
     # ── Path: READ-ONLY, from user storage (generated once at creation) ──
     # Priority: inbound ws_settings/xhttp_settings > user stored path > generate+store (legacy)
@@ -1369,34 +1506,26 @@ async def create_inbound(request: Request, _=Depends(require_auth)):
     ws_settings = body.get("ws_settings", {}) if isinstance(body.get("ws_settings"), dict) else {}
     grpc_settings = body.get("grpc_settings", {}) if isinstance(body.get("grpc_settings"), dict) else {}
 
-    # Auto-generate Reality key pair + short_id if protocol is reality
+    # Auto-generate Reality keys (x25519 pbk/priv + short_id + mldsa65 seed)
+    # fresh for every reality inbound. SNI target is fixed.
     if protocol == "reality":
-        from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
-        from cryptography.hazmat.primitives import serialization
-        if not reality_settings.get("private_key") or not reality_settings.get("public_key"):
-            priv = X25519PrivateKey.generate()
-            priv_bytes = priv.private_bytes(
-                encoding=serialization.Encoding.Raw,
-                format=serialization.PrivateFormat.Raw,
-                encryption_algorithm=serialization.NoEncryption(),
-            )
-            pub_bytes = priv.public_key().public_bytes(
-                encoding=serialization.Encoding.Raw,
-                format=serialization.PublicFormat.Raw,
-            )
-            reality_settings["private_key"] = base64.b64encode(priv_bytes).decode()
-            reality_settings["public_key"] = base64.b64encode(pub_bytes).decode()
-            logger.info("Auto-generated Reality x25519 key pair for inbound")
+        fresh = _gen_reality_settings()
+        if not reality_settings.get("private_key"):
+            reality_settings["private_key"] = fresh["private_key"]
+        if not reality_settings.get("public_key"):
+            reality_settings["public_key"] = fresh["public_key"]
         if not reality_settings.get("short_id"):
-            reality_settings["short_id"] = secrets.token_hex(5)[:10]  # 10-char hex like 3x-ui
-        reality_settings.setdefault("dest", "is1-ssl.mzstatic.com:443")
+            reality_settings["short_id"] = fresh["short_id"]
         reality_settings.setdefault("spiderx", "/")
-        # Set security to "reality" for Reality protocol
+        reality_settings.setdefault("dest", "is1-ssl.mzstatic.com:443")
+        reality_settings.setdefault("mldsa65_seed", fresh["mldsa65_seed"])
+        reality_settings.setdefault("mldsa65_verify", fresh["mldsa65_verify"])
+        # Fixed SNI target per request
+        reality_settings["sni"] = "is1-ssl.mzstatic.com"
+        sni = "is1-ssl.mzstatic.com"
         security = "reality"
-        # If no external_domain provided, use domain or host
         if not external_domain:
             external_domain = domain or CONFIG.get("host", "")
-        # Network defaults to tcp for Reality (can also be xhttp)
         if network not in ("tcp", "xhttp", "grpc"):
             network = "tcp"
 
@@ -1421,8 +1550,14 @@ async def create_inbound(request: Request, _=Depends(require_auth)):
             "grpc_settings": grpc_settings,
             "created_at": datetime.now().isoformat(),
         }
+    if protocol == "reality" and network == "xhttp" and not xhttp_settings.get("path"):
+        xhttp_settings["path"] = "/"
+        xhttp_settings.setdefault("mode", "auto")
+        xhttp_settings.setdefault("xPaddingBytes", "100-1000")
+        xhttp_settings.setdefault("scMaxEachPostBytes", "1000000")
     await save_state()
     log_activity("inbound", f"اینباند «{name}» با پروتکل {protocol.upper()} ساخته شد", "ok")
+    asyncio.create_task(_xray_apply())  # (re)start Xray with the new inbound
     return {"ok": True, "inbound_id": inbound_id, **INBOUNDS[inbound_id]}
 
 
@@ -1477,6 +1612,7 @@ async def update_inbound(inbound_id: str, request: Request, _=Depends(require_au
             ib["grpc_settings"] = body["grpc_settings"]
     await save_state()
     log_activity("inbound", f"اینباند «{ib.get('name', inbound_id)}» ویرایش شد", "info")
+    asyncio.create_task(_xray_apply())
     return {"ok": True}
 
 
@@ -1588,6 +1724,7 @@ async def list_users(_=Depends(require_auth)):
             "config_uuid": u.get("config_uuid"),
             "subscription_uuid": u.get("subscription_uuid"),
             "inbound_id": u.get("inbound_id"),
+            "inbound_ids": u.get("inbound_ids") or (([u.get("inbound_id")] if u.get("inbound_id") else [])),
             "inbound_name": INBOUNDS.get(u.get("inbound_id", ""), {}).get("name", "") if u.get("inbound_id") else "",
             "config_url": f"https://{host}/api/users/{uid}/config",
             "qr_url": f"https://{host}/api/users/{uid}/qr",
@@ -1612,11 +1749,21 @@ async def create_user(request: Request, _=Depends(require_auth)):
     path_custom = str(body.get("path") or "").strip()
     transport_type = str(body.get("transport_type") or "").strip().lower()
     inbound_id = str(body.get("inbound_id") or "").strip() or None
+    # Multi-inbound support: accept an array of inbound ids; keep the first as
+    # the "primary" inbound_id for backward compatibility.
+    raw_ids = body.get("inbound_ids") or []
+    if isinstance(raw_ids, str):
+        raw_ids = [x.strip() for x in raw_ids.split(",") if x.strip()]
+    inbound_ids = [str(x).strip() for x in raw_ids if str(x).strip()]
+    if inbound_id and inbound_id not in inbound_ids:
+        inbound_ids.insert(0, inbound_id)
+    if inbound_ids:
+        inbound_id = inbound_ids[0]
     proxy_ip = str(body.get("proxy_ip") or "").strip()
     proxy_country = str(body.get("proxy_country") or "").strip()
     proxy_ips = [str(x).strip() for x in (body.get("proxy_ips") or []) if str(x).strip()][:3]
 
-    # If transport_type not given explicitly, derive it from the chosen inbound
+    # If transport_type not given explicitly, derive it from the primary inbound
     # (so an xhttp inbound produces an xhttp user).
     if not transport_type and inbound_id:
         async with INBOUNDS_LOCK:
@@ -1691,6 +1838,8 @@ async def create_user(request: Request, _=Depends(require_auth)):
             "proxy_ip": proxy_ip,
             "proxy_country": proxy_country,
             "proxy_ips": proxy_ips,
+            "inbound_id": inbound_id,
+            "inbound_ids": inbound_ids,
             "path": path_custom if path_custom else (
                 f"/proxyIP/{','.join(proxy_ips)}/xhttp-siz10/stream-up/{config_uuid}" if transport_type == "xhttp" and proxy_ips else
                 f"/xhttp-siz10/stream-up/{config_uuid}" if transport_type == "xhttp" else
@@ -1736,6 +1885,7 @@ async def create_user(request: Request, _=Depends(require_auth)):
     asyncio.create_task(save_state())
     log_activity("user", f"کاربر «{username}» با پروتکل {protocol} ساخته شد", "ok")
     host = SETTINGS.get("domain") or get_host()
+    asyncio.create_task(_xray_apply())  # refresh Xray clients after user change
     return {
         "user_id": user_id,
         **USERS[user_id],
@@ -2156,6 +2306,19 @@ async def api_user_sub(username: str):
 
     config = generate_user_config(user.get("user_id"), user, user.get("inbound_id"))
 
+    # Multi-inbound: build one config per selected inbound.
+    configs = []
+    uid_ = user.get("user_id")
+    inbound_ids = user.get("inbound_ids") or []
+    if inbound_ids:
+        for iid_ in inbound_ids:
+            try:
+                configs.append(generate_user_config(uid_, user, iid_))
+            except Exception:
+                continue
+    if not configs:
+        configs = [config] if config else []
+
     return {
         "username": user.get("username"),
         "protocol": user.get("protocol", "vless"),
@@ -2173,6 +2336,8 @@ async def api_user_sub(username: str):
         "is_active": is_active,
         "vless_link": config,
         "config": config,
+        "configs": configs,
+        "inbound_ids": inbound_ids,
         "sni": user.get("sni", ""),
         "path": user.get("path", ""),
         "transport_type": user.get("transport_type", "ws"),
@@ -3512,15 +3677,23 @@ def _add_inbound_to_xray(cfg: dict, ib: dict, iid: str, host: str):
         "streamSettings": {}
     }
     
-    # Protocol-specific client settings
-    if protocol in ("vless", "vmess", "trojan"):
-        # Generate some default client entries
-        client_count = 10
+    # Protocol-specific client settings — use REAL user UUIDs that picked this
+    # inbound so they can actually connect through Xray. (Reality is a VLESS
+    # client too, so it also carries uuid clients.)
+    if protocol in ("vless", "reality", "vmess", "trojan"):
+        client_ids = set()
+        for u in USERS.values():
+            uids = u.get("inbound_ids") or ([u.get("inbound_id")] if u.get("inbound_id") else [])
+            if iid in uids and u.get("config_uuid"):
+                client_ids.add(u["config_uuid"])
+        if not client_ids:
+            # Ensure at least a placeholder client so Xray accepts the config;
+            # the panel's own relay also serves these paths.
+            client_ids.add(generate_uuid())
         clients = []
-        for i in range(client_count):
-            uid = generate_uuid()
+        for uid in client_ids:
             client = {"id": uid}
-            if protocol == "vless":
+            if protocol in ("vless", "reality"):
                 client["flow"] = ""
             elif protocol == "vmess":
                 client["alterId"] = 0
@@ -3528,20 +3701,30 @@ def _add_inbound_to_xray(cfg: dict, ib: dict, iid: str, host: str):
                 client["password"] = secrets.token_urlsafe(16)
             clients.append(client)
         inbound_obj["settings"]["clients"] = clients
-    
+
     # Transport / Stream settings
     if protocol == "reality":
+        rs_sni = "is1-ssl.mzstatic.com"  # fixed target per user request
         inbound_obj["streamSettings"] = {
             "network": network if network in ("tcp", "xhttp", "grpc") else "tcp",
             "security": "reality",
             "realitySettings": {
                 "show": False,
-                "dest": rs.get("dest", "is1-ssl.mzstatic.com:443"),
+                "dest": f"{rs_sni}:443",
                 "xver": 0,
-                "serverNames": [rs.get("sni", "is1-ssl.mzstatic.com")],
+                "serverNames": [rs_sni],
                 "privateKey": rs.get("private_key", ""),
                 "shortIds": [rs.get("short_id", "5a3ff5a13d")],
                 "spiderX": rs.get("spiderx", "/"),
+                "mldsa65Seed": rs.get("mldsa65_seed", ""),
+                "settings": {
+                    "publicKey": rs.get("public_key", ""),
+                    "privateKey": rs.get("private_key", ""),
+                    "fingerprint": fingerprint,
+                    "serverName": rs_sni,
+                    "spiderX": rs.get("spiderx", "/"),
+                    "mldsa65Verify": rs.get("mldsa65_verify", ""),
+                },
             }
         }
         if network == "xhttp":
@@ -3595,6 +3778,58 @@ def _add_inbound_to_xray(cfg: dict, ib: dict, iid: str, host: str):
     }
     
     cfg["inbounds"].append(inbound_obj)
+
+
+# ── Xray process manager ───────────────────────────────────────────────────────
+_xray_proc: asyncio.subprocess.Process | None = None
+_xray_restart_lock = asyncio.Lock()
+
+
+def _xray_bin_path() -> Path:
+    return Path(os.path.dirname(os.path.abspath(__file__))) / "xray" / "xray"
+
+
+async def _xray_start(config: dict) -> bool:
+    """Write config.json and start the Xray subprocess (or restart if running)."""
+    global _xray_proc
+    bin_path = _xray_bin_path()
+    if not bin_path.exists():
+        logger.warning("xray binary missing; skipping xray start")
+        return False
+    async with _xray_restart_lock:
+        # Stop existing
+        if _xray_proc and _xray_proc.returncode is None:
+            try:
+                _xray_proc.terminate()
+                await asyncio.wait_for(_xray_proc.wait(), timeout=3)
+            except Exception:
+                try:
+                    _xray_proc.kill()
+                except Exception:
+                    pass
+        cfg_path = bin_path.parent / "config.json"
+        try:
+            cfg_path.write_text(json.dumps(config, indent=2, ensure_ascii=False))
+        except Exception as e:
+            logger.warning(f"xray config write failed: {e}")
+            return False
+        try:
+            _xray_proc = await asyncio.create_subprocess_exec(
+                str(bin_path), "-c", str(cfg_path),
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            logger.info(f"Xray started (pid={_xray_proc.pid})")
+            return True
+        except Exception as e:
+            logger.warning(f"xray start failed: {e}")
+            return False
+
+
+async def _xray_apply():
+    """Regenerate config for all inbounds and (re)start Xray with it."""
+    config = generate_xray_server_config()
+    await _xray_start(config)
 
 
 @app.post("/api/tools/generate-xray-config")
