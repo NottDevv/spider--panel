@@ -69,6 +69,77 @@ DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 DATA_FILE = DATA_DIR / "spider_state.json"
 SAVE_LOCK = asyncio.Lock()
 
+# ── IP scanner live-saved files (first 10 working IPs per source) ─────────────
+SCANNED_DIR = Path(os.path.dirname(os.path.abspath(__file__))) / "data" / "scanned"
+# Fallback to DATA_DIR if the project-local dir doesn't exist (e.g. /data on Railway)
+if not SCANNED_DIR.exists():
+    SCANNED_DIR = DATA_DIR / "scanned"
+_SCANNED_TYPES = {"cf", "railway"}
+_SCANNED_MAX = 10
+
+
+def _read_scanned_ips(ctype: str) -> list:
+    """Return the saved ip:port entries for a scanned source (first 10)."""
+    if ctype not in _SCANNED_TYPES:
+        return []
+    f = SCANNED_DIR / f"{ctype}.txt"
+    if not f.is_file():
+        return []
+    out, seen = [], set()
+    for line in f.read_text(errors="ignore").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if ":" in line:
+            ip, _, port = line.rpartition(":")
+        elif " " in line:
+            ip, _, port = line.partition(" ")
+        else:
+            ip, port = line, "443"
+        ip, port = ip.strip(), port.strip()
+        if not ip or not port:
+            continue
+        tok = f"{ip}:{port}"
+        if tok in seen:
+            continue
+        seen.add(tok)
+        out.append(tok)
+        if len(out) >= _SCANNED_MAX:
+            break
+    return out
+
+
+def _save_scanned_ips(ctype: str, entries: list, replace: bool = False) -> list:
+    """Persist ip:port entries to the source file, capped at first 10.
+
+    merge=True keeps existing entries and appends new ones (used when saving
+    one newly-found IP); replace=True writes entries as the new list (used by
+    the scanner to keep the file in sync with the current best-10).
+    """
+    if ctype not in _SCANNED_TYPES:
+        return []
+    try:
+        SCANNED_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        return _read_scanned_ips(ctype)
+    merged, seen = [], set()
+    if not replace:
+        merged = list(_read_scanned_ips(ctype))
+        seen = set(merged)
+    for e in entries:
+        e = str(e).strip()
+        if not e or e in seen:
+            continue
+        seen.add(e)
+        merged.append(e)
+    merged = merged[:_SCANNED_MAX]
+    try:
+        f = SCANNED_DIR / f"{ctype}.txt"
+        f.write_text("\n".join(merged) + ("\n" if merged else ""), encoding="utf-8")
+    except Exception as e:
+        logger.warning(f"Could not save scanned ips: {e}")
+    return merged
+
 async def load_state():
     global LINKS, AUTH, SUBS, USERS, SETTINGS, GROUPS, IP_POOL, IP_BLACKLIST, INBOUNDS
     try:
@@ -688,8 +759,14 @@ def generate_short_id() -> str:
     """Generate a shorter ID for user management."""
     return secrets.token_hex(6)
 
-def generate_user_config(user_id: str, user: dict, inbound_id: str = None) -> str:
-    """Generate a connection config string for a user based on their protocol."""
+def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr: str = None, remark_tag: str = None) -> str:
+    """Generate a connection config string for a user based on their protocol.
+
+    addr overrides only the @host:port the client connects to (used for scanned
+    custom IPs). host/sni query params still point at the real panel domain so
+    the TLS/WS handshake reaches the service. remark_tag appends an identifier
+    (e.g. "Railway3") to the config remark.
+    """
     # Get settings from inbound if specified
     inbound = None
     if inbound_id:
@@ -710,7 +787,21 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None) -> st
         protocol = user.get("protocol") or "vless"
     config_uuid = user.get("config_uuid", "")
     username = user.get("username", user_id)
-    remark = quote(f"Spider-{username}")
+    _rem = f"Spider-{username}"
+    if remark_tag:
+        _rem = f"{_rem} {remark_tag}"
+    remark = quote(_rem)
+    # Optional scanned-IP address override: only the connect address changes,
+    # host/sni stay as the real domain.
+    addr_ip = None
+    addr_port = None
+    if addr:
+        addr = addr.strip()
+        if ":" in addr:
+            addr_ip, _, addr_port = addr.rpartition(":")
+        else:
+            addr_ip, addr_port = addr, "443"
+        addr_ip, addr_port = addr_ip.strip(), addr_port.strip()
     sni = user.get("sni") or (inbound.get("sni") if inbound else None) or host
     # Transport from user FIRST, then inbound, then default
     # Transport: prefer the inbound network when one is selected (so each
@@ -757,6 +848,10 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None) -> st
         sni_reality = sni if sni and sni != host else rs.get("sni", "is1-ssl.mzstatic.com")
         ext_domain = (inbound.get("external_domain") if inbound else None) or (inbound.get("domain") if inbound else None) or rs.get("external_domain") or host
         ext_port = (inbound.get("external_port") if inbound else None) or rs.get("external_port", 443) or 443
+        if addr_ip:
+            ext_domain = addr_ip
+        if addr_port:
+            ext_port = addr_port
         if not reality_pbk or not reality_sid:
             return f"vless://{config_uuid}@{ext_domain}:{ext_port}?encryption=none&security=reality&sni={quote(sni_reality)}&fp={reality_fp}&pbk=MISSING_PBK&sid=MISSING_SID&type=tcp#{remark}"
         rpath = stored_path if stored_path else xs.get("path", "/")
@@ -781,6 +876,10 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None) -> st
     if protocol == "vless":
         vless_host = (inbound.get("external_domain") if inbound else None) or (inbound.get("domain") if inbound else None) or host
         vless_port = (inbound.get("external_port") if inbound else None) or (inbound.get("port") if inbound else None) or 443
+        if addr_ip:
+            vless_host = addr_ip
+        if addr_port:
+            vless_port = addr_port
         if transport_type == "grpc":
             params = f"encryption=none&security=tls&type=grpc&serviceName={quote(stored_path, safe='')}&host={quote(vless_host)}&sni={quote(sni)}&fp=chrome&alpn=h2"
             return f"vless://{config_uuid}@{vless_host}:{vless_port}?{params}#{remark}"
@@ -818,6 +917,10 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None) -> st
             ])
             vless_host = (inbound.get("external_domain") if inbound else None) or (inbound.get("domain") if inbound else None) or ws_host
             vless_port = (inbound.get("external_port") if inbound else None) or (inbound.get("port") if inbound else None) or 443
+            if addr_ip:
+                vless_host = addr_ip
+            if addr_port:
+                vless_port = addr_port
             return f"vless://{config_uuid}@{vless_host}:{vless_port}?{params}#{remark}"
 
     # ── VMess ──
@@ -826,8 +929,8 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None) -> st
         vmess_config = {
             "v": "2",
             "ps": username,
-            "add": host,
-            "port": "443",
+            "add": addr_ip if addr_ip else host,
+            "port": addr_port if addr_port else "443",
             "id": config_uuid,
             "aid": "0",
             "scy": "auto",
@@ -854,15 +957,52 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None) -> st
             params_t = f"security=tls&type=tcp&host={sni}&sni={sni}"
         else:
             params_t = f"security=tls&type=ws&host={sni}&path={stored_path}&sni={sni}"
-        return f"trojan://{quote(config_uuid)}@{host}:443?{params_t}#{remark}"
+        _tr_host = addr_ip if addr_ip else host
+        _tr_port = addr_port if addr_port else "443"
+        return f"trojan://{quote(config_uuid)}@{_tr_host}:{_tr_port}?{params_t}#{remark}"
 
     # ── Shadowsocks ──
     elif protocol == "shadowsocks":
         method = "aes-256-gcm"
         ss_encoded = base64.b64encode(f"{method}:{config_uuid}".encode()).decode()
-        return f"ss://{ss_encoded}@{host}:8443#{remark}"
+        _ss_host = addr_ip if addr_ip else host
+        _ss_port = addr_port if addr_port else "8443"
+        return f"ss://{ss_encoded}@{_ss_host}:{_ss_port}#{remark}"
 
     return ""
+
+
+def generate_custom_ip_configs(user_id: str, user: dict) -> list:
+    """Build up to 10 extra configs whose address comes from a scanned IP file.
+
+    The scanned IPs (cf | railway) become the connect address; the config still
+    routes to the real panel domain for TLS/WS. Each IP is randomly assigned to
+    one of the user's non-Reality inbounds (Reality inbounds are never used,
+    because their address/handshake cannot be swapped for a plain scanned IP).
+    """
+    ctype = user.get("custom_ip_type")
+    if ctype not in _SCANNED_TYPES:
+        return []
+    ips = _read_scanned_ips(ctype)
+    if not ips:
+        return []
+    iids = user.get("inbound_ids") or []
+    inbounds = [INBOUNDS.get(i) for i in iids if INBOUNDS.get(i)]
+    non_real = [ib for ib in inbounds if (ib.get("protocol") or "vless") != "reality"]
+    if not non_real:
+        return []
+    tag = "Railway" if ctype == "railway" else "Cloudflare"
+    out = []
+    for i, ip in enumerate(ips, 1):
+        ib = random.choice(non_real)
+        try:
+            cfg = generate_user_config(user_id, user, ib.get("inbound_id"), addr=ip, remark_tag=f"{tag}{i}")
+        except Exception as e:
+            logger.warning(f"custom-ip config gen failed for {ip}: {e}")
+            continue
+        if cfg:
+            out.append(cfg)
+    return out
 
 
 # ── Default link ──────────────────────────────────────────────────────────────
@@ -1711,6 +1851,7 @@ async def list_users(_=Depends(require_auth)):
             "proxy_ip": u.get("proxy_ip", ""),
             "proxy_country": u.get("proxy_country", ""),
             "proxy_ips": u.get("proxy_ips", []),
+            "custom_ip_type": u.get("custom_ip_type", ""),
             "traffic_limit_bytes": u.get("traffic_limit_bytes", 0),
             "traffic_limit_fmt": "∞" if u.get("traffic_limit_bytes", 0) == 0 else fmt_bytes(u["traffic_limit_bytes"]),
             "traffic_used_bytes": u.get("traffic_used_bytes", 0),
@@ -1762,6 +1903,11 @@ async def create_user(request: Request, _=Depends(require_auth)):
     proxy_ip = str(body.get("proxy_ip") or "").strip()
     proxy_country = str(body.get("proxy_country") or "").strip()
     proxy_ips = [str(x).strip() for x in (body.get("proxy_ips") or []) if str(x).strip()][:3]
+    # Scanned custom-IP source: cf | railway ("" = off). Adds up to 10 extra
+    # configs in the sub, addressed by scanned IPs on non-Reality inbounds.
+    custom_ip_type = str(body.get("custom_ip_type") or "").strip().lower()
+    if custom_ip_type not in _SCANNED_TYPES:
+        custom_ip_type = ""
 
     # If transport_type not given explicitly, derive it from the primary inbound
     # (so an xhttp inbound produces an xhttp user).
@@ -1838,6 +1984,7 @@ async def create_user(request: Request, _=Depends(require_auth)):
             "proxy_ip": proxy_ip,
             "proxy_country": proxy_country,
             "proxy_ips": proxy_ips,
+            "custom_ip_type": custom_ip_type,
             "inbound_id": inbound_id,
             "inbound_ids": inbound_ids,
             "path": path_custom if path_custom else (
@@ -1973,6 +2120,9 @@ async def edit_user(user_id: str, request: Request, _=Depends(require_auth)):
             u["concurrent_connections"] = max(1, int(body["concurrent_connections"]))
         if "reset_traffic" in body and body["reset_traffic"]:
             u["traffic_used_bytes"] = 0
+        if "custom_ip_type" in body:
+            ct = str(body["custom_ip_type"] or "").strip().lower()
+            u["custom_ip_type"] = ct if ct in _SCANNED_TYPES else ""
     asyncio.create_task(save_state())
     return {"ok": True, "user_id": user_id}
 
@@ -2319,9 +2469,17 @@ async def api_user_sub(username: str):
     if not configs:
         configs = [config] if config else []
 
+    # Custom scanned-IP configs: up to 10 extra configs addressed by scanned
+    # IPs (cf/railway) distributed randomly over the user's non-Reality inbounds.
+    custom_cfgs = generate_custom_ip_configs(user.get("user_id"), user)
+    if custom_cfgs:
+        configs = configs + custom_cfgs
+
     return {
         "username": user.get("username"),
         "protocol": user.get("protocol", "vless"),
+        "custom_ip_type": user.get("custom_ip_type", ""),
+        "custom_ip_count": len(custom_cfgs),
         "traffic_used_bytes": used,
         "traffic_used_fmt": fmt_bytes(used),
         "traffic_limit_bytes": limit,
@@ -4161,6 +4319,111 @@ async def scan_railway_ips(_=Depends(require_auth)):
             "status": status,
         })
     return {"regions": results}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# IP SCANNER endpoints — live-saved scanned IPs + DNS resolve for the TCP tab
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/api/scanner/ips/{ctype}")
+async def scanner_get_ips(ctype: str, _=Depends(require_auth)):
+    """Return the live-saved ip:port list for a scanned source (cf | railway)."""
+    ctype = ctype.strip().lower()
+    if ctype not in _SCANNED_TYPES:
+        raise HTTPException(status_code=400, detail="invalid scanner source")
+    return {"ok": True, "type": ctype, "ips": _read_scanned_ips(ctype)}
+
+
+@app.post("/api/scanner/save")
+async def scanner_save_ips(request: Request, _=Depends(require_auth)):
+    """Live-save found ip:port entries to the source file (first 10 kept)."""
+    body = await request.json()
+    ctype = str(body.get("type") or "").strip().lower()
+    if ctype not in _SCANNED_TYPES:
+        raise HTTPException(status_code=400, detail="invalid scanner source")
+    raw = body.get("ips") or []
+    replace = bool(body.get("replace"))
+    entries = []
+    for x in raw[:_SCANNED_MAX]:
+        x = str(x).strip()
+        if not x:
+            continue
+        if ":" in x:
+            ip, _, port = x.rpartition(":")
+        elif " " in x:
+            ip, _, port = x.partition(" ")
+        else:
+            ip, port = x, "443"
+        ip, port = ip.strip(), port.strip()
+        if ip and port:
+            entries.append(f"{ip}:{port}")
+    merged = _save_scanned_ips(ctype, entries, replace=replace)
+    return {"ok": True, "type": ctype, "ips": merged}
+
+
+@app.get("/api/scanner/resolve")
+async def scanner_resolve(host: str, _=Depends(require_auth)):
+    """Resolve a hostname to its A/AAAA IPs (used by the TCP scanner tab)."""
+    host = str(host or "").strip().lower()
+    if not host:
+        raise HTTPException(status_code=400, detail="empty host")
+    ips = []
+    try:
+        loop = asyncio.get_running_loop()
+        infos = await loop.getaddrinfo(host, None, proto=6)
+        for info in infos:
+            ip = info[4][0]
+            if ip not in ips:
+                ips.append(ip)
+    except Exception:
+        pass
+    return {"ok": True, "host": host, "ips": ips[:8]}
+
+
+@app.post("/api/scanner/ping-batch")
+async def scanner_ping_batch(request: Request, _=Depends(require_auth)):
+    """TCP-connect latency check for arbitrary ip[:port] targets.
+
+    The IP scanner generates candidate CF / Railway IPs in the browser and sends
+    them here in batches; the panel measures real connect latency so the result
+    is reliable (browsers cannot open raw TCP sockets).
+    """
+    body = await request.json()
+    targets = body.get("targets") or []
+    timeout = max(0.4, min(float(body.get("timeout") or 2.0), 6.0))
+    if isinstance(targets, str):
+        targets = [x for x in targets.replace(",", " ").split() if x]
+    targets = [str(t).strip() for t in targets][:150]
+
+    sem = asyncio.Semaphore(20)
+
+    async def probe(t):
+        if ":" in t:
+            ip, _, port = t.rpartition(":")
+        else:
+            ip, port = t, "443"
+        ip = ip.strip()
+        try:
+            port = int(port.strip())
+        except Exception:
+            port = 443
+        async with sem:
+            t0 = time.time()
+            try:
+                rdr, wtr = await asyncio.wait_for(asyncio.open_connection(ip, port), timeout=timeout)
+                lat = int((time.time() - t0) * 1000)
+                try:
+                    wtr.close()
+                    await wtr.wait_closed()
+                except Exception:
+                    pass
+                return {"target": t, "ip": ip, "port": port, "latency_ms": lat, "ok": True}
+            except Exception:
+                return {"target": t, "ip": ip, "port": port, "latency_ms": None, "ok": False}
+
+    results = await asyncio.gather(*(probe(t) for t in targets))
+    results.sort(key=lambda r: (not r["ok"], r["latency_ms"] if r["latency_ms"] is not None else 10 ** 9))
+    return {"ok": True, "count": len(results), "results": results}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

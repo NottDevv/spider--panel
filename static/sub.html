@@ -546,6 +546,11 @@
 
   // Status config block — always shown FIRST in the config column.
   function buildStatusBlock() {
+    var dd = state.data || {};
+    var sdays = (dd.expire_days === null || dd.expire_days === undefined) ? null : dd.expire_days;
+    var sused = dd.traffic_used_bytes || 0;
+    var slim = dd.traffic_limit_bytes || 0;
+    var spct = dd.traffic_percent != null ? dd.traffic_percent : (slim > 0 ? Math.min(100, sused / slim * 100) : 0);
     return '<div class="group border border-black/5 dark:border-white/12 bg-black/5 dark:bg-white/5 rounded-2xl p-stack-md hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer relative overflow-hidden" onclick="copyStatus()">' +
       '<div class="absolute ltr:left-0 rtl:right-0 top-0 bottom-0 w-1 bg-[#00ffff] opacity-0 group-hover:opacity-100 transition-opacity neon-border"></div>' +
       '<div class="flex flex-col gap-1 ltr:pl-2 rtl:pr-2 min-w-0 flex-1">' +
@@ -557,13 +562,13 @@
         '</div>' +
         '<div class="flex flex-wrap gap-2 mt-1">' +
           '<span class="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-code-label text-[10px] text-on-surface-variant">' +
-            '<span class="en-only">Time Left:</span><span class="fa-only">زمان باقیمانده:</span> ' + (days === null ? '∞' : esc(String(days))) + ' ' +
+            '<span class="en-only">Time Left:</span><span class="fa-only">زمان باقیمانده:</span> ' + (sdays === null ? '∞' : esc(String(sdays))) + ' ' +
             '<span class="en-only">days</span><span class="fa-only">روز</span>' +
           '</span>' +
           '<span class="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-code-label text-[10px] text-on-surface-variant">' +
-            '<span class="en-only">Traffic:</span><span class="fa-only">حجم:</span> ' + esc(fmtBytes(used)) + ' / ' + (limit > 0 ? esc(fmtBytes(limit)) : '∞') +
+            '<span class="en-only">Traffic:</span><span class="fa-only">حجم:</span> ' + esc(fmtBytes(sused)) + ' / ' + (slim > 0 ? esc(fmtBytes(slim)) : '∞') +
           '</span>' +
-          '<span class="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-code-label text-[10px] text-on-surface-variant">' + pct.toFixed(1) + '%' + '</span>' +
+          '<span class="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-code-label text-[10px] text-on-surface-variant">' + spct.toFixed(1) + '%' + '</span>' +
         '</div>' +
         '<span class="cfg-text text-on-surface-variant truncate max-w-[130px] md:max-w-[320px] ltr:text-left rtl:text-right" dir="ltr">' +
           esc(window.__statuscfg || (state.data && (state.data.username || uname)) || '') +
@@ -574,8 +579,19 @@
 
   // One block per main config (multi-inbound). Each copies its own config.
   function buildConfigBlocks() {
+    var dd = state.data || {};
     var cfgs = window.__cfgs || [];
     var blocks = '';
+    if (dd.custom_ip_type && window.__customCount) {
+      var cname = dd.custom_ip_type === 'railway' ? 'Railway' : 'Cloudflare';
+      blocks += '<div class="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/12 mb-1">' +
+        '<span class="material-symbols-outlined text-[15px]" style="color:#00e676">bolt</span>' +
+        '<span class="font-code-label text-[10px] text-on-surface-variant">' +
+          '<span class="en-only">Custom IP (' + cname + ')</span><span class="fa-only">آی‌پی اختصاصی (' + cname + ')</span> ' +
+          '+ ' + window.__customCount + ' <span class="en-only">configs</span><span class="fa-only">کانفیگ</span>' +
+        '</span>' +
+      '</div>';
+    }
     for (var i = 0; i < cfgs.length; i++) {
       var c = cfgs[i];
       if (!c) continue;
@@ -583,8 +599,8 @@
         '<div class="absolute ltr:left-0 rtl:right-0 top-0 bottom-0 w-1 bg-[#00ffff] opacity-0 group-hover:opacity-100 transition-opacity neon-border"></div>' +
         '<div class="flex flex-col gap-1 ltr:pl-2 rtl:pr-2 min-w-0">' +
           '<div class="flex items-center gap-2">' +
-            '<span class="font-code-label text-code-label text-on-surface font-bold ltr:text-left rtl:text-right" dir="ltr">' + esc((d.protocol || 'vless').toUpperCase()) + ' #' + (i + 1) + '</span>' +
-            '<span class="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-code-label text-[10px] text-on-surface-variant">' + esc((d.transport_type || 'ws').toUpperCase()) + '</span>' +
+            '<span class="font-code-label text-code-label text-on-surface font-bold ltr:text-left rtl:text-right" dir="ltr">' + esc((dd.protocol || 'vless').toUpperCase()) + ' #' + (i + 1) + '</span>' +
+            '<span class="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-code-label text-[10px] text-on-surface-variant">' + esc((dd.transport_type || 'ws').toUpperCase()) + '</span>' +
           '</div>' +
           '<span class="cfg-text text-on-surface-variant truncate max-w-[130px] md:max-w-[320px] ltr:text-left rtl:text-right" dir="ltr">' + esc(c) + '</span>' +
         '</div>' +
@@ -615,6 +631,7 @@
       window.__cfg = d.config || d.vless_link || '';
       // Multi-inbound configs (one per selected inbound), fallback to single.
       window.__cfgs = (Array.isArray(d.configs) && d.configs.length) ? d.configs : (window.__cfg ? [window.__cfg] : []);
+      window.__customCount = d.custom_ip_count || 0;
       // Fake/status config: same VLESS format, remark carries the status stats.
       // Clearly marked STATUS so it is never mistaken for the real main config.
       if (window.__cfg) {

@@ -318,8 +318,58 @@ input,select,button,textarea{font-family:inherit}
 .px-noselected { color: var(--txt2); font-size: 12px; padding: 14px; text-align: center; }
 .px-loading { color: var(--txt2); font-size: 12px; padding: 18px; text-align: center; }
 
+/* ═══ IP SCANNER ═══ */
+.scn-tabs { display: flex; gap: 8px; margin: 14px 0; background: var(--bg3); padding: 5px; border-radius: 14px; border: 1px solid var(--border); }
+.scn-tab { flex: 1; padding: 10px 6px; border: none; border-radius: 10px; background: transparent; color: var(--txt2); font-size: 12px; font-weight: 700; cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.scn-tab:hover { color: var(--txt); }
+.scn-tab.active { background: var(--gradient); color: #fff; box-shadow: 0 4px 16px rgba(43,127,255,.3); }
+.scn-pane { display: none; animation: fadeIn .25s ease; }
+.scn-pane.active { display: block; }
+.scn-cfg { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
+.scn-cfg .f-g { margin-bottom: 0; min-width: 120px; }
+.scn-live { margin-top: 12px; }
+.scn-stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.scn-chip { flex: 1; min-width: 110px; background: rgba(0,0,0,.25); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; text-align: center; }
+.scn-chip b { font-size: 20px; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: block; }
+.scn-chip span { font-size: 10px; color: var(--txt2); }
+.scn-progress { height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
+.scn-progress .scn-bar { height: 100%; width: 0%; background: var(--gradient); border-radius: 4px; transition: width .3s; }
+.scn-list { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; }
+.scn-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(0,0,0,.25); border: 1px solid var(--border); border-radius: 10px; font-size: 12px; }
+.scn-item .scn-ip { font-family: monospace; direction: ltr; color: var(--txt); font-weight: 600; }
+.scn-item .scn-port { color: var(--neon); font-family: monospace; direction: ltr; }
+.scn-item .scn-ms { margin-left: auto; font-family: monospace; direction: ltr; font-weight: 700; }
+.scn-ms.good { color: var(--green); }
+.scn-ms.ok { color: #ffab00; }
+.scn-ms.bad { color: var(--red); }
+.scn-ms.soon { color: var(--txt2); }
+.scn-saved { margin-top: 14px; }
+.scn-saved-t { font-size: 11px; font-weight: 700; color: var(--txt2); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: .5px; }
+.scn-saved-t::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.scn-saved-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.scn-tag { font-family: monospace; direction: ltr; font-size: 11px; padding: 4px 10px; background: rgba(0,225,193,.1); border: 1px solid rgba(0,225,193,.25); border-radius: 8px; color: var(--neon); }
+.scn-empty { color: var(--txt2); font-size: 11px; padding: 12px; text-align: center; border: 1px dashed var(--border); border-radius: 10px; }
+.scn-dom-list { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; max-height: 200px; overflow-y: auto; }
+.scn-dom { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(0,0,0,.25); border: 1px solid var(--border); border-radius: 10px; font-family: monospace; direction: ltr; font-size: 12px; }
+.scn-dom .rm { margin-left: auto; cursor: pointer; color: var(--red); background: none; border: none; font-size: 14px; opacity: .7; }
+.scn-dom .rm:hover { opacity: 1; }
+.scn-dom-add { display: flex; gap: 8px; }
+.scn-dom-add input { flex: 1; }
+.scn-result { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(0,0,0,.25); border: 1px solid var(--border); border-radius: 10px; font-size: 11px; }
+.scn-result .scn-ip { font-family: monospace; direction: ltr; }
+.scn-result .scn-dom-name { color: var(--txt2); font-size: 10px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ═══ CUSTOM-IP PICKER (create-user modal) ═══ */
+.cu-custom-wrap { position: relative; }
+.cu-custom-btn { width: 100%; justify-content: space-between; }
+.cu-custom-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-md); display: none; }
+.cu-custom-opt { display: flex; width: 100%; align-items: center; gap: 8px; padding: 10px 14px; background: none; border: none; color: var(--txt); font-size: 12px; font-weight: 600; cursor: pointer; text-align: right; }
+.cu-custom-opt:hover { background: rgba(43,127,255,.1); color: var(--neon); }
+.cu-custom-opt.active { color: var(--neon); }
+.cu-custom-opt + .cu-custom-opt { border-top: 1px solid var(--border); }
+
 /* App Layout */
-.app-wrap{display:none;min-height:100vh;position:relative;z-index:1}
+.app-wrap{display:none;min-height:100vh;position:relative;z-index:1;overflow-x:hidden}
 .app-wrap.active{display:flex}
 
 /* Sidebar - Glass */
@@ -348,7 +398,7 @@ input,select,button,textarea{font-family:inherit}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-left:6px;animation:pulse 2s infinite}
 
 /* Main area */
-.main-area{flex:1;margin-right:260px;display:flex;flex-direction:column;position:relative;z-index:1}
+.main-area{flex:1;min-width:0;margin-right:260px;display:flex;flex-direction:column;position:relative;z-index:1}
 .topbar{
   padding:14px 24px;background:var(--surface-glass);backdrop-filter:blur(24px);
   -webkit-backdrop-filter:blur(24px);
@@ -357,7 +407,12 @@ input,select,button,textarea{font-family:inherit}
 }
 .topbar-greet{font-size:14px}.topbar-greet strong{color:var(--neon)}
 .topbar-r{display:flex;gap:8px;align-items:center}
-.content{padding:20px 24px;flex:1;overflow-y:auto;position:relative;z-index:1}
+.lang-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;background:var(--bg3);border:1px solid var(--border);color:var(--txt);font-size:12px;font-weight:700;cursor:pointer;transition:all .2s}
+.lang-btn:hover{border-color:var(--border-glow);color:var(--neon);box-shadow:0 0 12px rgba(43,127,255,.15)}
+.content{min-width:0;padding:20px 24px;flex:1;overflow-x:hidden;overflow-y:auto;position:relative;z-index:1}
+
+/* LTR (English) adjustments */
+html[lang="en"] body, html[lang="en"] .sidebar, html[lang="en"] .panel, html[lang="en"] .btn { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; }
 
 /* Cards - Glass */
 .panel{
@@ -401,8 +456,21 @@ input,select,button,textarea{font-family:inherit}
 .btn-icon{width:36px;height:36px;padding:0;justify-content:center;border-radius:12px}
 
 /* Tables */
-.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--radius-lg);border:1px solid var(--border);background:var(--surface-glass);backdrop-filter:blur(14px)}
-table{width:100%;border-collapse:collapse}
+.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;border-radius:var(--radius-lg);border:1px solid var(--border);background:var(--surface-glass);backdrop-filter:blur(14px)}
+table{width:100%;min-width:0;border-collapse:collapse}
+/* Users as cards on mobile (replaces the wide table) */
+.u-cards{display:flex;flex-direction:column;gap:10px}
+.u-card{background:var(--surface-glass);backdrop-filter:blur(14px);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow-sm)}
+.u-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.u-card-name{font-size:15px;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.u-card-traffic{font-size:12px;color:var(--txt)}
+.u-card-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:8px 0}
+.u-card-meta span{display:flex;flex-direction:column;gap:2px}
+.u-card-meta i{font-style:normal;font-size:9px;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px}
+.u-card-meta b{font-size:12px;color:var(--txt);font-weight:600}
+.u-card-meta .badge{width:fit-content}
+.u-card-actions .act-row{flex-wrap:wrap;gap:6px}
+.u-card-actions .btn-sm{flex:1 1 auto}
 th{text-align:right;padding:12px;font-size:10px;color:var(--txt2);font-weight:700;border-bottom:1px solid var(--border);background:rgba(43,127,255,.04)}
 td{padding:12px;font-size:13px;border-bottom:1px solid var(--border)}
 tr:hover td{background:rgba(43,127,255,.03)}
@@ -599,6 +667,21 @@ tr{animation:fadeIn .3s ease}
   .btn-sm{padding:6px 10px;font-size:11px}
   td,th{padding:8px 6px;font-size:11px}
   .sb-brand{padding:16px 14px}
+  .scn-cfg{flex-direction:column;align-items:stretch}
+  .scn-cfg .f-g{min-width:0}
+  .scn-cfg .btn{width:100%}
+  .scn-tabs{flex-wrap:nowrap}
+  .scn-tab{font-size:11px;padding:8px 4px}
+  .px-tools{flex-wrap:wrap}
+  .px-tools .btn{flex:1 1 auto}
+  .f-r{flex-wrap:wrap}
+  .f-r > .f-g{min-width:100%}
+}
+/* Users table on small screens: let each row stack so nothing is cut off */
+@media(max-width:640px){
+  #tab-users .tbl{display:none}
+  .u-cards{display:flex}
+  .act-row{flex-wrap:wrap;gap:4px}
 }
 /* Sidebar backdrop */
 .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
@@ -665,27 +748,31 @@ tr{animation:fadeIn .3s ease}
     <nav class="sb-nav">
       <div class="nav-item active" onclick="switchTab('dashboard',this)">
         <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></span>
-        داشبورد
+        <span data-i18n="dash">داشبورد</span>
       </div>
       <div class="nav-item" onclick="switchTab('users',this)">
         <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2m8-10a4 4 0 100-8 4 4 0 000 8zm13 10v-2a4 4 0 00-3-3.87m-4-12a4 4 0 010 7.75"/></svg></span>
-        کاربران
+        <span data-i18n="users">کاربران</span>
       </div>
       <div class="nav-item" onclick="switchTab('inbounds',this)">
         <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></span>
-        اینباندها
+        <span data-i18n="inbounds">اینباندها</span>
+      </div>
+      <div class="nav-item" onclick="switchTab('scanner',this)">
+        <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/><path d="M11 8v3l2 2"/></svg></span>
+        <span data-i18n="scanner">اسکنر IP</span>
       </div>
       <div class="nav-item" onclick="switchTab('settings',this)">
         <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></span>
-        تنظیمات
+        <span data-i18n="settings">تنظیمات</span>
       </div>
       <div class="nav-item" onclick="switchTab('contact',this)">
         <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
-        Contact Me
+        <span data-i18n="contact">Contact Me</span>
       </div>
       <div class="nav-item" onclick="doLogout()" style="color:var(--red)!important">
         <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4m7 14l5-5-5-5m5 5H9"/></svg></span>
-        خروج
+        <span data-i18n="logout">خروج</span>
       </div>
     </nav>
     <div class="sb-foot"><span class="dot"></span> Spider Panel v4.0</div>
@@ -696,6 +783,7 @@ tr{animation:fadeIn .3s ease}
     <div class="topbar">
       <div class="topbar-greet" id="grt"></div>
       <div class="topbar-r">
+        <button class="lang-btn" id="lang-btn" onclick="toggleLang()" title="تغییر زبان / Change language"><span id="lang-flag">🇬🇧</span><span id="lang-label">EN</span></button>
         <button class="btn btn-sm btn-g sidebar-tog" onclick="toggleSidebar()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
       </div>
     </div>
@@ -703,20 +791,20 @@ tr{animation:fadeIn .3s ease}
 
       <!-- DASHBOARD TAB -->
       <div class="tab-content" id="tab-dashboard">
-        <div class="panel"><div class="panel-h"><span class="glow">داشبورد</span></div><div id="dashboard-content"><div class="empty">در حال بارگذاری...</div></div></div>
+        <div class="panel"><div class="panel-h"><span class="glow" data-i18n="tab.dash">داشبورد</span></div><div id="dashboard-content"><div class="empty" data-i18n="loading">در حال بارگذاری...</div></div></div>
       </div>
 
       <!-- USERS TAB -->
       <div class="tab-content hidden" id="tab-users">
         <div class="panel">
           <div class="panel-h" style="justify-content:space-between">
-            <span class="glow">مدیریت کاربران</span>
+            <span class="glow" data-i18n="tab.users">مدیریت کاربران</span>
             <button class="btn btn-p" onclick="openCreateUser()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              کاربر جدید
+              <span data-i18n="newUser">کاربر جدید</span>
             </button>
           </div>
-          <div id="users-list"><div class="empty">در حال بارگذاری...</div></div>
+          <div id="users-list"><div class="empty" data-i18n="loading">در حال بارگذاری...</div></div>
         </div>
       </div>
 
@@ -724,22 +812,94 @@ tr{animation:fadeIn .3s ease}
       <div class="tab-content hidden" id="tab-inbounds">
         <div class="panel">
           <div class="panel-h" style="justify-content:space-between">
-            <span class="glow">مدیریت اینباندها</span>
+            <span class="glow" data-i18n="tab.inbounds">مدیریت اینباندها</span>
             <button class="btn btn-p" onclick="openCreateInbound()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              اینباند جدید
+              <span data-i18n="newInbound">اینباند جدید</span>
             </button>
           </div>
-          <div id="inbounds-list"><div class="empty">در حال بارگذاری...</div></div>
+          <div id="inbounds-list"><div class="empty" data-i18n="loading">در حال بارگذاری...</div></div>
         </div>
 
         <!-- Domain Management -->
         <div class="panel">
-          <div class="panel-h"><span class="glow">مدیریت دامنه</span></div>
+          <div class="panel-h"><span class="glow" data-i18n="domainMgr">مدیریت دامنه</span></div>
           <form onsubmit="saveDomainSettings(event)">
-            <div class="f-g"><label>دامنه</label><input type="text" id="set-domain" placeholder="example.com" dir="ltr"></div>
-            <button class="btn btn-p" style="width:100%;margin-top:8px">ذخیره دامنه</button>
+            <div class="f-g"><label data-i18n="domain">دامنه</label><input type="text" id="set-domain" placeholder="example.com" dir="ltr"></div>
+            <button class="btn btn-p" style="width:100%;margin-top:8px"><span data-i18n="saveDomain">ذخیره دامنه</span></button>
           </form>
+        </div>
+      </div>
+
+      <!-- IP SCANNER TAB -->
+      <div class="tab-content hidden" id="tab-scanner">
+        <div class="panel">
+          <div class="panel-h"><span class="glow" data-i18n="tab.scanner">اسکنر آی‌پی</span><span class="badge badge-g" style="margin-right:auto;animation:pulse 1.5s infinite"><span data-i18n="live">● LIVE</span></span></div>
+
+          <!-- Sub-tab selector -->
+          <div class="scn-tabs" role="tablist">
+            <button class="scn-tab active" id="scn-tab-cf" onclick="scnSwitch('cf',this)"><span>☁️</span> Cloudflare</button>
+            <button class="scn-tab" id="scn-tab-railway" onclick="scnSwitch('railway',this)"><span>🛤️</span> Railway</button>
+            <button class="scn-tab" id="scn-tab-tcp" onclick="scnSwitch('tcp',this)"><span>🔌</span> TCP</button>
+          </div>
+
+          <!-- CLOUDFLARE PANE -->
+          <div class="scn-pane active" id="scn-pane-cf">
+            <div class="scn-cfg">
+              <div class="f-g"><label data-i18n="ipCount">تعداد IP</label><input type="number" id="scn-cf-count" value="30" min="1" max="100"></div>
+              <div class="f-g"><label data-i18n="targetPort">پورت هدف</label><select id="scn-cf-port"><option value="443">443</option><option value="2053">2053</option><option value="8443">8443</option><option value="2083">2083</option></select></div>
+              <button class="btn btn-p" onclick="scnRunCF()"><span data-i18n="startScan">شروع اسکن</span></button>
+              <button class="btn btn-g" onclick="scnStop()"><span data-i18n="stop">توقف</span></button>
+            </div>
+            <div class="scn-hint px-hint" data-i18n="scnTip">اسکن زنده از رنج‌های Cloudflare. IPهای پاسخ‌دهنده مرتب و ۱۰ تای اول به صورت خودکار ذخیره می‌شوند.</div>
+            <div class="scn-stats">
+              <div class="scn-chip"><b id="scn-cf-found">۰</b><span data-i18n="found">IP یافت شده</span></div>
+              <div class="scn-chip"><b id="scn-cf-tried">۰</b><span data-i18n="tried">تست شده</span></div>
+              <div class="scn-chip"><b id="scn-cf-best">--</b><span data-i18n="bestPing">بهترین پینگ</span></div>
+              <div class="scn-chip"><b id="scn-cf-saved">۰/۱۰</b><span data-i18n="saved">ذخیره شده</span></div>
+            </div>
+            <div class="scn-progress"><div class="scn-bar" id="scn-cf-bar"></div></div>
+            <div class="scn-list" id="scn-cf-list"><div class="scn-empty" data-i18n="startPrompt">برای شروع اسکن، دکمه «شروع اسکن» را بزنید</div></div>
+            <div class="scn-saved">
+              <div class="scn-saved-t"><span data-i18n="savedFirst10">ذخیره شده (اولین ۱۰ آی‌پی)</span> — <button class="btn btn-sm btn-g" onclick="scnClearSaved('cf')"><span data-i18n="clear">پاک کردن</span></button></div>
+              <div class="scn-saved-tags" id="scn-cf-saved-tags"><span class="scn-empty" data-i18n="notSaved">هنوز ذخیره‌ای نیست</span></div>
+            </div>
+          </div>
+
+          <!-- RAILWAY PANE -->
+          <div class="scn-pane" id="scn-pane-railway">
+            <div class="scn-cfg">
+              <div class="f-g"><label data-i18n="ipCount">تعداد IP</label><input type="number" id="scn-rw-count" value="30" min="1" max="100"></div>
+              <div class="f-g"><label data-i18n="targetPort">پورت هدف</label><select id="scn-rw-port"><option value="443">443</option><option value="8080">8080</option><option value="80">80</option></select></div>
+              <button class="btn btn-p" onclick="scnRunRailway()"><span data-i18n="startScan">شروع اسکن</span></button>
+              <button class="btn btn-g" onclick="scnStop()"><span data-i18n="stop">توقف</span></button>
+            </div>
+            <div class="scn-hint px-hint" data-i18n="scnRailwayTip">اسکن زنده از رنج‌های اعلام‌شده Railway (اروپا). IPهای پاسخ‌دهنده مرتب و ۱۰ تای اول به صورت خودکار ذخیره می‌شوند.</div>
+            <div class="scn-stats">
+              <div class="scn-chip"><b id="scn-rw-found">۰</b><span data-i18n="found">IP یافت شده</span></div>
+              <div class="scn-chip"><b id="scn-rw-tried">۰</b><span data-i18n="tried">تست شده</span></div>
+              <div class="scn-chip"><b id="scn-rw-best">--</b><span data-i18n="bestPing">بهترین پینگ</span></div>
+              <div class="scn-chip"><b id="scn-rw-saved">۰/۱۰</b><span data-i18n="saved">ذخیره شده</span></div>
+            </div>
+            <div class="scn-progress"><div class="scn-bar" id="scn-rw-bar"></div></div>
+            <div class="scn-list" id="scn-rw-list"><div class="scn-empty" data-i18n="startPrompt">برای شروع اسکن، دکمه «شروع اسکن» را بزنید</div></div>
+            <div class="scn-saved">
+              <div class="scn-saved-t"><span data-i18n="savedFirst10">ذخیره شده (اولین ۱۰ آی‌پی)</span> — <button class="btn btn-sm btn-g" onclick="scnClearSaved('railway')"><span data-i18n="clear">پاک کردن</span></button></div>
+              <div class="scn-saved-tags" id="scn-rw-saved-tags"><span class="scn-empty" data-i18n="notSaved">هنوز ذخیره‌ای نیست</span></div>
+            </div>
+          </div>
+
+          <!-- TCP PANE -->
+          <div class="scn-pane" id="scn-pane-tcp">
+            <div class="scn-hint px-hint" data-i18n="scnTcpTip">دامنه موردنظر را وارد کنید؛ IP دامنه (DNS) نمایش داده می‌شود و پینگ TCP آن به صورت زنده گزارش می‌شود. دامنه‌های Railway به صورت پیش‌فرض وجود دارند و قابل افزودن/حذف هستند.</div>
+            <div class="scn-dom-add">
+              <input type="text" id="scn-tcp-domain" placeholder="example.proxy.rlwy.net" dir="ltr">
+              <button class="btn btn-p" onclick="scnAddDomain()"><span data-i18n="addDomain">افزودن دامنه</span></button>
+            </div>
+            <div class="scn-dom-list" id="scn-tcp-list"></div>
+            <button class="btn btn-p" style="width:100%" onclick="scnRunTCP()"><span data-i18n="checkDomains">شروع بررسی دامنه‌ها</span></button>
+            <div class="scn-result-list scn-list" id="scn-tcp-results" style="margin-top:12px"></div>
+          </div>
         </div>
       </div>
 
@@ -748,7 +908,7 @@ tr{animation:fadeIn .3s ease}
 
         <!-- Server Resources -->
         <div class="panel" style="margin-bottom:14px">
-          <div class="panel-h"><span class="glow">Server Resources</span></div>
+          <div class="panel-h"><span class="glow" data-i18n="serverResources">Server Resources</span></div>
           <div id="neon-bars">
             <div class="set-row" style="flex-direction:column;align-items:stretch;gap:6px">
               <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--txt2)">CPU</span><span id="cpu-val" style="color:var(--neon);font-family:monospace">--</span></div>
@@ -770,55 +930,55 @@ tr{animation:fadeIn .3s ease}
         </div>
 
         <div class="panel">
-          <div class="panel-h"><span class="glow">تنظیمات ظاهری</span></div>
+          <div class="panel-h"><span class="glow" data-i18n="appearance">تنظیمات ظاهری</span></div>
 
-          <div class="set-row"><span class="set-lbl">تم</span>
+          <div class="set-row"><span class="set-lbl" data-i18n="theme">تم</span>
             <div style="display:flex;gap:8px">
-              <button class="btn btn-sm btn-g" onclick="setTheme('dark')">تاریک</button>
-              <button class="btn btn-sm btn-g" onclick="setTheme('light')">روشن</button>
+              <button class="btn btn-sm btn-g" onclick="setTheme('dark')"><span data-i18n="dark">تاریک</span></button>
+              <button class="btn btn-sm btn-g" onclick="setTheme('light')"><span data-i18n="light">روشن</span></button>
             </div>
           </div>
 
-          <div class="set-row"><span class="set-lbl">رنگ</span>
+          <div class="set-row"><span class="set-lbl" data-i18n="color">رنگ</span>
             <div class="theme-dots">
-              <div class="theme-dot red" onclick="setAccent('red')" title="قرمز"></div>
-              <div class="theme-dot green" onclick="setAccent('green')" title="سبز"></div>
-              <div class="theme-dot blue" onclick="setAccent('blue')" title="آبی"></div>
+              <div class="theme-dot red" onclick="setAccent('red')" data-i18n-title="red" title="قرمز"></div>
+              <div class="theme-dot green" onclick="setAccent('green')" data-i18n-title="green" title="سبز"></div>
+              <div class="theme-dot blue" onclick="setAccent('blue')" data-i18n-title="blue" title="آبی"></div>
             </div>
           </div>
 
         </div>
 
         <div class="panel">
-          <div class="panel-h"><span class="glow">Proxy List</span></div>
+          <div class="panel-h"><span class="glow" data-i18n="proxyList">Proxy List</span></div>
           <div class="set-row">
-            <span class="set-lbl">لیست پروکسی‌های کشورها</span>
+            <span class="set-lbl" data-i18n="countryProxyList">لیست پروکسی‌های کشورها</span>
             <button class="btn btn-p" id="proxy-refresh-btn" onclick="refreshProxyList()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
-              به‌روزرسانی لیست
+              <span data-i18n="refreshList">به‌روزرسانی لیست</span>
             </button>
           </div>
           <div class="set-row" style="border-bottom:none;flex-direction:column;align-items:stretch;gap:6px">
-            <span class="set-lbl" id="proxy-refresh-status" style="font-size:11px">پروکسی‌های رایگان سریع از بین می‌روند — برای تازه نگه‌داشتن لیست، گاهی به‌روزرسانی کنید.</span>
+            <span class="set-lbl" id="proxy-refresh-status" style="font-size:11px" data-i18n="proxyNote">پروکسی‌های رایگان سریع از بین می‌روند — برای تازه نگه‌داشتن لیست، گاهی به‌روزرسانی کنید.</span>
             <span class="set-lbl" id="proxy-refresh-result" style="font-size:11px;color:var(--txt2)"></span>
           </div>
         </div>
 
         <div class="panel">
-          <div class="panel-h"><span class="glow">Panel Music</span></div>
-          <div class="set-row"><span class="set-lbl">Background Music</span>
-            <button type="button" class="ios-switch on" id="audio-autoplay" onclick="togglePanelAudio()" title="روشن/خاموش"></button>
+          <div class="panel-h"><span class="glow" data-i18n="panelMusic">Panel Music</span></div>
+          <div class="set-row"><span class="set-lbl" data-i18n="bgMusic">Background Music</span>
+            <button type="button" class="ios-switch on" id="audio-autoplay" onclick="togglePanelAudio()" data-i18n-title="toggleMusic" title="روشن/خاموش"></button>
           </div>
           <div class="sub-link" id="audio-file" style="margin-top:8px;margin-bottom:0">static/music-panel.mp3</div>
           <audio id="panel-audio-player" loop style="display:none"></audio>
         </div>
 
         <div class="panel">
-          <div class="panel-h"><span class="glow">Change Password</span></div>
+          <div class="panel-h"><span class="glow" data-i18n="changePassword">Change Password</span></div>
           <form onsubmit="changePassword(event)">
-            <div class="f-g"><label>رمز فعلی</label><input type="password" id="cp-old" required></div>
-            <div class="f-g"><label>رمز جدید</label><input type="password" id="cp-new" required minlength="4"></div>
-            <button class="btn btn-p" style="width:100%">تغییر رمز</button>
+            <div class="f-g"><label data-i18n="curPass">رمز فعلی</label><input type="password" id="cp-old" required></div>
+            <div class="f-g"><label data-i18n="newPass">رمز جدید</label><input type="password" id="cp-new" required minlength="4"></div>
+            <button class="btn btn-p" style="width:100%"><span data-i18n="changePassBtn">تغییر رمز</span></button>
           </form>
         </div>
       </div>
@@ -826,18 +986,16 @@ tr{animation:fadeIn .3s ease}
       <!-- CONTACT TAB -->
       <div class="tab-content hidden" id="tab-contact">
         <div class="panel contact-panel">
-          <div class="panel-h"><span class="glow">Contact Me</span></div>
-          <p class="contact-sub">برای پشتیبانی و همکاری با من در ارتباط باشید</p>
+          <div class="panel-h"><span class="glow" data-i18n="contact">Contact Me</span></div>
+          <p class="contact-sub" data-i18n="contactSub">برای پشتیبانی و همکاری با من در ارتباط باشید</p>
           <div class="contact-bubbles">
-            <a class="contact-bubble tg" href="https://t.me/spider_vpn1" target="_blank" rel="noopener">
+            <a class="contact-bubble tg" href="https://t.me/spider_vpn1" target="_blank" rel="noopener" title="Telegram">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
               <span>Telegram</span>
-              <small>t.me/spider_vpn1</small>
             </a>
-            <a class="contact-bubble gh" href="https://github.com/amirappleidfd-stack" target="_blank" rel="noopener">
+            <a class="contact-bubble gh" href="https://github.com/amirappleidfd-stack" target="_blank" rel="noopener" title="GitHub">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-.3.063-.61.095-.88.095-1.74 0-2.13-1.32-2.13-1.32-.285-.72-.695-1.313-1.238-1.673-.99-.675.06-.662.06-.662 1.08.06 1.65 1.065 1.65 1.065.96 1.65 2.52 1.173 3.135.897.097-.698.375-1.173.682-1.442-2.38-.27-4.875-1.19-4.875-5.31 0-1.173.42-2.133 1.11-2.883-.11-.27-.48-1.362.105-2.838 0 0 .907-.285 2.97 1.105.87-.24 1.8-.36 2.73-.36.93 0 1.86.12 2.73.36 2.06-1.39 2.97-1.105 2.97-1.105.586 1.476.216 2.568.105 2.838.69.75 1.11 1.71 1.11 2.883 0 4.13-2.5 5.035-4.885 5.31.385.33.72.98.72 1.975 0 1.425-.015 2.57-.015 2.92 0 .32.22.695.825.575C20.565 22.09 24 17.595 24 12.297 24 5.67 18.63.297 12 .297z"/></svg>
               <span>GitHub</span>
-              <small>github.com/amirappleidfd-stack</small>
             </a>
           </div>
         </div>
@@ -851,69 +1009,83 @@ tr{animation:fadeIn .3s ease}
 
 <!-- CREATE USER -->
 <div class="modal" id="mod-user"><div class="modal-c" style="max-width:680px">
-  <div class="modal-t"><span class="glow">ایجاد کاربر جدید</span></div>
+  <div class="modal-t"><span class="glow" data-i18n="createUser">ایجاد کاربر جدید</span></div>
   <form onsubmit="submitCreateUser(event)">
     <div class="f-r">
-      <div class="f-g"><label>نام کاربری</label><input type="text" id="cu-name" required></div>
-      <div class="f-g"><label>اتصال همزمان</label><input type="number" id="cu-conn" value="2"></div>
+      <div class="f-g"><label data-i18n="username">نام کاربری</label><input type="text" id="cu-name" required></div>
+      <div class="f-g"><label data-i18n="conn">اتصال همزمان</label><input type="number" id="cu-conn" value="2"></div>
     </div>
     <div class="f-r">
-      <div class="f-g"><label>حجم</label><input type="number" id="cu-vol" value="20"></div>
-      <div class="f-g"><label>واحد</label><select id="cu-vol-u"><option value="GB">GB</option><option value="MB">MB</option></select></div>
-      <div class="f-g"><label>اعتبار</label><input type="number" id="cu-exp" value="30"></div>
-      <div class="f-g"><label>واحد</label><select id="cu-exp-u"><option value="days">روز</option><option value="months">ماه</option></select></div>
+      <div class="f-g"><label data-i18n="volume">حجم</label><input type="number" id="cu-vol" value="20"></div>
+      <div class="f-g"><label data-i18n="unit">واحد</label><select id="cu-vol-u"><option value="GB">GB</option><option value="MB">MB</option></select></div>
+      <div class="f-g"><label data-i18n="expire">اعتبار</label><input type="number" id="cu-exp" value="30"></div>
+      <div class="f-g"><label data-i18n="unit">واحد</label><select id="cu-exp-u"><option value="days" data-i18n="day">روز</option><option value="months" data-i18n="month">ماه</option></select></div>
     </div>
     <div class="f-g">
-      <label>اینباندها (چندتایی)</label>
+      <label data-i18n="inboundsMulti">اینباندها (چندتایی)</label>
       <div id="cu-inbound" class="f-r" style="gap:6px"></div>
     </div>
 
     <div class="divider"></div>
     <div class="f-g">
-      <label>کشور پروکسی</label>
+      <label data-i18n="customIp">آی‌پی اختصاصی (اسکنر)</label>
+      <div class="cu-custom-wrap">
+        <button type="button" class="btn btn-g cu-custom-btn" id="cu-custom-btn" onclick="cuToggleCustomMenu(event)"><span id="cu-custom-label" data-i18n="noCustomIp">— بدون آی‌پی اختصاصی —</span><span>▾</span></button>
+        <div class="cu-custom-menu" id="cu-custom-menu">
+          <button type="button" class="cu-custom-opt" data-val="" onclick="cuPickCustom('', this)"><span>🚫</span> <span data-i18n="noCustomOpt">بدون آی‌پی اختصاصی</span></button>
+          <button type="button" class="cu-custom-opt" data-val="railway" onclick="cuPickCustom('railway', this)"><span>🛤️</span> Railway</button>
+          <button type="button" class="cu-custom-opt" data-val="cf" onclick="cuPickCustom('cf', this)"><span>☁️</span> Cloudflare</button>
+        </div>
+      </div>
+      <div id="cu-custom-preview" style="margin-top:8px"></div>
+      <div class="px-hint" data-i18n="customIpHint">از فایل ذخیره‌شده اسکنر، ۱۰ کانفیگ اضافه در ساب ساخته می‌شود. در بخش Address، فقط روی اینباندهای غیر-Reality قرار می‌گیرند.</div>
+    </div>
+    <div class="divider"></div>
+    <div class="f-g">
+      <label data-i18n="proxyCountry">کشور پروکسی</label>
       <select id="cu-country" onchange="pxSelectFromDropdown(this.value)">
-        <option value="">-- بدون پروکسی --</option>
+        <option value="" data-i18n="noProxy">-- بدون پروکسی --</option>
       </select>
     </div>
-    <div class="px-hint">کشور را روی نقشه کلیک کنید یا از فهرست بالا انتخاب کنید. سپس IP موردنظر را تیک بزنید — حداکثر ۳ IP.</div>
+    <div class="px-hint" data-i18n="pxHint">کشور را روی نقشه کلیک کنید یا از فهرست بالا انتخاب کنید. سپس IP موردنظر را تیک بزنید — حداکثر ۳ IP.</div>
     <div id="px-map-wrap">
       <div class="px-map" id="px-map"></div>
     </div>
     <div class="px-tools">
-      <input class="f-g" type="text" id="px-search" placeholder="جستجوی IP..." oninput="pxFilterIPs()" style="padding:8px 12px;background:rgba(255,255,255,.04);border:1px solid var(--bg3);border-radius:9px;color:var(--txt)">
-      <button type="button" class="btn btn-sm btn-g" onclick="pxSelectAll()">انتخاب همه</button>
-      <button type="button" class="btn btn-sm btn-g" onclick="pxClearAll()">پاک کردن</button>
-      <button type="button" class="btn btn-sm btn-g" id="px-ping-btn" onclick="pxLoadPings()">بررسی پینگ</button>
-      <button type="button" class="btn btn-sm btn-p" onclick="pxLoadCleanIps()" title="دریافت آیپی تمیز از مخزن">مخزن آیپی</button>
+      <input class="f-g" type="text" id="px-search" data-i18n="searchIp" placeholder="جستجوی IP..." oninput="pxFilterIPs()" style="padding:8px 12px;background:rgba(255,255,255,.04);border:1px solid var(--bg3);border-radius:9px;color:var(--txt)">
+      <button type="button" class="btn btn-sm btn-g" onclick="pxSelectAll()"><span data-i18n="selectAll">انتخاب همه</span></button>
+      <button type="button" class="btn btn-sm btn-g" onclick="pxClearAll()"><span data-i18n="clearAll">پاک کردن</span></button>
+      <button type="button" class="btn btn-sm btn-g" id="px-ping-btn" onclick="pxLoadPings()"><span data-i18n="checkPing">بررسی پینگ</span></button>
+      <button type="button" class="btn btn-sm btn-p" onclick="pxLoadCleanIps()" data-i18n-title="ipRepo" title="دریافت آیپی تمیز از مخزن"><span data-i18n="ipRepo">مخزن آیپی</span></button>
     </div>
-    <div class="px-ipbox" id="px-ip-list"><div class="px-noselected">ابتدا یک کشور را انتخاب کنید</div></div>
+    <div class="px-ipbox" id="px-ip-list"><div class="px-noselected" data-i18n="firstSelectCountry">ابتدا یک کشور را انتخاب کنید</div></div>
     <div id="px-tags" style="margin-top:8px"></div>
     <div class="px-path" id="px-path"></div>
     <div class="modal-btns">
-      <button type="button" class="btn btn-g" onclick="closeModal('mod-user')">انصراف</button>
-      <button type="submit" class="btn btn-p" id="cu-submit">ایجاد کاربر</button>
+      <button type="button" class="btn btn-g" onclick="closeModal('mod-user')"><span data-i18n="cancel">انصراف</span></button>
+      <button type="submit" class="btn btn-p" id="cu-submit"><span data-i18n="submitUser">ایجاد کاربر</span></button>
     </div>
   </form>
 </div></div>
 
 <!-- EDIT USER -->
 <div class="modal" id="mod-edit-user"><div class="modal-c">
-  <div class="modal-t"><span class="glow">ویرایش کاربر</span></div>
+  <div class="modal-t"><span class="glow" data-i18n="editUser">ویرایش کاربر</span></div>
   <form onsubmit="submitEditUser(event)">
     <input type="hidden" id="eu-id">
-    <div class="f-g"><label>نام کاربری</label><input type="text" id="eu-name" required></div>
-    <div class="f-g"><label>حجم (GB - ۰=نامحدود)</label><input type="number" id="eu-vol" value="20"></div>
-    <div class="f-g"><label>روز اعتبار (۰=نامحدود)</label><input type="number" id="eu-exp" value="30"></div>
-    <div class="f-g"><label>اتصال همزمان</label><input type="number" id="eu-conn" value="2"></div>
-    <div class="f-g"><label>وضعیت</label><select id="eu-status"><option value="active">فعال</option><option value="inactive">غیرفعال</option></select></div>
+    <div class="f-g"><label data-i18n="username">نام کاربری</label><input type="text" id="eu-name" required></div>
+    <div class="f-g"><label data-i18n="volEdit">حجم (GB - ۰=نامحدود)</label><input type="number" id="eu-vol" value="20"></div>
+    <div class="f-g"><label data-i18n="daysEdit">روز اعتبار (۰=نامحدود)</label><input type="number" id="eu-exp" value="30"></div>
+    <div class="f-g"><label data-i18n="conn">اتصال همزمان</label><input type="number" id="eu-conn" value="2"></div>
+    <div class="f-g"><label data-i18n="status">وضعیت</label><select id="eu-status"><option value="active" data-i18n="active">فعال</option><option value="inactive" data-i18n="inactive">غیرفعال</option></select></div>
     <div class="f-g" style="display:flex;align-items:center;gap:8px">
       <input type="checkbox" id="eu-reset" style="width:auto">
-      <label style="margin:0">بازنشانی ترافیک</label>
+      <label style="margin:0" data-i18n="resetTraffic">بازنشانی ترافیک</label>
     </div>
-    <div class="f-g"><label>Proxy Country</label><select id="eu-country"><option value="">-- None --</option></select></div>
+    <div class="f-g"><label data-i18n="proxyCountry">Proxy Country</label><select id="eu-country"><option value="" data-i18n="noProxy">-- None --</option></select></div>
     <div class="modal-btns">
-      <button type="button" class="btn btn-g" onclick="closeModal('mod-edit-user')">انصراف</button>
-      <button type="submit" class="btn btn-p">ذخیره تغییرات</button>
+      <button type="button" class="btn btn-g" onclick="closeModal('mod-edit-user')"><span data-i18n="cancel">انصراف</span></button>
+      <button type="submit" class="btn btn-p"><span data-i18n="saveChanges">ذخیره تغییرات</span></button>
     </div>
   </form>
 </div></div>
@@ -924,17 +1096,17 @@ tr{animation:fadeIn .3s ease}
   <form onsubmit="submitInbound(event)">
     <input type="hidden" id="ib-id">
     <!-- Common -->
-    <div class="f-g"><label>نام اینباند</label><input type="text" id="ib-name" required placeholder="مثال: Main-WS"></div>
+    <div class="f-g"><label data-i18n="inboundName">نام اینباند</label><input type="text" id="ib-name" required data-i18n-placeholder="inboundName" placeholder="مثال: Main-WS"></div>
     <div class="f-r">
-      <div class="f-g"><label>پروتکل</label><select id="ib-proto" onchange="onInboundProtoChange()">
+      <div class="f-g"><label data-i18n="proto">پروتکل</label><select id="ib-proto" onchange="onInboundProtoChange()">
         <option value="vless">VLESS</option>
         <option value="vmess">VMess</option>
         <option value="trojan">Trojan</option>
       </select></div>
-      <div class="f-g"><label>پورت</label><input type="number" id="ib-port" required placeholder="443"></div>
+      <div class="f-g"><label data-i18n="port">پورت</label><input type="number" id="ib-port" required placeholder="443"></div>
     </div>
     <div class="f-r">
-      <div class="f-g"><label>پورت خارجی</label><input type="number" id="ib-ext-port" placeholder="اختیاری"></div>
+      <div class="f-g"><label data-i18n="extPort">پورت خارجی</label><input type="number" id="ib-ext-port" data-i18n-placeholder="optional" placeholder="اختیاری"></div>
       <div class="f-g"><label>Fingerprint</label><select id="ib-fingerprint">
         <option value="chrome">Chrome</option>
         <option value="firefox">Firefox</option>
@@ -946,31 +1118,31 @@ tr{animation:fadeIn .3s ease}
 
     <!-- TLS / Reality Group -->
     <div id="ib-sec-wrap" class="hidden">
-      <div class="f-g"><label>نوع امنیت</label><select id="ib-security" onchange="onSecurityChange()">
+      <div class="f-g"><label data-i18n="securityType">نوع امنیت</label><select id="ib-security" onchange="onSecurityChange()">
         <option value="tls">TLS</option>
         <option value="reality">Reality</option>
         <option value="none">None</option>
       </select></div>
       <!-- TLS fields -->
       <div id="ib-tls-fields">
-        <div class="f-g"><label>دامنه</label><input type="text" id="ib-domain" placeholder="example.com" dir="ltr" oninput="onDomainChange()"></div>
-        <div class="f-g"><label>SNI</label><input type="text" id="ib-sni" value="is1-ssl.mzstatic.com" dir="ltr" readonly title="SNI هدف ثابت"></div>
+        <div class="f-g"><label data-i18n="domain">دامنه</label><input type="text" id="ib-domain" placeholder="example.com" dir="ltr" oninput="onDomainChange()"></div>
+        <div class="f-g"><label>SNI</label><input type="text" id="ib-sni" value="is1-ssl.mzstatic.com" dir="ltr" readonly data-i18n-title="sniFixed" title="SNI هدف ثابت"></div>
       </div>
       <!-- Reality fields -->
       <div id="ib-reality-fields" class="hidden">
         <div class="divider"></div>
-        <div style="font-size:11px;color:var(--neon);font-weight:700;margin-bottom:8px">تنظیمات Reality</div>
+        <div style="font-size:11px;color:var(--neon);font-weight:700;margin-bottom:8px" data-i18n="realitySettings">تنظیمات Reality</div>
         <div class="f-r">
-          <div class="f-g"><label>Private Key (x25519)</label><input type="text" id="ib-privkey" dir="ltr" placeholder="تولید خودکار"></div>
-          <div class="f-g"><label>Public Key</label><input type="text" id="ib-pubkey" dir="ltr" placeholder="تولید خودکار" readonly></div>
+          <div class="f-g"><label>Private Key (x25519)</label><input type="text" id="ib-privkey" dir="ltr" data-i18n-placeholder="autoGen" placeholder="تولید خودکار"></div>
+          <div class="f-g"><label>Public Key</label><input type="text" id="ib-pubkey" dir="ltr" data-i18n-placeholder="autoGen" placeholder="تولید خودکار" readonly></div>
         </div>
-        <button type="button" class="btn btn-sm btn-b" onclick="generateRealityKeysUI()" style="width:100%;margin-bottom:10px">تولید کلید Reality (x25519)</button>
-        <div class="f-g"><label>Destination</label><input type="text" id="ib-dest" value="is1-ssl.mzstatic.com:443" dir="ltr"></div>
-        <div class="f-g"><label>Server Names (SNI)</label><input type="text" id="ib-servernames" value="is1-ssl.mzstatic.com" dir="ltr" placeholder="با کاما جدا کنید"></div>
-        <div class="f-g"><label>Short IDs</label><div style="display:flex;gap:6px"><input type="text" id="ib-shortids" value="" dir="ltr" placeholder="هگز ۸ رقمی — خالی = تصادفی" style="flex:1"><button type="button" class="btn btn-sm" onclick="generateShortId()" style="white-space:nowrap">+ تولید</button></div></div>
-        <div class="f-g"><label>SpiderX</label><input type="text" id="ib-spiderx" dir="ltr" placeholder="/" value="/"></div>
-        <div class="f-g"><label>External Domain</label><input type="text" id="ib-extdomain" dir="ltr" placeholder="دامنه خارجی برای کانفیگ کلاینت"></div>
-        <div class="f-g"><label>External Port</label><input type="number" id="ib-extport" value="443" dir="ltr" placeholder="443"></div>
+        <button type="button" class="btn btn-sm btn-b" onclick="generateRealityKeysUI()" style="width:100%;margin-bottom:10px"><span data-i18n="genRealityKey">تولید کلید Reality (x25519)</span></button>
+        <div class="f-g"><label data-i18n="dest">Destination</label><input type="text" id="ib-dest" value="is1-ssl.mzstatic.com:443" dir="ltr"></div>
+        <div class="f-g"><label data-i18n="serverNames">Server Names (SNI)</label><input type="text" id="ib-servernames" value="is1-ssl.mzstatic.com" dir="ltr" data-i18n-placeholder="commaSep" placeholder="با کاما جدا کنید"></div>
+        <div class="f-g"><label data-i18n="shortIds">Short IDs</label><div style="display:flex;gap:6px"><input type="text" id="ib-shortids" value="" dir="ltr" data-i18n-placeholder="hex8" placeholder="هگز ۸ رقمی — خالی = تصادفی" style="flex:1"><button type="button" class="btn btn-sm" onclick="generateShortId()" style="white-space:nowrap"><span data-i18n="generate">+ تولید</span></button></div></div>
+        <div class="f-g"><label data-i18n="spiderx">SpiderX</label><input type="text" id="ib-spiderx" dir="ltr" placeholder="/" value="/"></div>
+        <div class="f-g"><label data-i18n="extDomain">External Domain</label><input type="text" id="ib-extdomain" dir="ltr" data-i18n-placeholder="extDomainPlace" placeholder="دامنه خارجی برای کانفیگ کلاینت"></div>
+        <div class="f-g"><label data-i18n="extPortCfg">External Port</label><input type="number" id="ib-extport" value="443" dir="ltr" placeholder="443"></div>
       </div>
     </div>
 
@@ -978,11 +1150,11 @@ tr{animation:fadeIn .3s ease}
     <div class="divider"></div>
     <div id="ib-net-wrap">
       <div class="f-r">
-        <div class="f-g"><label>پورت داخلی (Xray listen)</label><input type="number" id="ib-port" value="8443" dir="ltr"></div>
-        <div class="f-g"><label>پورت خارجی (کانفیگ)</label><input type="number" id="ib-extport2" value="25459" dir="ltr"></div>
+        <div class="f-g"><label data-i18n="intPort">پورت داخلی (Xray listen)</label><input type="number" id="ib-port" value="8443" dir="ltr"></div>
+        <div class="f-g"><label data-i18n="extPortCfg2">پورت خارجی (کانفیگ)</label><input type="number" id="ib-extport2" value="25459" dir="ltr"></div>
       </div>
-      <div style="font-size:10px;color:var(--txt2);margin-bottom:10px">پورت داخلی = پورتی که Xray روی آن گوش میدهد. پورت خارجی = پورتی که در کانفیگ ظاهر میشود (آدرس کانفیگ: domain:external_port).</div>
-      <div class="f-g"><label>شبکه</label><select id="ib-network" onchange="onNetworkChange()">
+      <div style="font-size:10px;color:var(--txt2);margin-bottom:10px" data-i18n="portHint">پورت داخلی = پورتی که Xray روی آن گوش میدهد. پورت خارجی = پورتی که در کانفیگ ظاهر میشود (آدرس کانفیگ: domain:external_port).</div>
+      <div class="f-g"><label data-i18n="network">شبکه</label><select id="ib-network" onchange="onNetworkChange()">
         <option value="tcp">TCP</option>
         <option value="ws">WebSocket</option>
         <option value="xhttp">XHTTP</option>
@@ -998,26 +1170,26 @@ tr{animation:fadeIn .3s ease}
         </div>
       </div>
       <!-- gRPC fields -->
-      <div id="ib-grpc-fields" class="hidden"><div class="f-g"><label>Service Name</label><input type="text" id="ib-grpc-svc" value="grpc" dir="ltr"></div></div>
+      <div id="ib-grpc-fields" class="hidden"><div class="f-g"><label data-i18n="serviceName">Service Name</label><input type="text" id="ib-grpc-svc" value="grpc" dir="ltr"></div></div>
     </div>
 
     <div class="modal-btns">
-      <button type="button" class="btn btn-g" onclick="closeModal('mod-inbound')">انصراف</button>
-      <button type="submit" class="btn btn-p" id="ib-submit">ایجاد اینباند</button>
+      <button type="button" class="btn btn-g" onclick="closeModal('mod-inbound')"><span data-i18n="cancel">انصراف</span></button>
+      <button type="submit" class="btn btn-p" id="ib-submit"><span data-i18n="createInbound">ایجاد اینباند</span></button>
     </div>
   </form>
 </div></div>
 
 <!-- CONFIG VIEWER -->
 <div class="modal" id="mod-cfg"><div class="modal-c">
-  <div class="modal-t"><span class="glow">کانفیگ</span></div>
+  <div class="modal-t"><span class="glow" data-i18n="config">کانفیگ</span></div>
   <pre class="cfg-code" id="cfg-code"></pre>
   <div class="modal-btns">
     <button class="btn btn-p" onclick="copyCfg()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-      کپی
+      <span data-i18n="copy">کپی</span>
     </button>
-    <button class="btn btn-g" onclick="closeModal('mod-cfg')">بستن</button>
+    <button class="btn btn-g" onclick="closeModal('mod-cfg')"><span data-i18n="close">بستن</span></button>
   </div>
 </div></div>
 
@@ -1025,7 +1197,7 @@ tr{animation:fadeIn .3s ease}
 <div class="modal" id="mod-qr"><div class="modal-c" style="max-width:340px;text-align:center">
   <div class="modal-t"><span class="glow">QR Code</span></div>
   <img id="qr-img" src="" style="width:260px;height:260px;background:#fff;border-radius:12px;margin:12px auto;display:block" alt="QR">
-  <button class="btn btn-g" onclick="closeModal('mod-qr')" style="width:100%">بستن</button>
+  <button class="btn btn-g" onclick="closeModal('mod-qr')" style="width:100%"><span data-i18n="close">بستن</span></button>
 </div></div>
 
 <!-- TOAST -->
@@ -1042,6 +1214,123 @@ var ALL_USERS = [];
 
 var selectedAccent = localStorage.getItem('spider-accent') || 'red';
 var selectedTheme = localStorage.getItem('spider-theme') || 'dark';
+
+// ─── I18N (FA / EN) ───
+var LANG = localStorage.getItem('spider-lang') || 'fa';
+var I18N = {
+  fa: {
+    'dash': 'داشبورد', 'users': 'کاربران', 'inbounds': 'اینباندها', 'scanner': 'اسکنر IP', 'settings': 'تنظیمات', 'contact': 'Contact Me', 'logout': 'خروج',
+    'tab.dash': 'داشبورد', 'tab.users': 'مدیریت کاربران', 'tab.inbounds': 'مدیریت اینباندها', 'tab.scanner': 'اسکنر آی‌پی', 'tab.settings': 'تنظیمات',
+    'newUser': 'کاربر جدید', 'newInbound': 'اینباند جدید', 'domainMgr': 'مدیریت دامنه', 'domain': 'دامنه', 'saveDomain': 'ذخیره دامنه',
+    'loading': 'در حال بارگذاری...', 'noUsers': 'هیچ کاربری وجود ندارد', 'noInbounds': 'هیچ اینباندی وجود ندارد', 'errLoadUsers': 'خطا در بارگذاری کاربران', 'errLoadInbounds': 'خطا در بارگذاری اینباندها', 'errLoadStats': 'خطا در بارگذاری آمار',
+    'live': '● LIVE', 'scnTip': 'اسکن زنده از رنج‌های Cloudflare. IPهای پاسخ‌دهنده مرتب و ۱۰ تای اول به صورت خودکار ذخیره می‌شوند.',
+    'ipCount': 'تعداد IP', 'targetPort': 'پورت هدف', 'startScan': 'شروع اسکن', 'stop': 'توقف', 'scanning': 'در حال اسکن...', 'scanStopped': 'اسکن متوقف شد',
+    'found': 'IP یافت شده', 'tried': 'تست شده', 'bestPing': 'بهترین پینگ', 'saved': 'ذخیره شده', 'savedFirst10': 'ذخیره شده (اولین ۱۰ آی‌پی)', 'clear': 'پاک کردن', 'notSaved': 'هنوز ذخیره‌ای نیست', 'startPrompt': 'برای شروع اسکن، دکمه «شروع اسکن» را بزنید', 'noHit': 'هیچ آی‌پی پاسخ‌دهنده‌ای یافت نشد', 'saveCleared': 'لیست ذخیره‌شده پاک شد',
+    'scnRailwayTip': 'اسکن زنده از رنج‌های اعلام‌شده Railway (اروپا). IPهای پاسخ‌دهنده مرتب و ۱۰ تای اول به صورت خودکار ذخیره می‌شوند.',
+    'scnTcpTip': 'دامنه موردنظر را وارد کنید؛ IP دامنه (DNS) نمایش داده می‌شود و پینگ TCP آن به صورت زنده گزارش می‌شود. دامنه‌های Railway به صورت پیش‌فرض وجود دارند و قابل افزودن/حذف هستند.',
+    'addDomain': 'افزودن دامنه', 'checkDomains': 'شروع بررسی دامنه‌ها', 'checking': 'در حال بررسی...', 'checkingDomains': 'در حال بررسی دامنه‌ها...',
+    'serverResources': 'Server Resources', 'appearance': 'تنظیمات ظاهری', 'theme': 'تم', 'dark': 'تاریک', 'light': 'روشن', 'color': 'رنگ',
+    'red': 'قرمز', 'green': 'سبز', 'blue': 'آبی', 'proxyList': 'Proxy List', 'countryProxyList': 'لیست پروکسی‌های کشورها', 'refreshList': 'به‌روزرسانی لیست',
+    'proxyNote': 'پروکسی‌های رایگان سریع از بین می‌روند — برای تازه نگه‌داشتن لیست، گاهی به‌روزرسانی کنید.',
+    'panelMusic': 'Panel Music', 'bgMusic': 'Background Music', 'toggleMusic': 'روشن/خاموش', 'changePassword': 'Change Password', 'curPass': 'رمز فعلی', 'newPass': 'رمز جدید', 'changePassBtn': 'تغییر رمز',
+    'contactSub': 'برای پشتیبانی و همکاری با من در ارتباط باشید',
+    'createUser': 'ایجاد کاربر جدید', 'editUser': 'ویرایش کاربر', 'username': 'نام کاربری', 'conn': 'اتصال همزمان', 'volume': 'حجم', 'unit': 'واحد', 'expire': 'اعتبار', 'day': 'روز', 'month': 'ماه',
+    'inboundsMulti': 'اینباندها (چندتایی)', 'noInboundOpt': 'اینباندی وجود ندارد',
+    'customIp': 'آی‌پی اختصاصی (اسکنر)', 'noCustomIp': '— بدون آی‌پی اختصاصی —', 'noCustomOpt': 'بدون آی‌پی اختصاصی',
+    'customIpHint': 'از فایل ذخیره‌شده اسکنر، ۱۰ کانفیگ اضافه در ساب ساخته می‌شود. در بخش Address، فقط روی اینباندهای غیر-Reality قرار می‌گیرند.',
+    'loadingIps': 'در حال بارگذاری...', 'noScannedIps': 'هنوز آی‌پی‌ای در فایل اسکنر ذخیره نشده. اول از صفحه اسکنر، اسکن کنید.', 'scannedTo10': 'آی‌پی ذخیره‌شده → ۱۰ کانفیگ:', 'errLoadIps': 'خطا در دریافت آی‌پی‌ها',
+    'proxyCountry': 'کشور پروکسی', 'noProxy': '-- بدون پروکسی --', 'pxHint': 'کشور را روی نقشه کلیک کنید یا از فهرست بالا انتخاب کنید. سپس IP موردنظر را تیک بزنید — حداکثر ۳ IP.',
+    'searchIp': 'جستجوی IP...', 'selectAll': 'انتخاب همه', 'clearAll': 'پاک کردن', 'checkPing': 'بررسی پینگ', 'ipRepo': 'مخزن آیپی', 'checkingPing': 'در حال بررسی...',
+    'firstSelectCountry': 'ابتدا یک کشور را انتخاب کنید', 'noIpCountry': 'IP ای برای این کشور یافت نشد', 'selectCountry': 'کشور را انتخاب کنید', 'noResult': 'نتیجه‌ای یافت نشد', 'selectedIps': 'IP های انتخابی', 'pathPreview': 'پیش‌نمایش path کانفیگ:', 'selected': 'انتخاب شده',
+    'noProxyCountry': 'برای این کشور پروکسی موجود نیست', 'errLoadMap': 'خطا در بارگذاری نقشه. از فهرست کشور استفاده کنید.', 'noCleanIps': 'آیپی تمیزی از مخزن دریافت نشد', 'cleanIpsAdded': 'آیپی تمیز از مخزن افزوده شد', 'received': 'دریافت شد', 'errRepo': 'خطا در دریافت مخزن آیپی', 'maxIps': 'حداکثر {n} IP می‌توانید انتخاب کنید', 'errPing': 'خطا در بررسی پینگ',
+    'cancel': 'انصراف', 'submitUser': 'ایجاد کاربر', 'creatingUser': 'در حال ایجاد...', 'saving': 'در حال ذخیره...', 'userCreated': 'با موفقیت ایجاد شد',
+    'volEdit': 'حجم (GB - ۰=نامحدود)', 'daysEdit': 'روز اعتبار (۰=نامحدود)', 'status': 'وضعیت', 'active': 'فعال', 'inactive': 'غیرفعال', 'resetTraffic': 'بازنشانی ترافیک', 'saveChanges': 'ذخیره تغییرات',
+    'inboundName': 'نام اینباند', 'proto': 'پروتکل', 'port': 'پورت', 'extPort': 'پورت خارجی', 'optional': 'اختیاری', 'sniFixed': 'SNI هدف ثابت',
+    'securityType': 'نوع امنیت', 'realitySettings': 'تنظیمات Reality', 'autoGen': 'تولید خودکار', 'genRealityKey': 'تولید کلید Reality (x25519)',
+    'dest': 'Destination', 'serverNames': 'Server Names (SNI)', 'shortIds': 'Short IDs', 'hex8': 'هگز ۸ رقمی — خالی = تصادفی', 'generate': '+ تولید', 'spiderx': 'SpiderX',
+    'extDomain': 'External Domain', 'extPortCfg': 'External Port', 'extDomainPlace': 'دامنه خارجی برای کانفیگ کلاینت', 'commaSep': 'با کاما جدا کنید',
+    'intPort': 'پورت داخلی (Xray listen)', 'extPortCfg2': 'پورت خارجی (کانفیگ)', 'portHint': 'پورت داخلی = پورتی که Xray روی آن گوش میدهد. پورت خارجی = پورتی که در کانفیگ ظاهر میشود (آدرس کانفیگ: domain:external_port).',
+    'network': 'شبکه', 'serviceName': 'Service Name', 'createInbound': 'ایجاد اینباند', 'editInbound': 'ویرایش اینباند', 'inboundCreated': 'اینباند با موفقیت ذخیره شد',
+    'config': 'کانفیگ', 'copy': 'کپی', 'close': 'بستن', 'copied': 'کانفیگ کپی شد', 'noCfg': 'کانفیگی موجود نیست', 'errCopy': 'خطا در کپی', 'notFound': 'یافت نشد', 'delete': 'حذف', 'edit': 'ویرایش', 'unlimited': 'نامحدود', 'expired': 'منقضی', 'daysUnit': ' روز', 'default': 'پیش‌فرض', 'usersCount': 'کاربران', 'secNetwork': 'شبکه', 'security': 'امنیت', 'action': 'عملیات', 'expiry': 'انقضا', 'connTh': 'اتصال',
+    'confirmDeleteUser': 'آیا از حذف این کاربر اطمینان دارید؟', 'confirmDeleteInbound': 'آیا از حذف این اینباند اطمینان دارید؟', 'keysGenerated': 'کلیدهای Reality تولید شد', 'errKeyGen': 'خطا در تولید کلید', 'shortIdGen': 'Short ID تولید شد', 'shortIdNew': 'Short ID جدید تولید شد',
+    'inboundUpdated': 'اینباند بروزرسانی شد', 'inboundCreated': 'اینباند ایجاد شد', 'updateInbound': 'بروزرسانی اینباند', 'inboundDeleted': 'اینباند حذف شد',
+    'refreshingProxy': 'در حال به‌روزرسانی لیست پروکسی‌ها... (ممکن است ۱-۲ دقیقه طول بکشد)', 'proxyRefreshed': 'لیست به‌روزرسانی شد ✓', 'candidatesChecked': 'کاندید بررسی شد →', 'workingProxies': 'پروکسی کارا پیدا شد', 'proxies': 'پروکسی', 'errRefreshProxy': 'خطا در به‌روزرسانی لیست',
+    'srv': 'وضعیت زنده سرور', 'cpu': 'پردازنده', 'ram': 'حافظه رم', 'disk': 'دیسک', 'sent': 'ارسال', 'recv': 'دریافت', 'activeUsers': 'کاربران فعال/کل', 'trafficUsed': 'ترافیک مصرفی', 'activeConns': 'اتصالات فعال', 'uptime': 'زمان فعالیت',
+    'goodMorning': 'صبح بخیر', 'goodNoon': 'ظهر بخیر', 'goodEvening': 'عصر بخیر', 'admin': 'ادمین',
+    'toast.userCreated': 'کاربر ایجاد شد', 'toast.userUpdated': 'کاربر بروزرسانی شد', 'toast.userDeleted': 'کاربر حذف شد', 'toast.userToggled': 'وضعیت کاربر تغییر کرد', 'toast.inboundSaved': 'اینباند ذخیره شد', 'toast.domainSaved': 'دامنه ذخیره شد', 'toast.passChanged': 'رمز تغییر کرد', 'toast.err': 'خطا',
+    'login': { 'signIn': 'Sign In' }
+  },
+  en: {
+    'dash': 'Dashboard', 'users': 'Users', 'inbounds': 'Inbounds', 'scanner': 'IP Scanner', 'settings': 'Settings', 'contact': 'Contact Me', 'logout': 'Logout',
+    'tab.dash': 'Dashboard', 'tab.users': 'Manage Users', 'tab.inbounds': 'Manage Inbounds', 'tab.scanner': 'IP Scanner', 'tab.settings': 'Settings',
+    'newUser': 'New User', 'newInbound': 'New Inbound', 'domainMgr': 'Domain Management', 'domain': 'Domain', 'saveDomain': 'Save Domain',
+    'loading': 'Loading...', 'noUsers': 'No users found', 'noInbounds': 'No inbounds found', 'errLoadUsers': 'Error loading users', 'errLoadInbounds': 'Error loading inbounds', 'errLoadStats': 'Error loading stats',
+    'live': '● LIVE', 'scnTip': 'Live scan of Cloudflare ranges. Working IPs are sorted and the first 10 are auto-saved.',
+    'ipCount': 'IP Count', 'targetPort': 'Target Port', 'startScan': 'Start Scan', 'stop': 'Stop', 'scanning': 'Scanning...', 'scanStopped': 'Scan stopped',
+    'found': 'IP Found', 'tried': 'Tested', 'bestPing': 'Best Ping', 'saved': 'Saved', 'savedFirst10': 'Saved (first 10 IPs)', 'clear': 'Clear', 'notSaved': 'Nothing saved yet', 'startPrompt': 'Press "Start Scan" to begin scanning', 'noHit': 'No responding IP found', 'saveCleared': 'Saved list cleared',
+    'scnRailwayTip': 'Live scan of announced Railway ranges (Europe). Working IPs are sorted and the first 10 are auto-saved.',
+    'scnTcpTip': 'Enter a domain; its IP (DNS) is resolved and its TCP ping is reported live. Railway domains are pre-loaded and can be added/removed.',
+    'addDomain': 'Add Domain', 'checkDomains': 'Check Domains', 'checking': 'Checking...', 'checkingDomains': 'Checking domains...',
+    'serverResources': 'Server Resources', 'appearance': 'Appearance', 'theme': 'Theme', 'dark': 'Dark', 'light': 'Light', 'color': 'Color',
+    'red': 'Red', 'green': 'Green', 'blue': 'Blue', 'proxyList': 'Proxy List', 'countryProxyList': 'Country proxy list', 'refreshList': 'Refresh List',
+    'proxyNote': 'Free proxies die fast — refresh occasionally to keep the list fresh.',
+    'panelMusic': 'Panel Music', 'bgMusic': 'Background Music', 'toggleMusic': 'On/Off', 'changePassword': 'Change Password', 'curPass': 'Current Password', 'newPass': 'New Password', 'changePassBtn': 'Change Password',
+    'contactSub': 'Get in touch with me for support and collaboration',
+    'createUser': 'Create New User', 'editUser': 'Edit User', 'username': 'Username', 'conn': 'Concurrent Connections', 'volume': 'Traffic', 'unit': 'Unit', 'expire': 'Expiry', 'day': 'Day', 'month': 'Month',
+    'inboundsMulti': 'Inbounds (multi-select)', 'noInboundOpt': 'No inbounds available',
+    'customIp': 'Custom IP (Scanner)', 'noCustomIp': '— No custom IP —', 'noCustomOpt': 'No custom IP',
+    'customIpHint': 'Adds 10 extra configs in the sub from the scanner file. In the Address field they are only placed on non-Reality inbounds.',
+    'loadingIps': 'Loading...', 'noScannedIps': 'No IPs saved in the scanner file yet. Run a scan from the Scanner page first.', 'scannedTo10': 'saved IPs → 10 configs:', 'errLoadIps': 'Error loading IPs',
+    'proxyCountry': 'Proxy Country', 'noProxy': '-- No Proxy --', 'pxHint': 'Click a country on the map or pick from the list above, then check the IPs — up to 3 IPs.',
+    'searchIp': 'Search IP...', 'selectAll': 'Select All', 'clearAll': 'Clear', 'checkPing': 'Check Ping', 'ipRepo': 'IP Repo', 'checkingPing': 'Checking...',
+    'firstSelectCountry': 'Select a country first', 'noIpCountry': 'No IPs found for this country', 'selectCountry': 'Select a country', 'noResult': 'No results found', 'selectedIps': 'Selected IPs', 'pathPreview': 'Config path preview:', 'selected': 'selected',
+    'noProxyCountry': 'No proxy available for this country', 'errLoadMap': 'Error loading map. Use the country list instead.', 'noCleanIps': 'No clean IPs received from the repo', 'cleanIpsAdded': 'clean IPs added from repo', 'received': 'received', 'errRepo': 'Error loading IP repo', 'maxIps': 'You can select up to {n} IPs', 'errPing': 'Error checking ping',
+    'cancel': 'Cancel', 'submitUser': 'Create User', 'creatingUser': 'Creating...', 'saving': 'Saving...', 'userCreated': 'created successfully',
+    'volEdit': 'Traffic (GB - 0=Unlimited)', 'daysEdit': 'Expiry days (0=Unlimited)', 'status': 'Status', 'active': 'Active', 'inactive': 'Inactive', 'resetTraffic': 'Reset traffic', 'saveChanges': 'Save Changes',
+    'inboundName': 'Inbound Name', 'proto': 'Protocol', 'port': 'Port', 'extPort': 'External Port', 'optional': 'optional', 'sniFixed': 'Fixed target SNI',
+    'securityType': 'Security Type', 'realitySettings': 'Reality Settings', 'autoGen': 'Auto-generated', 'genRealityKey': 'Generate Reality Keys (x25519)',
+    'dest': 'Destination', 'serverNames': 'Server Names (SNI)', 'shortIds': 'Short IDs', 'hex8': '8-digit hex — empty = random', 'generate': '+ Generate', 'spiderx': 'SpiderX',
+    'extDomain': 'External Domain', 'extPortCfg': 'External Port', 'extDomainPlace': 'External domain shown in the client config', 'commaSep': 'Separate with commas',
+    'intPort': 'Internal Port (Xray listen)', 'extPortCfg2': 'External Port (config)', 'portHint': 'Internal port = what Xray listens on. External port = what appears in the config (config address: domain:external_port).',
+    'network': 'Network', 'serviceName': 'Service Name', 'createInbound': 'Create Inbound', 'editInbound': 'Edit Inbound', 'inboundCreated': 'Inbound saved successfully',
+    'config': 'Config', 'copy': 'Copy', 'close': 'Close', 'copied': 'Config copied', 'noCfg': 'No config available', 'errCopy': 'Copy failed', 'notFound': 'Not found', 'delete': 'Delete', 'edit': 'Edit', 'unlimited': 'Unlimited', 'expired': 'Expired', 'daysUnit': ' days', 'default': 'Default', 'usersCount': 'Users', 'secNetwork': 'Network', 'security': 'Security', 'action': 'Actions', 'expiry': 'Expiry', 'connTh': 'Conn',
+    'confirmDeleteUser': 'Are you sure you want to delete this user?', 'confirmDeleteInbound': 'Are you sure you want to delete this inbound?', 'keysGenerated': 'Reality keys generated', 'errKeyGen': 'Key generation failed', 'shortIdGen': 'Short ID generated', 'shortIdNew': 'New Short ID generated',
+    'inboundUpdated': 'Inbound updated', 'inboundCreated': 'Inbound created', 'updateInbound': 'Update Inbound', 'inboundDeleted': 'Inbound deleted',
+    'refreshingProxy': 'Refreshing proxy list... (may take 1-2 minutes)', 'proxyRefreshed': 'List refreshed ✓', 'candidatesChecked': 'candidates checked →', 'workingProxies': 'working proxies found', 'proxies': 'proxies', 'errRefreshProxy': 'Error refreshing the list',
+    'srv': 'Live Server Status', 'cpu': 'CPU', 'ram': 'RAM', 'disk': 'Disk', 'sent': 'Sent', 'recv': 'Received', 'activeUsers': 'Active / Total Users', 'trafficUsed': 'Traffic Used', 'activeConns': 'Active Connections', 'uptime': 'Uptime',
+    'goodMorning': 'Good morning', 'goodNoon': 'Good afternoon', 'goodEvening': 'Good evening', 'admin': 'Admin',
+    'toast.userCreated': 'User created', 'toast.userUpdated': 'User updated', 'toast.userDeleted': 'User deleted', 'toast.userToggled': 'User status changed', 'toast.inboundSaved': 'Inbound saved', 'toast.domainSaved': 'Domain saved', 'toast.passChanged': 'Password changed', 'toast.err': 'Error',
+    'login': { 'signIn': 'Sign In' }
+  }
+};
+function t(key) {
+  var dict = I18N[LANG] || I18N.fa;
+  return dict[key] != null ? dict[key] : (I18N.fa[key] != null ? I18N.fa[key] : key);
+}
+function applyLang() {
+  document.documentElement.lang = LANG;
+  document.documentElement.dir = LANG === 'en' ? 'ltr' : 'rtl';
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    var k = el.getAttribute('data-i18n');
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = t(k);
+    else el.textContent = t(k);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) { el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder'))); });
+  document.querySelectorAll('[data-i18n-title]').forEach(function(el) { el.setAttribute('title', t(el.getAttribute('data-i18n-title'))); });
+  var lb = $id('lang-label');
+  if (lb) { lb.textContent = LANG === 'en' ? 'FA' : 'EN'; $id('lang-flag').textContent = LANG === 'en' ? '🇮🇷' : '🇬🇧'; }
+  updateGreeting();
+  if (typeof ALL_USERS !== 'undefined' && ALL_USERS.length) renderUsers();
+  if (typeof ALL_IB !== 'undefined' && ALL_IB.length) renderInbounds();
+  if ($id('dashboard-content') && $id('dashboard-content').innerHTML.indexOf('stat') > -1) loadDashboard();
+  if ($id('px-ip-list')) { try { pxRenderIPs(); pxRenderPreview(); } catch(e){} }
+}
+function toggleLang() {
+  LANG = LANG === 'fa' ? 'en' : 'fa';
+  localStorage.setItem('spider-lang', LANG);
+  applyLang();
+  toast(t(LANG === 'en' ? 'dash' : 'dash'), 'ok');
+}
 
 // ─── API ───
 async function api(url, opts) {
@@ -1078,6 +1367,7 @@ document.addEventListener('DOMContentLoaded', function() {
   loadTheme();
   initLoginShader();
   initParticles();
+  applyLang();
   checkAuth();
 });
 
@@ -1224,8 +1514,9 @@ async function doLogout() {
 }
 
 function updateGreeting() {
-  var h = new Date().getHours(), g = h < 12 ? 'صبح بخیر' : h < 17 ? 'ظهر بخیر' : 'عصر بخیر';
-  $id('grt').innerHTML = g + '، <strong>ادمین</strong>';
+  var h = new Date().getHours(), g = h < 12 ? t('goodMorning') : h < 17 ? t('goodNoon') : t('goodEvening');
+  var sep = LANG === 'en' ? ', <strong>' : '، <strong>';
+  $id('grt').innerHTML = g + sep + t('admin') + '</strong>';
 }
 
 // ─── Navigation ───
@@ -1239,6 +1530,7 @@ function switchTab(tab, el) {
   if (tab === 'dashboard') loadDashboard();
   if (tab === 'users') loadUsers();
   if (tab === 'inbounds') loadInbounds();
+  if (tab === 'scanner') scnInit();
   // Close sidebar on mobile
   closeSidebar();
 }
@@ -1272,23 +1564,23 @@ async function loadDashboard() {
   try {
     var s = await api('/stats');
     var html = '<div class="stats">';
-    html += statCard(iconUsers, '<span id="dash-users">' + s.active_users + ' / ' + s.total_users + '</span>', 'کاربران فعال/کل');
-    html += statCard(iconTraffic, '<span id="dash-traffic">' + fmtBytes(s.traffic_usage_gb * 1073741824) + '</span>', 'ترافیک مصرفی');
-    html += statCard(iconConn, '<span id="dash-conn">' + (s.active_connections || '۰') + '</span>', 'اتصالات فعال');
-    html += statCard(iconUptime, '<span id="dash-uptime">...</span>', 'زمان فعالیت');
+    html += statCard(iconUsers, '<span id="dash-users">' + s.active_users + ' / ' + s.total_users + '</span>', t('activeUsers'));
+    html += statCard(iconTraffic, '<span id="dash-traffic">' + fmtBytes(s.traffic_usage_gb * 1073741824) + '</span>', t('trafficUsed'));
+    html += statCard(iconConn, '<span id="dash-conn">' + (s.active_connections || '۰') + '</span>', t('activeConns'));
+    html += statCard(iconUptime, '<span id="dash-uptime">...</span>', t('uptime'));
     html += '</div>';
-    html += '<div class="panel"><div class="panel-h" style="align-items:center"><span class="glow">وضعیت زنده سرور</span><span class="badge badge-g" style="margin-right:auto;font-size:9px;animation:pulse 1.5s infinite">● LIVE</span></div>';
-    html += '<div class="srv-bar"><div class="srv-bar-h"><strong>پردازنده</strong><span id="live-cpu">--</span>%</div><div class="srv-bar-bg"><div class="srv-bar-f" id="bar-cpu" style="width:0%"></div></div></div>';
-    html += '<div class="srv-bar"><div class="srv-bar-h"><strong>حافظه رم</strong><span id="live-ram">--</span></div><div class="srv-bar-bg"><div class="srv-bar-f" id="bar-ram" style="width:0%"></div></div></div>';
-    html += '<div class="srv-bar"><div class="srv-bar-h"><strong>دیسک</strong><span id="live-disk">--</span></div><div class="srv-bar-bg"><div class="srv-bar-f" id="bar-disk" style="width:0%"></div></div></div>';
+    html += '<div class="panel"><div class="panel-h" style="align-items:center"><span class="glow">' + t('srv') + '</span><span class="badge badge-g" style="margin-right:auto;font-size:9px;animation:pulse 1.5s infinite">' + t('live') + '</span></div>';
+    html += '<div class="srv-bar"><div class="srv-bar-h"><strong>' + t('cpu') + '</strong><span id="live-cpu">--</span>%</div><div class="srv-bar-bg"><div class="srv-bar-f" id="bar-cpu" style="width:0%"></div></div></div>';
+    html += '<div class="srv-bar"><div class="srv-bar-h"><strong>' + t('ram') + '</strong><span id="live-ram">--</span></div><div class="srv-bar-bg"><div class="srv-bar-f" id="bar-ram" style="width:0%"></div></div></div>';
+    html += '<div class="srv-bar"><div class="srv-bar-h"><strong>' + t('disk') + '</strong><span id="live-disk">--</span></div><div class="srv-bar-bg"><div class="srv-bar-f" id="bar-disk" style="width:0%"></div></div></div>';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--txt2);margin-top:12px;padding-top:10px;border-top:1px solid var(--bg3)">';
-    html += '<span>ارسال: <strong style="color:var(--neon)" id="live-net-sent">...</strong></span>';
-    html += '<span>دریافت: <strong style="color:var(--neon)" id="live-net-recv">...</strong></span>';
+    html += '<span>' + t('sent') + ': <strong style="color:var(--neon)" id="live-net-sent">...</strong></span>';
+    html += '<span>' + t('recv') + ': <strong style="color:var(--neon)" id="live-net-recv">...</strong></span>';
     html += '<span>Uptime: <strong style="color:var(--neon)" id="live-uptime">...</strong></span>';
     html += '</div></div>';
     $id('dashboard-content').innerHTML = html;
     startLiveStats();
-  } catch(e) { $id('dashboard-content').innerHTML = '<div class="empty">خطا در بارگذاری آمار</div>'; }
+  } catch(e) { $id('dashboard-content').innerHTML = '<div class="empty">' + t('errLoadStats') + '</div>'; }
 }
 
 async function refreshLiveStats() {
@@ -1324,41 +1616,83 @@ async function loadUsers() {
     var d = await api('/api/users');
     ALL_USERS = d.users || [];
     renderUsers();
-  } catch(e) { $id('users-list').innerHTML = '<div class="empty">خطا در بارگذاری کاربران</div>'; }
+  } catch(e) { $id('users-list').innerHTML = '<div class="empty">' + t('errLoadUsers') + '</div>'; }
 }
 
 function renderUsers() {
   var el = $id('users-list');
-  if (!ALL_USERS.length) { el.innerHTML = '<div class="empty">هیچ کاربری وجود ندارد</div>'; return; }
-  var html = '<div class="tbl"><table><thead><tr><th>نام کاربری</th><th>حجم</th><th>انقضا</th><th>اتصال</th><th>وضعیت</th><th>اینباند</th><th>عملیات</th></tr></thead><tbody>';
+  if (!ALL_USERS.length) { el.innerHTML = '<div class="empty">' + t('noUsers') + '</div>'; return; }
+  var isMobile = window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
+  if (isMobile) { el.innerHTML = '<div class="u-cards">' + ALL_USERS.map(_userCard).join('') + '</div>'; return; }
+  var html = '<div class="tbl"><table><thead><tr><th>' + t('username') + '</th><th>' + t('volume') + '</th><th>' + t('expiry') + '</th><th>' + t('connTh') + '</th><th>' + t('status') + '</th><th>' + t('inbounds') + '</th><th>' + t('action') + '</th></tr></thead><tbody>';
   for (var i = 0; i < ALL_USERS.length; i++) {
-    var u = ALL_USERS[i];
-    var used = u.traffic_used_bytes || 0, limit = u.traffic_limit_bytes || 0;
-    var pct = limit > 0 ? Math.min((used / limit) * 100, 100) : 0;
-    var exp = u.expire_at ? Math.ceil((new Date(u.expire_at) - new Date()) / 86400000) : null;
-    var expText = exp === null ? 'نامحدود' : exp <= 0 ? '<span style="color:var(--red)">منقضی</span>' : exp + ' روز';
-    var statusBadge = u.status === 'active' ? '<span class="badge badge-g">فعال</span>' : '<span class="badge badge-r">غیرفعال</span>';
-    var inboundName = u.inbound_name || (u.inbound_id ? u.inbound_id.substring(0,8) : 'پیش‌فرض');
-    html += '<tr>';
-    html += '<td><strong>' + esc(u.username) + '</strong></td>';
-    html += '<td>' + fmtBytes(used) + ' / ' + (limit ? fmtBytes(limit) : 'نامحدود') + '<div class="pbar"><div class="pbar-f" style="width:' + pct + '%"></div></div></td>';
-    html += '<td>' + expText + '</td>';
-    html += '<td>' + (u.concurrent_connections || '۲') + '</td>';
-    html += '<td>' + statusBadge + '</td>';
-    html += '<td><span class="badge badge-b">' + esc(inboundName) + '</span></td>';
-    if (u.proxy_country) html += ' <span class="badge badge-p">' + esc(u.proxy_country) + '</span>';
-    html += '<td><div class="act-row">';
-    html += '<button class="btn btn-sm btn-g" onclick="viewCfg(\'' + u.user_id + '\')" title="Config">'+iconCfg+'</button>';
-    html += '<button class="btn btn-sm btn-g" onclick="viewSub(\'' + u.username + '\')" title="Sub Link">'+iconLink+'</button>';
-    html += '<button class="btn btn-sm btn-b" onclick="viewQR(\'' + u.user_id + '\')" title="QR Code">'+iconQr+'</button>';
-    html += '<button class="btn btn-sm btn-b" onclick="editUser(\'' + u.user_id + '\')" title="Edit">'+iconEdit+'</button>';
-    html += '<button class="btn btn-sm btn-r" onclick="toggleUser(\'' + u.user_id + '\')" title="Toggle">'+iconToggle+'</button>';
-    html += '<button class="btn btn-sm btn-r" onclick="deleteUser(\'' + u.user_id + '\')" title="Delete">'+iconTrash+'</button>';
-    html += '</div></td>';
-    html += '</tr>';
+    html += '<tr>' + _userRow(ALL_USERS[i]) + '</tr>';
   }
   html += '</tbody></table></div>';
   el.innerHTML = html;
+}
+
+function _userTraffic(u) {
+  var used = u.traffic_used_bytes || 0, limit = u.traffic_limit_bytes || 0;
+  var pct = limit > 0 ? Math.min((used / limit) * 100, 100) : 0;
+  return '<div style="font-size:11px">' + fmtBytes(used) + ' / ' + (limit ? fmtBytes(limit) : t('unlimited')) + '</div>' +
+    '<div class="pbar"><div class="pbar-f" style="width:' + pct + '%"></div></div>';
+}
+
+function _userExp(u) {
+  var exp = u.expire_at ? Math.ceil((new Date(u.expire_at) - new Date()) / 86400000) : null;
+  return exp === null ? t('unlimited') : exp <= 0 ? '<span style="color:var(--red)">' + t('expired') + '</span>' : exp + t('daysUnit');
+}
+
+function _userStatus(u) {
+  return u.status === 'active' ? '<span class="badge badge-g">' + t('active') + '</span>' : '<span class="badge badge-r">' + t('inactive') + '</span>';
+}
+
+function _userActions(u) {
+  return '<div class="act-row">' +
+    '<button class="btn btn-sm btn-g" onclick="viewCfg(\'' + u.user_id + '\')" title="Config">'+iconCfg+'</button>' +
+    '<button class="btn btn-sm btn-g" onclick="viewSub(\'' + u.username + '\')" title="Sub Link">'+iconLink+'</button>' +
+    '<button class="btn btn-sm btn-b" onclick="viewQR(\'' + u.user_id + '\')" title="QR Code">'+iconQr+'</button>' +
+    '<button class="btn btn-sm btn-b" onclick="editUser(\'' + u.user_id + '\')" title="Edit">'+iconEdit+'</button>' +
+    '<button class="btn btn-sm btn-r" onclick="toggleUser(\'' + u.user_id + '\')" title="Toggle">'+iconToggle+'</button>' +
+    '<button class="btn btn-sm btn-r" onclick="deleteUser(\'' + u.user_id + '\')" title="Delete">'+iconTrash+'</button>' +
+  '</div>';
+}
+
+function _userRow(u) {
+  var inboundName = u.inbound_name || (u.inbound_id ? u.inbound_id.substring(0,8) : t('default'));
+  var r = '<td><strong>' + esc(u.username) + '</strong></td>';
+  r += '<td>' + _userTraffic(u) + '</td>';
+  r += '<td>' + _userExp(u) + '</td>';
+  r += '<td>' + (u.concurrent_connections || '۲') + '</td>';
+  r += '<td>' + _userStatus(u) + '</td>';
+  r += '<td><span class="badge badge-b">' + esc(inboundName) + '</span>' + (u.proxy_country ? ' <span class="badge badge-p">' + esc(u.proxy_country) + '</span>' : '') + '</td>';
+  r += '<td>' + _userActions(u) + '</td>';
+  return r;
+}
+
+function _userCard(u) {
+  var inboundName = u.inbound_name || (u.inbound_id ? u.inbound_id.substring(0,8) : t('default'));
+  var expText = _userExp(u);
+  var countryBadge = u.proxy_country ? '<span class="badge badge-p">' + esc(u.proxy_country) + '</span>' : '';
+  return '<div class="u-card">' +
+    '<div class="u-card-top"><strong class="u-card-name">' + esc(u.username) + '</strong>' + _userStatus(u) + '</div>' +
+    '<div class="u-card-traffic">' + _userTraffic(u) + '</div>' +
+    '<div class="u-card-meta">' +
+      '<span><i>' + t('expiry') + '</i><b>' + expText + '</b></span>' +
+      '<span><i>' + t('connTh') + '</i><b>' + (u.concurrent_connections || '۲') + '</b></span>' +
+      '<span><i>' + t('inbounds') + '</i><b class="badge badge-b">' + esc(inboundName) + '</b></span>' +
+      (countryBadge ? '<span><i>IP</i><b>' + countryBadge + '</b></span>' : '') +
+    '</div>' +
+    '<div class="u-card-actions">' + _userActions(u) + '</div>' +
+  '</div>';
+}
+
+// Re-render users list when crossing the mobile/desktop breakpoint
+if (window.matchMedia) {
+  window.matchMedia('(max-width: 640px)').addListener(function(m) {
+    if ($id('users-list') && ALL_USERS.length) renderUsers();
+  });
 }
 
 // ─── User CRUD (SIMPLIFIED) ───
@@ -1371,6 +1705,7 @@ function openCreateUser() {
   $id('cu-exp-u').value = 'days';
   $id('cu-conn').value = '2';
   $id('cu-country').value = '';
+  cuPickCustom('', null, true);
   pxReset();
   pxInitMap();
   openModal('mod-user');
@@ -1379,7 +1714,7 @@ function openCreateUser() {
 
 async function submitCreateUser(e) {
   e.preventDefault();
-  var btn = $id('cu-submit'); btn.disabled = true; btn.textContent = 'در حال ایجاد...';
+  var btn = $id('cu-submit'); btn.disabled = true; btn.textContent = t('creatingUser');
   var v = parseFloat($id('cu-vol').value) || 0, vu = $id('cu-vol-u').value;
   var ex = parseInt($id('cu-exp').value) || 0, eu = $id('cu-exp-u').value;
   var proxy_ips = Object.keys(PX.selected || {});
@@ -1393,13 +1728,14 @@ async function submitCreateUser(e) {
       inbound_ids: selectedInboundIds(),
       proxy_country: ($id('cu-country')||{}).value||'',
       proxy_ip: proxy_ip,
-      proxy_ips: proxy_ips
+      proxy_ips: proxy_ips,
+      custom_ip_type: cuCustomType || ''
     }});
-    toast('کاربر ' + r.username + ' با موفقیت ایجاد شد', 'ok');
+    toast(r.username + ' ' + t('userCreated'), 'ok');
     closeModal('mod-user');
     loadAll();
-  } catch(e) { toast(e.message || 'خطا', 'err'); }
-  btn.disabled = false; btn.textContent = 'ایجاد کاربر';
+  } catch(e) { toast(e.message || t('toast.err'), 'err'); }
+  btn.disabled = false; btn.textContent = t('submitUser');
 }
 
 function editUser(uid) {
@@ -1428,19 +1764,19 @@ async function submitEditUser(e) {
       reset_traffic: $id('eu-reset') ? $id('eu-reset').checked : false
       ,proxy_country: ($id('eu-country')||{}).value||''
     }});
-    toast('کاربر بروزرسانی شد', 'ok');
+    toast(t('toast.userUpdated'), 'ok');
     closeModal('mod-edit-user');
     loadAll();
-  } catch(e) { toast(e.message || 'خطا', 'err'); }
+  } catch(e) { toast(e.message || t('toast.err'), 'err'); }
 }
 
 async function toggleUser(uid) {
-  try { await api('/api/users/' + uid + '/toggle', {method: 'PATCH'}); loadUsers(); toast('وضعیت کاربر تغییر کرد', 'ok'); } catch(e) { toast(e.message, 'err'); }
+  try { await api('/api/users/' + uid + '/toggle', {method: 'PATCH'}); loadUsers(); toast(t('toast.userToggled'), 'ok'); } catch(e) { toast(e.message, 'err'); }
 }
 
 async function deleteUser(uid) {
-  if (!confirm('آیا از حذف این کاربر اطمینان دارید؟')) return;
-  try { await api('/api/users/' + uid, {method: 'DELETE'}); toast('کاربر حذف شد', 'ok'); loadAll(); } catch(e) { toast(e.message, 'err'); }
+  if (!confirm(t('confirmDeleteUser'))) return;
+  try { await api('/api/users/' + uid, {method: 'DELETE'}); toast(t('toast.userDeleted'), 'ok'); loadAll(); } catch(e) { toast(e.message, 'err'); }
 }
 
 // ─── Config & Sub ───
@@ -1448,13 +1784,13 @@ async function viewCfg(uid) {
   try {
     var d = await api('/api/users/' + uid + '/config');
     curCfg = d.config || '';
-    $id('cfg-code').textContent = curCfg || 'کانفیگی موجود نیست';
+    $id('cfg-code').textContent = curCfg || t('noCfg');
     openModal('mod-cfg');
   } catch(e) { toast(e.message, 'err'); }
 }
 
 function copyCfg() {
-  navigator.clipboard.writeText(curCfg).then(function() { toast('کانفیگ کپی شد', 'ok'); }).catch(function() { toast('خطا در کپی', 'err'); });
+  navigator.clipboard.writeText(curCfg).then(function() { toast(t('copied'), 'ok'); }).catch(function() { toast(t('errCopy'), 'err'); });
 }
 
 function viewSub(username) { window.open('/sub/' + username, '_blank'); }
@@ -1468,13 +1804,13 @@ async function loadInbounds() {
     renderInbounds();
     populateInboundSelects();
   } catch(e) {
-    $id('inbounds-list').innerHTML = '<div class="empty">خطا در بارگذاری اینباندها</div>';
+    $id('inbounds-list').innerHTML = '<div class="empty">' + t('errLoadInbounds') + '</div>';
   }
 }
 
 function renderInbounds() {
   var el = $id('inbounds-list');
-  if (!ALL_IB.length) { el.innerHTML = '<div class="empty">هیچ اینباندی وجود ندارد</div>'; return; }
+  if (!ALL_IB.length) { el.innerHTML = '<div class="empty">' + t('noInbounds') + '</div>'; return; }
   var html = '<div class="stats" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">';
   for (var i = 0; i < ALL_IB.length; i++) {
     var ib = ALL_IB[i];
@@ -1484,14 +1820,14 @@ function renderInbounds() {
     html += '<strong>' + esc(ib.name) + '</strong><span class="badge ' + protoBadge + '">' + (ib.protocol || 'vless').toUpperCase() + '</span>';
     html += '</div>';
     html += '<div style="font-size:11px;color:var(--txt2);line-height:1.8">';
-    if (ib.domain) html += 'دامنه: ' + esc(ib.domain) + '<br>';
-    html += 'پورت: ' + (ib.port || '-') + (ib.external_port ? ' / خارجی: ' + ib.external_port : '') + '<br>';
-    html += 'شبکه: ' + (ib.network || 'tcp') + ' | امنیت: ' + (ib.security || 'none') + '<br>';
-    html += 'کاربران: ' + (ib.users_count || 0);
+    if (ib.domain) html += t('domain') + ': ' + esc(ib.domain) + '<br>';
+    html += t('port') + ': ' + (ib.port || '-') + (ib.external_port ? ' / ' + t('extPort') + ': ' + ib.external_port : '') + '<br>';
+    html += t('secNetwork') + ': ' + (ib.network || 'tcp') + ' | ' + t('security') + ': ' + (ib.security || 'none') + '<br>';
+    html += t('usersCount') + ': ' + (ib.users_count || 0);
     html += '</div>';
     html += '<div style="margin-top:10px;display:flex;gap:4px">';
-    html += '<button class="btn btn-sm btn-b" onclick="editInbound(\'' + ib.inbound_id + '\')">ویرایش</button>';
-    html += '<button class="btn btn-sm btn-r" onclick="deleteInbound(\'' + ib.inbound_id + '\')">حذف</button>';
+    html += '<button class="btn btn-sm btn-b" onclick="editInbound(\'' + ib.inbound_id + '\')">' + t('edit') + '</button>';
+    html += '<button class="btn btn-sm btn-r" onclick="deleteInbound(\'' + ib.inbound_id + '\')">' + t('delete') + '</button>';
     html += '</div></div>';
   }
   html += '</div>';
@@ -1516,7 +1852,7 @@ function populateInboundSelects() {
       '<div class="ib-pick-check"><span class="material-symbols-outlined">check</span></div>' +
     '</div>';
   }).join('');
-  wrap.innerHTML = html || '<span style="font-size:11px;color:var(--txt2)">اینباندی وجود ندارد</span>';
+  wrap.innerHTML = html || '<span style="font-size:11px;color:var(--txt2)">' + t('noInboundOpt') + '</span>';
 }
 
 function toggleIbPick(el) {
@@ -1530,7 +1866,7 @@ function selectedInboundIds() {
 }
 
 function openCreateInbound() {
-  $id('ib-title').textContent = 'ایجاد اینباند جدید';
+  $id('ib-title').textContent = t('createInbound');
   $id('ib-id').value = '';
   $id('ib-name').value = '';
   $id('ib-proto').value = 'vless';
@@ -1541,7 +1877,7 @@ function openCreateInbound() {
   $id('ib-network').value = 'ws';
   $id('ib-security').value = 'tls';
   $id('ib-fingerprint').value = 'chrome';
-  $id('ib-submit').textContent = 'ایجاد اینباند';
+  $id('ib-submit').textContent = t('createInbound');
   onInboundProtoChange();
   openModal('mod-inbound');
 }
@@ -1549,7 +1885,7 @@ function openCreateInbound() {
 function editInbound(iid) {
   var ib = ALL_IB.find(function(x) { return x.inbound_id === iid; });
   if (!ib) return;
-  $id('ib-title').textContent = 'ویرایش اینباند';
+  $id('ib-title').textContent = t('editInbound');
   $id('ib-id').value = iid;
   $id('ib-name').value = ib.name || '';
   $id('ib-proto').value = ib.protocol || 'vless';
@@ -1560,7 +1896,7 @@ function editInbound(iid) {
   $id('ib-network').value = ib.network || 'ws';
   $id('ib-security').value = ib.security || 'tls';
   $id('ib-fingerprint').value = ib.fingerprint || 'chrome';
-  $id('ib-submit').textContent = 'بروزرسانی اینباند';
+  $id('ib-submit').textContent = t('updateInbound');
   onInboundProtoChange();
   openModal('mod-inbound');
 }
@@ -1604,8 +1940,8 @@ async function generateRealityKeysUI() {
     var r = await api('/api/tools/generate-reality-keys', {method: 'POST'});
     $id('ib-privkey').value = r.private_key || '';
     $id('ib-pubkey').value = r.public_key || '';
-    toast('کلیدهای Reality تولید شد', 'ok');
-  } catch(e) { toast('خطا در تولید کلید', 'err'); }
+    toast(t('keysGenerated'), 'ok');
+  } catch(e) { toast(t('errKeyGen'), 'err'); }
 }
 
 async function generateShortId() {
@@ -1614,19 +1950,19 @@ async function generateShortId() {
     // Creating new inbound — generate locally
     var hex = ''; for(var i=0;i<10;i++) hex += '0123456789abcdef'[Math.floor(Math.random()*16)];
     $id('ib-shortids').value = hex;
-    toast('Short ID تولید شد', 'ok');
+    toast(t('shortIdGen'), 'ok');
     return;
   }
   // Editing existing — call API
   try {
     var r = await api('/api/inbounds/' + iid + '/generate-short-id', {method: 'POST'});
     $id('ib-shortids').value = r.short_id || '';
-    toast('Short ID جدید تولید شد', 'ok');
-  } catch(e) { toast('خطا', 'err'); }
+    toast(t('shortIdNew'), 'ok');
+  } catch(e) { toast(t('toast.err'), 'err'); }
 }
 
 function openCreateInbound() {
-  $id('ib-title').textContent = 'ایجاد اینباند جدید';
+  $id('ib-title').textContent = t('createInbound');
   $id('ib-id').value = '';
   $id('ib-name').value = '';
   $id('ib-port').value = '';
@@ -1651,7 +1987,7 @@ function openCreateInbound() {
   $id('ib-xhttppath').value = '/';
   $id('ib-xhttp-mode').value = 'auto';
   $id('ib-grpc-svc').value = 'grpc';
-  $id('ib-submit').textContent = 'ایجاد اینباند';
+  $id('ib-submit').textContent = t('createInbound');
   onInboundProtoChange();
   onNetworkChange();
   openModal('mod-inbound');
@@ -1660,7 +1996,7 @@ function openCreateInbound() {
 function editInbound(iid) {
   var ib = ALL_IB.find(function(x) { return x.inbound_id === iid; });
   if (!ib) return;
-  $id('ib-title').textContent = 'ویرایش اینباند';
+  $id('ib-title').textContent = t('editInbound');
   $id('ib-id').value = iid;
   $id('ib-name').value = ib.name || '';
   $id('ib-port').value = ib.port || '';
@@ -1685,7 +2021,7 @@ function editInbound(iid) {
   $id('ib-xhttppath').value = xh.path || '/';
   $id('ib-xhttp-mode').value = xh.mode || 'auto';
   $id('ib-grpc-svc').value = (ib.grpc_settings || {}).serviceName || 'grpc';
-  $id('ib-submit').textContent = 'بروزرسانی اینباند';
+  $id('ib-submit').textContent = t('updateInbound');
   onInboundProtoChange();
   onNetworkChange();
   openModal('mod-inbound');
@@ -1694,7 +2030,7 @@ function editInbound(iid) {
 async function submitInbound(e) {
   e.preventDefault();
   var btn = $id('ib-submit'); btn.disabled = true;
-  btn.textContent = 'در حال ذخیره...';
+  btn.textContent = t('saving');
   var iid = $id('ib-id').value;
   var proto = $id('ib-proto').value;
   var network = $id('ib-network').value;
@@ -1744,16 +2080,16 @@ async function submitInbound(e) {
   try {
     var url = '/api/inbounds' + (iid ? '/' + iid : '');
     await api(url, {method: iid ? 'PATCH' : 'POST', body: body});
-    toast(iid ? 'اینباند بروزرسانی شد' : 'اینباند ایجاد شد', 'ok');
+    toast(iid ? t('inboundUpdated') : t('inboundCreated'), 'ok');
     closeModal('mod-inbound');
     loadInbounds();
-  } catch(e) { toast(e.message || 'خطا', 'err'); }
-  btn.disabled = false; btn.textContent = iid ? 'بروزرسانی اینباند' : 'ایجاد اینباند';
+  } catch(e) { toast(e.message || t('toast.err'), 'err'); }
+  btn.disabled = false; btn.textContent = iid ? t('updateInbound') : t('createInbound');
 }
 
 async function deleteInbound(iid) {
-  if (!confirm('آیا از حذف این اینباند اطمینان دارید؟')) return;
-  try { await api('/api/inbounds/' + iid, {method: 'DELETE'}); toast('اینباند حذف شد', 'ok'); loadInbounds(); } catch(e) { toast(e.message, 'err'); }
+  if (!confirm(t('confirmDeleteInbound'))) return;
+  try { await api('/api/inbounds/' + iid, {method: 'DELETE'}); toast(t('inboundDeleted'), 'ok'); loadInbounds(); } catch(e) { toast(e.message, 'err'); }
 }
 
 // ─── Settings ───
@@ -1768,7 +2104,7 @@ async function changePassword(e) {
       current_password: $id('cp-old').value,
       new_password: $id('cp-new').value
     }});
-    toast('رمز عبور تغییر کرد', 'ok');
+    toast(t('toast.passChanged'), 'ok');
     $id('cp-old').value = ''; $id('cp-new').value = '';
   } catch(e) { toast(e.message, 'err'); }
 }
@@ -1779,7 +2115,7 @@ async function saveDomainSettings(e) {
     await api('/api/tools/settings', {method: 'POST', body: {
       domain: $id('set-domain').value
     }});
-    toast('تنظیمات دامنه ذخیره شد', 'ok');
+    toast(t('toast.domainSaved'), 'ok');
   } catch(e) { toast(e.message, 'err'); }
 }
 
@@ -1841,22 +2177,22 @@ async function refreshProxyList(){
   var status = $id('proxy-refresh-status');
   var result = $id('proxy-refresh-result');
   if (btn){ btn.disabled = true; }
-  if (status){ status.textContent = 'در حال به‌روزرسانی لیست پروکسی‌ها... (ممکن است ۱-۲ دقیقه طول بکشد)'; }
+  if (status){ status.textContent = t('refreshingProxy'); }
   if (result){ result.textContent = ''; }
   try {
     var r = await api('/api/proxy-ips/refresh', {method: 'POST'});
-    if (status){ status.textContent = 'لیست به‌روزرسانی شد ✓'; }
+    if (status){ status.textContent = t('proxyRefreshed'); }
     if (result){
-      result.textContent = r.candidates + ' کاندید بررسی شد → ' + r.working + ' پروکسی کارا پیدا شد';
+      result.textContent = r.candidates + ' ' + t('candidatesChecked') + ' → ' + r.working + ' ' + t('workingProxies');
       result.style.color = 'var(--green)';
     }
     // Refresh the country dropdown so new countries appear
     loadProxyCountries();
-    toast('لیست پروکسی به‌روزرسانی شد: ' + r.working + ' پروکسی', 'ok');
+    toast(t('proxyRefreshed') + ': ' + r.working + ' ' + t('proxies'), 'ok');
   } catch(e) {
-    if (status){ status.textContent = 'خطا در به‌روزرسانی لیست'; }
-    if (result){ result.textContent = e.message || 'خطا'; result.style.color = 'var(--red)'; }
-    toast(e.message || 'خطا در به‌روزرسانی', 'err');
+    if (status){ status.textContent = t('errRefreshProxy'); }
+    if (result){ result.textContent = e.message || t('toast.err'); result.style.color = 'var(--red)'; }
+    toast(e.message || t('errRefreshProxy'), 'err');
   } finally {
     if (btn){ btn.disabled = false; }
   }
@@ -1870,7 +2206,7 @@ function loadProxyCountries(){
     var opts = PX.countries.map(function(c){
       return '<option value="'+c.code+'">'+c.code+' — '+(A2NAME[c.code]||c.code)+' ('+c.count+' IP)</option>';
     }).join('');
-    var empty='<option value="">-- بدون پروکسی --</option>';
+    var empty='<option value="">' + t('noProxy') + '</option>';
     var cuSel=$id('cu-country');if(cuSel)cuSel.innerHTML=empty+opts;
     var euSel=$id('eu-country');if(euSel)euSel.innerHTML=empty+opts;
   }).catch(function(){});
@@ -1912,7 +2248,7 @@ function pxReset(){
   PX.selected={};
   PX.filter='';
   PX.pings={};
-  var ip = $id('px-ip-list'); if(ip) ip.innerHTML = '<div class="px-noselected">ابتدا یک کشور را انتخاب کنید</div>';
+  var ip = $id('px-ip-list'); if(ip) ip.innerHTML = '<div class="px-noselected">' + t('firstSelectCountry') + '</div>';
   var tags = $id('px-tags'); if(tags) tags.innerHTML='';
   var path = $id('px-path'); if(path) path.innerHTML='';
   var sea = $id('px-search'); if(sea) sea.value='';
@@ -1950,14 +2286,14 @@ function pxInitMap(){
           if (a2) PX.paths[a2] = layer;
           layer.on('click', function(){
             if (a2 && PX.countrySet[a2]) pxSelectCountry(a2);
-            else if (a2) toast('برای این کشور پروکسی موجود نیست', 'err');
+            else if (a2) toast(t('noProxyCountry'), 'err');
           });
           layer.bindTooltip((a2 && A2NAME[a2]) || name || '', { sticky:true });
         }
       }).addTo(PX.map);
     })
     .catch(function(){
-      var w=$id('px-map-wrap'); if(w) w.innerHTML='<div class="px-hint">خطا در بارگذاری نقشه. از فهرست کشور استفاده کنید.</div>';
+      var w=$id('px-map-wrap'); if(w) w.innerHTML='<div class="px-hint">' + t('errLoadMap') + '</div>';
     });
 }
 
@@ -1977,7 +2313,7 @@ function pxSelectFromDropdown(code){
 function pxLoadCleanIps(){
   api('/api/proxy-ips/clean-repo').then(function(d){
     var ips = (d && d.ips) || [];
-    if (!ips.length){ toast('آیپی تمیزی از مخزن دریافت نشد', 'err'); return; }
+    if (!ips.length){ toast(t('noCleanIps'), 'err'); return; }
     var added = 0;
     ips.forEach(function(ip){
       if (!PX.ips.includes(ip)) PX.ips.push(ip);
@@ -1990,10 +2326,10 @@ function pxLoadCleanIps(){
     PX.pings = {};
     pxRenderIPs();
     pxRenderPreview();
-    toast(added + ' آیپی تمیز از مخزن افزوده شد (' + ips.length + ' دریافت شد)', 'ok');
+    toast(added + ' ' + t('cleanIpsAdded') + ' (' + ips.length + ' ' + t('received') + ')', 'ok');
     pxLoadPings();
   }).catch(function(e){
-    toast(e && e.message ? e.message : 'خطا در دریافت مخزن آیپی', 'err');
+    toast(e && e.message ? e.message : t('errRepo'), 'err');
   });
 }
 
@@ -2003,14 +2339,14 @@ function pxLoadIPs(code){
   var sea=$id('px-search'); if(sea) sea.value='';
   pxRenderPreview();
   if (!box) return;
-  box.innerHTML = '<div class="px-loading">در حال بارگذاری IP ها...</div>';
+  box.innerHTML = '<div class="px-loading">' + t('loadingIps') + '</div>';
   api('/api/proxy-ips/' + code).then(function(d){
     PX.ips = (d.proxies || []).map(function(p){ return p.ip + ':' + p.port; });
     pxRenderIPs();
     pxRenderPreview();
     pxLoadPings();
   }).catch(function(){
-    box.innerHTML = '<div class="px-noselected">IP ای برای این کشور یافت نشد</div>';
+    box.innerHTML = '<div class="px-noselected">' + t('noIpCountry') + '</div>';
   });
 }
 
@@ -2018,16 +2354,16 @@ function pxLoadPings(){
   var code = PX.selectedCountry;
   if (!code || !PX.ips.length) return;
   var btn = $id('px-ping-btn');
-  if (btn){ btn.disabled = true; btn.textContent = 'در حال بررسی...'; }
+  if (btn){ btn.disabled = true; btn.textContent = t('checkingPing'); }
   api('/api/proxy-ips/' + code + '/ping?ips=' + encodeURIComponent(PX.ips.join(','))).then(function(d){
     var results = d.results || [];
     PX.pings = {};
     results.forEach(function(r){ PX.pings[r.ip + ':' + r.port] = r; PX.pings[r.ip] = r; });
     pxRenderIPs();
   }).catch(function(){
-    toast('خطا در بررسی پینگ', 'err');
+    toast(t('errPing'), 'err');
   }).finally(function(){
-    if (btn){ btn.disabled = false; btn.textContent = 'بررسی پینگ'; }
+    if (btn){ btn.disabled = false; btn.textContent = t('checkPing'); }
   });
 }
 
@@ -2046,7 +2382,7 @@ function pxToggleIP(ip){
   if (PX.selected[ip]) delete PX.selected[ip];
   else {
     if (Object.keys(PX.selected).length >= PX_MAX){
-      toast('حداکثر ' + PX_MAX + ' IP می‌توانید انتخاب کنید', 'err');
+      toast(t('maxIps').replace('{n}', PX_MAX), 'err');
       return;
     }
     PX.selected[ip] = true;
@@ -2088,22 +2424,22 @@ function pxRenderIPs(){
       pxPingHtml(parts[0]) +
       '</div>';
   });
-  if (!PX.ips.length) html = '<div class="px-noselected">کشور را انتخاب کنید</div>';
-  else if (!shown) html = '<div class="px-noselected">نتیجه‌ای یافت نشد</div>';
-  list.innerHTML = html + '<div style="font-size:10px;color:var(--txt2);padding:6px 4px 2px">' + shown + ' IP — ' + Object.keys(PX.selected).length + ' انتخاب شده</div>';
+  if (!PX.ips.length) html = '<div class="px-noselected">' + t('selectCountry') + '</div>';
+  else if (!shown) html = '<div class="px-noselected">' + t('noResult') + '</div>';
+  list.innerHTML = html + '<div style="font-size:10px;color:var(--txt2);padding:6px 4px 2px">' + shown + ' IP — ' + Object.keys(PX.selected).length + ' ' + t('selected') + '</div>';
 }
 
 function pxRenderPreview(){
   var tags=$id('px-tags'), pathEl=$id('px-path');
   var keys=Object.keys(PX.selected);
   if (tags){
-    tags.innerHTML = keys.length ? '<div style="font-size:10px;color:var(--txt2);margin-bottom:2px">IP های انتخابی ('+keys.length+'/'+PX_MAX+'):</div>' +
+    tags.innerHTML = keys.length ? '<div style="font-size:10px;color:var(--txt2);margin-bottom:2px">' + t('selectedIps') + ' ('+keys.length+'/'+PX_MAX+'):</div>' +
       keys.map(function(ip){ return '<span class="px-tag">'+ip+' <span class="x" onclick="event.stopPropagation();pxToggleIP(\''+ip+'\')">✕</span></span>'; }).join('') : '';
   }
   if (pathEl){
     var code = PX.selectedCountry;
     if (keys.length && code){
-      pathEl.innerHTML = '<span class="dim">پیش‌نمایش path کانفیگ:</span><br>/proxyIP/<span style="color:var(--neon)">'+keys.join(',')+'</span>/ws/<span class="dim">&lt;uuid&gt;</span>';
+      pathEl.innerHTML = '<span class="dim">' + t('pathPreview') + '</span><br>/proxyIP/<span style="color:var(--neon)">'+keys.join(',')+'</span>/ws/<span class="dim">&lt;uuid&gt;</span>';
       pathEl.style.display='block';
     } else {
       pathEl.innerHTML = '';
@@ -2111,6 +2447,281 @@ function pxRenderPreview(){
     }
   }
 }
+
+// ═══ IP SCANNER ═══
+var SCN_CF_RANGES = [
+  [172, 64, 0, 0, 13], [104, 16, 0, 0, 12], [162, 159, 0, 0, 16], [108, 162, 192, 0, 18],
+  [104, 16, 24, 0, 14], [172, 67, 10, 0, 15], [162, 159, 36, 0, 16], [108, 162, 192, 0, 18],
+  [104, 18, 45, 0, 14], [172, 64, 50, 0, 14], [104, 16, 0, 0, 12], [162, 159, 0, 0, 16]
+];
+var SCN_RW_RANGES = [
+  [66, 33, 22, 0, 23], [66, 33, 23, 0, 24], [69, 46, 46, 0, 24],
+  [152, 55, 176, 0, 22], [152, 55, 180, 0, 22], [152, 55, 184, 0, 22],
+  [162, 220, 232, 0, 23], [162, 220, 234, 0, 23],
+  [208, 77, 244, 0, 23], [208, 77, 246, 0, 23]
+];
+var SCN_DOM_DEFAULTS = [
+  'shuttle.proxy.rlwy.net', 'monorail.proxy.rlwy.net', 'caboose.proxy.rlwy.net',
+  'viaduct.proxy.rlwy.net', 'acela.proxy.rlwy.net', 'sakura.proxy.rlwy.net',
+  'tokaido.proxy.rlwy.net', 'switchback.proxy.rlwy.net', 'hayabusa.proxy.rlwy.net',
+  'reseau.proxy.rlwy.net', 'shortline.proxy.rlwy.net'
+];
+var SCN_STOP = false;
+var scnCtx = { cf: {found: [], tried: 0}, railway: {found: [], tried: 0} };
+
+function scnRandIp(range) {
+  var seg = [range[0], range[1], range[2], range[3]];
+  if (range[4] === 12) { seg[1] += Math.floor(Math.random() * 16); seg[2] = Math.floor(Math.random() * 256); }
+  else if (range[4] === 13) { seg[1] += Math.floor(Math.random() * 8); seg[2] = Math.floor(Math.random() * 256); }
+  else if (range[4] === 14) { seg[2] += Math.floor(Math.random() * 4); }
+  else if (range[4] === 15) { seg[2] += Math.floor(Math.random() * 2); }
+  else if (range[4] === 16) { seg[2] = Math.floor(Math.random() * 256); }
+  else if (range[4] === 22) { seg[2] = Math.floor(Math.random() * 64); }
+  else if (range[4] === 23) { seg[2] = Math.floor(Math.random() * 128); }
+  else if (range[4] === 24) { seg[2] = Math.floor(Math.random() * 256); }
+  seg[3] = Math.floor(Math.random() * 253) + 2;
+  return seg.join('.');
+}
+
+function scnMsClass(ms) {
+  if (ms == null) return 'soon';
+  return ms < 150 ? 'good' : ms < 400 ? 'ok' : 'bad';
+}
+
+function scnMsHtml(ms, failed) {
+  if (ms == null && failed) return '<span class="scn-ms bad">✗</span>';
+  if (ms == null) return '<span class="scn-ms soon">…</span>';
+  return '<span class="scn-ms ' + scnMsClass(ms) + '">' + ms + ' ms</span>';
+}
+
+function scnChipClass(ms) {
+  if (ms == null) return 'soon';
+  return ms < 150 ? 'good' : ms < 400 ? 'ok' : 'bad';
+}
+
+async function scnPingBatch(targets, timeout) {
+  try {
+    var d = await api('/api/scanner/ping-batch', {method: 'POST', body: {targets: targets, timeout: timeout || 1.6}});
+    var map = {};
+    (d.results || []).forEach(function(r) { map[r.target] = r; });
+    return map;
+  } catch (e) { return {}; }
+}
+
+async function scnRunCF() {
+  scnRunIPs('cf');
+}
+async function scnRunRailway() {
+  scnRunIPs('railway');
+}
+
+async function scnRunIPs(which) {
+  if (scnCtx[which].running) return;
+  scnCtx[which].running = true;
+  scnCtx[which].found = [];
+  scnCtx[which].tried = 0;
+  SCN_STOP = false;
+  var pfx = which === 'cf' ? 'scn-cf' : 'scn-rw';
+  var ranges = which === 'cf' ? SCN_CF_RANGES : SCN_RW_RANGES;
+  var count = parseInt($id(pfx + '-count').value) || 30;
+  var port = $id(pfx + '-port').value || '443';
+  var list = $id(pfx + '-list');
+  var bar = $id(pfx + '-bar');
+  var startBtn = list.parentElement.querySelector('.btn-p');
+  list.innerHTML = '<div class="scn-empty">' + t('scanning') + '</div>';
+  $id(pfx + '-found').textContent = '0';
+  $id(pfx + '-tried').textContent = '0';
+  $id(pfx + '-best').textContent = '--';
+  $id(pfx + '-bar').style.width = '0%';
+  if (startBtn) { startBtn.disabled = true; startBtn.textContent = t('scanning'); }
+
+  var found = [];
+  var tried = 0;
+  var loops = 0;
+  while (found.length < count && loops < count * 40) {
+    if (SCN_STOP) break;
+    loops++;
+    var batch = [];
+    for (var b = 0; b < 16 && found.length + batch.length < count; b++) {
+      batch.push(scnRandIp(ranges[Math.floor(Math.random() * ranges.length)]) + ':' + port);
+    }
+    var resMap = await scnPingBatch(batch, 1.4);
+    Object.keys(resMap).forEach(function(t) {
+      tried++;
+      var r = resMap[t];
+      if (r && r.ok) {
+        found.push({ip: t.split(':')[0], port: r.port, ms: r.latency_ms});
+      }
+    });
+    found.sort(function(a, b) { return a.ms - b.ms; });
+    found = found.slice(0, count);
+    scnCtx[which].found = found.slice();
+    scnCtx[which].tried = tried;
+    // Live-save the current best list (replaces the file, capped at 10 by the
+    // backend) so the saved first-10 stays in sync with the scan.
+    if (found.length) {
+      scnSaveLive(which, found.map(function(f) { return f.ip + ':' + f.port; }), true);
+    }
+
+    // render
+    var rows = '';
+    found.forEach(function(f) {
+      rows += '<div class="scn-item"><span class="scn-ip">' + f.ip + '</span><span class="scn-port">:' + f.port + '</span>' + scnMsHtml(f.ms) + '</div>';
+    });
+    list.innerHTML = rows || '<div class="scn-empty">' + t('noHit') + '</div>';
+    $id(pfx + '-found').textContent = found.length;
+    $id(pfx + '-tried').textContent = tried;
+    if (found.length) {
+      $id(pfx + '-best').textContent = found[0].ms + ' ms';
+      $id(pfx + '-best').className = 'scn-ms ' + scnChipClass(found[0].ms);
+    }
+    $id(pfx + '-bar').style.width = Math.min(100, (found.length / count) * 100) + '%';
+    $id(pfx + '-saved').textContent = found.length + '/' + count;
+  }
+  scnCtx[which].running = false;
+  if (startBtn) { startBtn.disabled = false; startBtn.textContent = t('startScan'); }
+  scnLoadSaved(which);
+  if (SCN_STOP) toast(t('scanStopped'), 'warn');
+}
+
+function scnSaveLive(which, entries, replace) {
+  api('/api/scanner/save', {method: 'POST', body: {type: which, ips: entries, replace: !!replace}}).then(function(d) {
+    scnRenderSavedTags(which, d.ips || []);
+  }).catch(function() {});
+}
+
+async function scnLoadSaved(which) {
+  try {
+    var d = await api('/api/scanner/ips/' + which);
+    scnRenderSavedTags(which, d.ips || []);
+  } catch (e) {}
+}
+
+function scnRenderSavedTags(which, ips) {
+  var el = $id(which === 'cf' ? 'scn-cf-saved-tags' : 'scn-rw-saved-tags');
+  if (!el) return;
+  el.innerHTML = ips.length ? ips.map(function(x) { return '<span class="scn-tag">' + esc(x) + '</span>'; }).join('') : '<span class="scn-empty">' + t('notSaved') + '</span>';
+}
+
+function scnClearSaved(which) {
+  api('/api/scanner/save', {method: 'POST', body: {type: which, ips: []}}).then(function() {
+    scnRenderSavedTags(which, []);
+    toast(t('saveCleared') + ' (' + which + ')', 'ok');
+  }).catch(function() {});
+}
+
+function scnSwitch(which, btn) {
+  document.querySelectorAll('.scn-tab').forEach(function(t) { t.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  document.querySelectorAll('.scn-pane').forEach(function(p) { p.classList.remove('active'); });
+  var pane = $id('scn-pane-' + which);
+  if (pane) pane.classList.add('active');
+  if (which === 'cf') scnLoadSaved('cf');
+  if (which === 'railway') scnLoadSaved('railway');
+  if (which === 'tcp') scnRenderDomains();
+}
+
+function scnStop() { SCN_STOP = true; toast(t('scanStopped'), 'warn'); }
+
+// ── TCP tab ──
+var scnDomains = SCN_DOM_DEFAULTS.slice();
+
+function scnRenderDomains() {
+  var el = $id('scn-tcp-list');
+  if (!el) return;
+  el.innerHTML = scnDomains.map(function(d, i) {
+    return '<div class="scn-dom">' + esc(d) + '<button class="rm" onclick="scnRemoveDomain(' + i + ')" title="حذف">✕</button></div>';
+  }).join('') || '<span class="scn-empty">دامنه‌ای اضافه نکرده‌اید</span>';
+}
+
+function scnAddDomain() {
+  var inp = $id('scn-tcp-domain');
+  var v = (inp.value || '').trim().toLowerCase();
+  if (!v) return;
+  if (scnDomains.indexOf(v) === -1) scnDomains.push(v);
+  inp.value = '';
+  scnRenderDomains();
+}
+
+function scnRemoveDomain(i) {
+  scnDomains.splice(i, 1);
+  scnRenderDomains();
+}
+
+async function scnRunTCP() {
+  var resEl = $id('scn-tcp-results');
+  var btn = document.querySelector('#scn-pane-tcp .btn-p');
+  resEl.innerHTML = '<div class="scn-empty">' + t('checkingDomains') + '</div>';
+  if (btn) { btn.disabled = true; btn.textContent = t('checking'); }
+  var out = [];
+  var targets = [];
+  for (var i = 0; i < scnDomains.length; i++) targets.push(scnDomains[i] + ':443');
+  var resMap = await scnPingBatch(targets, 3);
+  for (var i = 0; i < scnDomains.length; i++) {
+    var dom = scnDomains[i];
+    var ip = null;
+    try {
+      var d = await api('/api/scanner/resolve?host=' + encodeURIComponent(dom));
+      if (d.ips && d.ips.length) ip = d.ips[0];
+    } catch (e) {}
+    var r = resMap[dom + ':443'];
+    var ms = r && r.ok ? r.latency_ms : null;
+    var failed = !!(r && !r.ok);
+    out.push({dom: dom, ip: ip, ms: ms, failed: failed});
+  }
+  var html = '';
+  out.forEach(function(o) {
+    html += '<div class="scn-result"><span class="scn-dom-name">' + esc(o.dom) + '</span><span class="scn-ip">' + (o.ip || '—') + '</span>' + scnMsHtml(o.ms, o.failed) + '</div>';
+  });
+  resEl.innerHTML = html || '<div class="scn-empty">' + t('noResult') + '</div>';
+  if (btn) { btn.disabled = false; btn.textContent = t('checkDomains'); }
+}
+
+function scnInit() {
+  scnRenderDomains();
+  scnLoadSaved('cf');
+  scnLoadSaved('railway');
+}
+
+// ═══ CUSTOM-IP PICKER (create-user modal) ═══
+var cuCustomType = '';
+
+function cuToggleCustomMenu(e) {
+  if (e) e.stopPropagation();
+  var m = $id('cu-custom-menu');
+  if (!m) return;
+  var isOpen = m.style.display === 'block';
+  document.querySelectorAll('.cu-custom-menu').forEach(function(x) { x.style.display = 'none'; });
+  m.style.display = isOpen ? 'none' : 'block';
+}
+
+function cuPickCustom(val, el, skipRender) {
+  cuCustomType = val || '';
+  $id('cu-custom-label').textContent = val === 'railway' ? '🛤️ Railway' : val === 'cf' ? '☁️ Cloudflare' : t('noCustomIp');
+  document.querySelectorAll('.cu-custom-opt').forEach(function(o) {
+    o.classList.toggle('active', o.getAttribute('data-val') === (val || ''));
+  });
+  var m = $id('cu-custom-menu'); if (m) m.style.display = 'none';
+  if (!skipRender) cuRenderCustomPreview();
+}
+
+async function cuRenderCustomPreview() {
+  var box = $id('cu-custom-preview');
+  if (!box) return;
+  if (!cuCustomType) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="scn-loading" style="font-size:11px;color:var(--txt2)">' + t('loadingIps') + '</div>';
+  try {
+    var d = await api('/api/scanner/ips/' + cuCustomType);
+    var ips = (d && d.ips) || [];
+    if (!ips.length) { box.innerHTML = '<span class="scn-empty">' + t('noScannedIps') + '</span>'; return; }
+    box.innerHTML = '<div style="font-size:10px;color:var(--txt2);margin-bottom:6px">' + ips.length + ' ' + t('scannedTo10') + '</div>' +
+      '<div class="scn-saved-tags">' + ips.map(function(x) { return '<span class="scn-tag">' + esc(x) + '</span>'; }).join('') + '</div>';
+  } catch (e) { box.innerHTML = '<span class="scn-empty">' + t('errLoadIps') + '</span>'; }
+}
+
+document.addEventListener('click', function() {
+  document.querySelectorAll('.cu-custom-menu').forEach(function(m) { m.style.display = 'none'; });
+});
 
 // Start neon bars when tab opens
 setTimeout(updateNeonBars, 500);

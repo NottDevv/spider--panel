@@ -4,5 +4,7 @@ xray/xray
 xray/config.json
 xray/xray.zip
 data/country_proxies/
+data/scanned/
 data/spider_state.json
 .venv/
+.claude/
