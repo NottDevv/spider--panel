@@ -40,6 +40,12 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import httpx
 
+# xhttp_siz10 does `from main import ...`. When run as `python main.py` this
+# module is named `__main__`; alias ourselves as `main` so submodule imports
+# resolve to THIS module (prevents a second, circular copy of main).
+import sys as _sys
+_sys.modules.setdefault("main", _sys.modules[__name__])
+
 IRAN_TZ = ZoneInfo("Asia/Tehran")
 
 app = FastAPI(title="Spider Gateway", docs_url=None, redoc_url=None)
@@ -1288,23 +1294,15 @@ try:
         await websocket_tunnel(ws, uuid)
 
     # Configs with a selected proxy IP carry path /proxyIP/{ip}/ws/{uuid}.
-    # Accept the route and tunnel on the real uuid so the connection works.
+    # Accept the route and tunnel on the real uuid so the connection works,
+    # and pass the exact proxy from the path down to the relay.
     @app.websocket("/proxyIP/{proxy}/ws/{uuid}")
     async def ws_proxy_uuid_handler(ws: WebSocket, uuid: str, proxy: str):
-        await websocket_tunnel(ws, uuid)
+        await websocket_tunnel(ws, uuid, proxy_override=proxy)
 
     logger.info("VLESS Relay module loaded (WS: /ws/{uuid} + /proxyIP/.../ws/{uuid})")
 except Exception as e:
     logger.warning(f"VLESS Relay module not available: {e}")
-
-# XHTTP — optional transport module
-# ══════════════════════════════════════════════════════════════════════════════
-try:
-    from xhttp_siz10 import router as xhttp_router
-    app.include_router(xhttp_router)
-    logger.info("XHTTP module loaded")
-except (ImportError, ModuleNotFoundError) as e:
-    logger.warning(f"XHTTP module not available: {e}")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ── HTTP Proxy ────────────────────────────────────────────────────────────────
@@ -1612,11 +1610,20 @@ async def create_user(request: Request, _=Depends(require_auth)):
     server = (body.get("server") or "IR-Tehran-01").strip()[:40]
     sni = str(body.get("sni") or "").strip()
     path_custom = str(body.get("path") or "").strip()
-    transport_type = str(body.get("transport_type") or "ws").strip().lower()
+    transport_type = str(body.get("transport_type") or "").strip().lower()
     inbound_id = str(body.get("inbound_id") or "").strip() or None
     proxy_ip = str(body.get("proxy_ip") or "").strip()
     proxy_country = str(body.get("proxy_country") or "").strip()
     proxy_ips = [str(x).strip() for x in (body.get("proxy_ips") or []) if str(x).strip()][:3]
+
+    # If transport_type not given explicitly, derive it from the chosen inbound
+    # (so an xhttp inbound produces an xhttp user).
+    if not transport_type and inbound_id:
+        async with INBOUNDS_LOCK:
+            ib = INBOUNDS.get(inbound_id) or {}
+        transport_type = str(ib.get("network") or "").strip().lower()
+    if not transport_type:
+        transport_type = "ws"
 
     if transport_type not in ("ws", "grpc", "tcp", "xhttp", "reality"):
         transport_type = "ws"
@@ -2964,14 +2971,14 @@ async def _socks5_connect(proxy: dict, address: str, port: int):
     """SOCKS5 CONNECT through the proxy, mirroring the worker's socks5Connect."""
     import socket as _sock
     rdr, wtr = await asyncio.wait_for(
-        asyncio.open_connection(proxy["hostname"], proxy["port"]), timeout=8.0
+        asyncio.open_connection(proxy["hostname"], proxy["port"]), timeout=4.0
     )
     try:
         # Method negotiation
         methods = bytes([0x05, 0x02, 0x00, 0x02]) if proxy.get("username") else bytes([0x05, 0x01, 0x00])
         wtr.write(methods)
         await wtr.drain()
-        resp = await asyncio.wait_for(rdr.readexactly(2), timeout=8.0)
+        resp = await asyncio.wait_for(rdr.readexactly(2), timeout=4.0)
         if resp[1] == 0x02:
             if not proxy.get("username"):
                 raise ConnectionError("socks5 requires auth")
@@ -2979,7 +2986,7 @@ async def _socks5_connect(proxy: dict, address: str, port: int):
             pb = proxy["password"].encode()
             wtr.write(bytes([0x01, len(ub)]) + ub + bytes([len(pb)]) + pb)
             await wtr.drain()
-            auth = await asyncio.wait_for(rdr.readexactly(2), timeout=8.0)
+            auth = await asyncio.wait_for(rdr.readexactly(2), timeout=4.0)
             if auth[1] != 0x00:
                 raise ConnectionError("socks5 auth failed")
         elif resp[1] != 0x00:
@@ -3006,7 +3013,7 @@ async def _socks5_connect_send(proxy: dict, address: str, port: int, rdr, wtr, _
         pkt = bytes([0x05, 0x01, 0x00, atyp]) + hb + bytes([port >> 8, port & 0xff])
         wtr.write(pkt)
         await wtr.drain()
-        resp = await asyncio.wait_for(rdr.readexactly(4), timeout=8.0)
+        resp = await asyncio.wait_for(rdr.readexactly(4), timeout=4.0)
         if resp[1] != 0x00:
             raise ConnectionError(f"socks5 connect failed code={resp[1]}")
         # Consume the reply's BND.ADDR + BND.PORT so those bytes don't leak into
@@ -3014,12 +3021,12 @@ async def _socks5_connect_send(proxy: dict, address: str, port: int, rdr, wtr, _
         # RSV ATYP BND.ADDR BND.PORT). ATYP of the reply drives the length.
         ratyp = resp[3]
         if ratyp == 0x01:
-            await asyncio.wait_for(rdr.readexactly(4 + 2), timeout=8.0)
+            await asyncio.wait_for(rdr.readexactly(4 + 2), timeout=4.0)
         elif ratyp == 0x04:
-            await asyncio.wait_for(rdr.readexactly(16 + 2), timeout=8.0)
+            await asyncio.wait_for(rdr.readexactly(16 + 2), timeout=4.0)
         elif ratyp == 0x03:
-            ln = (await asyncio.wait_for(rdr.readexactly(1), timeout=8.0))[0]
-            await asyncio.wait_for(rdr.readexactly(ln + 2), timeout=8.0)
+            ln = (await asyncio.wait_for(rdr.readexactly(1), timeout=4.0))[0]
+            await asyncio.wait_for(rdr.readexactly(ln + 2), timeout=4.0)
         return rdr, wtr
     except BaseException:
         await _close_writer_safely(wtr)
@@ -3029,7 +3036,7 @@ async def _socks5_connect_send(proxy: dict, address: str, port: int, rdr, wtr, _
 async def _http_connect(proxy: dict, address: str, port: int, tls: bool = False):
     """HTTP CONNECT through the proxy, mirroring the worker's httpConnect."""
     rdr, wtr = await asyncio.wait_for(
-        asyncio.open_connection(proxy["hostname"], proxy["port"]), timeout=8.0
+        asyncio.open_connection(proxy["hostname"], proxy["port"]), timeout=4.0
     )
     try:
         host_header = f"[{address}]" if ":" in address else address
@@ -3043,7 +3050,7 @@ async def _http_connect(proxy: dict, address: str, port: int, tls: bool = False)
                f"User-Agent: Mozilla/5.0\r\nConnection: keep-alive\r\n\r\n")
         wtr.write(req.encode())
         await wtr.drain()
-        status = await asyncio.wait_for(rdr.readline(), timeout=8.0)
+        status = await asyncio.wait_for(rdr.readline(), timeout=4.0)
         # Skip headers
         while True:
             line = await asyncio.wait_for(rdr.readline(), timeout=8.0)
@@ -3165,7 +3172,7 @@ def _build_vless_connect_header(uuid: str, address: str, port: int) -> bytes:
             + bytes([port >> 8, port & 0xff]) + bytes([atype]) + ab)
 
 
-async def proxy_connect(uuid: str, address: str, port: int):
+async def proxy_connect(uuid: str, address: str, port: int, proxy_override: str = None):
     """Open an outbound TCP connection, routed through the user's proxy IP.
 
     Mirrors the BPB/ZEUS worker approach: for a working HTTP/SOCKS5 proxy we
@@ -3173,12 +3180,17 @@ async def proxy_connect(uuid: str, address: str, port: int):
     IP), we fall back to ZEUS-style: raw-connect to proxy:port and re-send a
     VLESS CONNECT header so the relay forwards to the target. Only when the
     proxy fails entirely do we fall back to a direct connection.
+
+    proxy_override: when the config path carries /proxyIP/{ip:port}/, that
+    exact proxy is used instead of a random pick from the user's list.
     """
     import random as _rnd
 
     user_id = await _resolve_user_id_for_link(uuid)
     entry = None
-    if user_id:
+    if proxy_override:
+        entry = proxy_override.strip()
+    elif user_id:
         async with USERS_LOCK:
             u = USERS.get(user_id)
             if u:
@@ -4155,8 +4167,15 @@ app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 try:
     from xhttp_siz10 import router as xhttp_router
     app.include_router(xhttp_router)
-except Exception:
-    pass  # XHTTP optional
+    logger.info("XHTTP module loaded")
+except Exception as e:
+    logger.warning(f"XHTTP module not available: {e}")
 
 if __name__ == "__main__":
+    # When run as `python main.py`, this module is named `__main__`, but
+    # xhttp_siz10 does `from main import ...`. Register ourselves as `main`
+    # so that import resolves to THIS module (avoids a circular second copy
+    # and makes `from xhttp_siz10 import router` succeed below).
+    import sys as _sys
+    _sys.modules.setdefault("main", _sys.modules[__name__])
     uvicorn.run("main:app", host="0.0.0.0", port=CONFIG["port"], log_level="info", workers=1)

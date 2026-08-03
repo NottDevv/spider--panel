@@ -30,6 +30,9 @@ from relay_vless import parse_vless_header, check_and_use
 
 router = APIRouter()
 
+# session_id -> exact proxy from the /proxyIP/{proxy}/... path (for XHTTP)
+_SESSION_PROXY: dict = {}
+
 XHTTP_BUF = 512 * 1024
 DOWNLINK_QUEUE_MAX = 512
 SESSION_IDLE_TIMEOUT = 30
@@ -176,12 +179,13 @@ def _req_client_ip(request: Request) -> str:
     return request.client.host if request.client else "نامشخص"
 
 
-async def _open_tcp_from_header(first_chunk: bytes, uuid: str = ""):
+async def _open_tcp_from_header(first_chunk: bytes, uuid: str = "", proxy_override: str = ""):
     command, address, port, payload = await parse_vless_header(first_chunk)
     # Route outbound through the user's proxy IP (same as WS relay).
     from main import proxy_connect as _proxy_connect
     reader, writer = await asyncio.wait_for(
-        _proxy_connect(uuid, address, port), timeout=TCP_CONNECT_TIMEOUT
+        _proxy_connect(uuid, address, port, proxy_override=proxy_override or None),
+        timeout=TCP_CONNECT_TIMEOUT,
     )
     _tune_socket(writer)
     if payload:
@@ -314,7 +318,8 @@ async def _pump_tcp_to_queue(session_id: str, uuid: str, reader: asyncio.StreamR
 
 async def _open_tcp_for_session(session_id: str, uuid: str, sess: dict, first_chunk: bytes):
     """تونل TCP رو از روی هدر VLESS باز می‌کنه و پمپ دانلینک رو راه می‌اندازه."""
-    reader, writer, address, port = await _open_tcp_from_header(first_chunk, uuid)
+    proxy_override = _SESSION_PROXY.get(session_id, "")
+    reader, writer, address, port = await _open_tcp_from_header(first_chunk, uuid, proxy_override)
     logger.info(f"connect XHTTP[{sess['mode']}] [{session_id[:8]}] -> {address}:{port}")
     sess["writer"] = writer
     sess["tcp_open"] = True
@@ -471,17 +476,21 @@ async def stream_up_upload(uuid: str, session_id: str, request: Request):
 
 # ══════════════════════════════ PROXY-IP ROUTES ══════════════════════════════
 # Configs with a selected proxy IP carry path /proxyIP/{ip}/xhttp-siz10/...
-# Accept the route and delegate to the real handler so the connection works.
+# Accept the route and delegate to the real handler so the connection works,
+# remembering the exact proxy from the path for the session.
 @router.get("/proxyIP/{proxy}/xhttp-siz10/{mode}/{uuid}/{session_id}")
 async def xhttp_downlink_proxy(proxy: str, mode: str, uuid: str, session_id: str, request: Request):
+    _SESSION_PROXY[session_id] = proxy
     return await xhttp_downlink(mode, uuid, session_id, request)
 
 
 @router.post("/proxyIP/{proxy}/xhttp-siz10/packet-up/{uuid}/{session_id}/{seq}")
 async def packet_up_upload_proxy(proxy: str, uuid: str, session_id: str, seq: int, request: Request):
+    _SESSION_PROXY[session_id] = proxy
     return await packet_up_upload(uuid, session_id, seq, request)
 
 
 @router.post("/proxyIP/{proxy}/xhttp-siz10/stream-up/{uuid}/{session_id}")
 async def stream_up_upload_proxy(proxy: str, uuid: str, session_id: str, request: Request):
+    _SESSION_PROXY[session_id] = proxy
     return await stream_up_upload(uuid, session_id, request)

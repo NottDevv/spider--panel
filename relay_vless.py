@@ -130,7 +130,13 @@ async def relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: 
     except Exception:
         pass
 
-async def websocket_tunnel(ws: WebSocket, uuid: str):
+async def websocket_tunnel(ws: WebSocket, uuid: str, proxy_override: str = None):
+    if proxy_override:
+        try:
+            from urllib.parse import unquote
+            proxy_override = unquote(proxy_override)
+        except Exception:
+            pass
     await ws.accept()
     m = _get_main()
 
@@ -181,7 +187,7 @@ async def websocket_tunnel(ws: WebSocket, uuid: str):
 
         # Route the outbound connection through the user's selected proxy IP(s),
         # so egress shows the proxy IP instead of the Railway host.
-        reader, writer = await m.proxy_connect(uuid, address, port)
+        reader, writer = await m.proxy_connect(uuid, address, port, proxy_override=proxy_override)
         sock = writer.transport.get_extra_info('socket')
         if sock:
             import socket
