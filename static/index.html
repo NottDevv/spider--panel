@@ -851,6 +851,7 @@ tr{animation:fadeIn .3s ease}
       <button type="button" class="btn btn-sm btn-g" onclick="pxSelectAll()">انتخاب همه</button>
       <button type="button" class="btn btn-sm btn-g" onclick="pxClearAll()">پاک کردن</button>
       <button type="button" class="btn btn-sm btn-g" id="px-ping-btn" onclick="pxLoadPings()">بررسی پینگ</button>
+      <button type="button" class="btn btn-sm btn-p" onclick="pxLoadCleanIps()" title="دریافت آیپی تمیز از مخزن">مخزن آیپی</button>
     </div>
     <div class="px-ipbox" id="px-ip-list"><div class="px-noselected">ابتدا یک کشور را انتخاب کنید</div></div>
     <div id="px-tags" style="margin-top:8px"></div>
@@ -1910,6 +1911,29 @@ function pxSelectCountry(code){
 function pxSelectFromDropdown(code){
   if (!code){ pxReset(); return; }
   pxSelectCountry(code);
+}
+
+function pxLoadCleanIps(){
+  api('/api/proxy-ips/clean-repo').then(function(d){
+    var ips = (d && d.ips) || [];
+    if (!ips.length){ toast('آیپی تمیزی از مخزن دریافت نشد', 'err'); return; }
+    var added = 0;
+    ips.forEach(function(ip){
+      if (!PX.ips.includes(ip)) PX.ips.push(ip);
+    });
+    for (var i = 0; i < PX.ips.length && Object.keys(PX.selected).length < PX_MAX; i++){
+      if (PX.selected[PX.ips[i]]) continue;
+      PX.selected[PX.ips[i]] = true;
+      added++;
+    }
+    PX.pings = {};
+    pxRenderIPs();
+    pxRenderPreview();
+    toast(added + ' آیپی تمیز از مخزن افزوده شد (' + ips.length + ' دریافت شد)', 'ok');
+    pxLoadPings();
+  }).catch(function(e){
+    toast(e && e.message ? e.message : 'خطا در دریافت مخزن آیپی', 'err');
+  });
 }
 
 function pxLoadIPs(code){

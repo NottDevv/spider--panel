@@ -3140,13 +3140,39 @@ def _expand_proxy_tokens(tokens):
     return [p.strip() for p in cleaned.split(",") if p.strip()]
 
 
+def _build_vless_connect_header(uuid: str, address: str, port: int) -> bytes:
+    """Rebuild a VLESS CONNECT header for a raw relay (ZEUS-style).
+
+    The proxy's relay reads this header, connects to `address:port`, and then
+    tunnels the remaining payload (which the caller writes right after this
+    header). Format: version(1) uuid(16) opt_len(1) cmd(1) port(2) atype(1) addr.
+    """
+    import socket as _sock
+    try:
+        hb = _sock.inet_aton(address)
+        atype, ab = 0x01, hb
+    except OSError:
+        if ":" in address:
+            atype, ab = 0x04, _sock.inet_pton(_sock.AF_INET6, address)
+        else:
+            eb = address.encode()
+            atype, ab = 0x03, bytes([len(eb)]) + eb
+    raw_uuid = uuid.replace("-", "")
+    if len(raw_uuid) != 32:
+        raw_uuid = (raw_uuid + "0" * 32)[:32]
+    ubytes = bytes.fromhex(raw_uuid)
+    return (b"\x00" + ubytes + b"\x00\x01"
+            + bytes([port >> 8, port & 0xff]) + bytes([atype]) + ab)
+
+
 async def proxy_connect(uuid: str, address: str, port: int):
     """Open an outbound TCP connection, routed through the user's proxy IP.
 
-    Mirrors the BPB worker approach: parse the proxy entry (protocol + auth),
-    then try SOCKS5 first, then HTTP CONNECT, and fall back to a direct
-    connection only if the proxy is not a working proxy. When a working
-    proxy is used, the peer sees the proxy's IP instead of the Railway host.
+    Mirrors the BPB/ZEUS worker approach: for a working HTTP/SOCKS5 proxy we
+    CONNECT through it; if the picked entry is a raw relay (clean Cloudflare
+    IP), we fall back to ZEUS-style: raw-connect to proxy:port and re-send a
+    VLESS CONNECT header so the relay forwards to the target. Only when the
+    proxy fails entirely do we fall back to a direct connection.
     """
     import random as _rnd
 
@@ -3172,6 +3198,21 @@ async def proxy_connect(uuid: str, address: str, port: int):
             got = await _try_proxy_order(proxy, address, port)
             if got:
                 return got
+            # ZEUS-style raw relay: connect straight to proxy:port and send a
+            # reconstructed VLESS CONNECT header; the relay forwards to target.
+            rwtr = None
+            try:
+                rrdr, rwtr = await asyncio.wait_for(
+                    asyncio.open_connection(proxy["hostname"], proxy["port"]), timeout=8.0
+                )
+                hdr = _build_vless_connect_header(uuid, address, port)
+                rwtr.write(hdr)
+                await rwtr.drain()
+                logger.info(f"proxy_connect[raw-relay] via {proxy['hostname']}:{proxy['port']} → {address}:{port}")
+                return rrdr, rwtr
+            except Exception:
+                await _close_writer_safely(rwtr)
+                continue
         logger.warning(f"proxy_connect all targets failed for {entry}")
         return await asyncio.wait_for(asyncio.open_connection(address, port), timeout=10.0)
 
@@ -3885,8 +3926,33 @@ if not _COUNTRY_PROXY_DIR.exists():
     _COUNTRY_PROXY_DIR = DATA_DIR / "country_proxies"
 _COUNTRY_PROXY_IGNORE = {"01_last_update.txt", "02_proxies.csv", "03_proxies.txt"}
 
+@app.get("/api/proxy-ips/clean-repo")
+async def clean_ip_repo(_=Depends(require_auth)):
+    """Return working proxy IPs from the local country-proxy repo.
 
-@app.get("/api/proxy-ips/countries")
+    This panel runs on Railway, not a Cloudflare Worker, so "clean Cloudflare
+    IPs" can't be used as relays here (they don't speak HTTP CONNECT / VLESS
+    relay). The working equivalent is the verified HTTP/SOCKS5 proxy pool that
+    fetch_proxies.py collects into data/country_proxies/. Return a deduped
+    sample so the frontend can pre-fill the proxy selector.
+    """
+    seen, out = set(), []
+    try:
+        for f in sorted(_COUNTRY_PROXY_DIR.glob("*.txt")):
+            if f.name in _COUNTRY_PROXY_IGNORE:
+                continue
+            for line in f.read_text(errors="ignore").splitlines():
+                line = line.strip()
+                if not line or " " not in line:
+                    continue
+                ip, port = line.split(" ", 1)
+                token = f"{ip}:{port.strip()}"
+                if token not in seen:
+                    seen.add(token)
+                    out.append(token)
+    except Exception:
+        return {"ok": False, "ips": []}
+    return {"ok": True, "source": "country_proxies", "ips": out[:200]}
 async def list_country_proxies(_=Depends(require_auth)):
     """List all countries with proxy IP counts (XX.txt files under country_proxies)."""
     try:
