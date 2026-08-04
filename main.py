@@ -661,6 +661,72 @@ async def startup():
         asyncio.create_task(save_state())
         logger.info("Backfilled placeholder inbound domains with %s", _real)
 
+    # Deduplicate inbound ports: on Railway each inbound must listen on its own
+    # port (443 can only be used once). Non-default inbounds that collide with
+    # an earlier one are moved to the next free port (80xx range).
+    _seen_ports: dict = {}
+    for _ib in INBOUNDS.values():
+        _p = int(_ib.get("port") or 0)
+        if _p and _p in _seen_ports:
+            _np = _p + 1
+            while _np in _seen_ports or _np == 80:
+                _np += 1
+            _ib["port"] = _np
+            if not _ib.get("external_port"):
+                _ib["external_port"] = _np
+            _changed = True
+            logger.info("Inbound «%s» moved to free port %s (was %s)", _ib.get("name"), _np, _p)
+        _seen_ports[int(_ib.get("port") or 0)] = True
+
+    # Reality migration: every reality inbound must carry a working pbk/sid.
+    # Old inbounds created before the key-gen fix have empty reality_settings —
+    # backfill from the global settings (or generate fresh keys).
+    _gs_rs = SETTINGS.get("reality", {}) or {}
+    for _ib in INBOUNDS.values():
+        if (_ib.get("protocol") or "").lower() != "reality" and (_ib.get("security") or "").lower() != "reality":
+            continue
+        _rs = _ib.setdefault("reality_settings", {})
+        if not _rs.get("public_key") or not _rs.get("private_key"):
+            if _gs_rs.get("public_key") and _gs_rs.get("private_key"):
+                _rs.setdefault("public_key", _gs_rs.get("public_key"))
+                _rs.setdefault("private_key", _gs_rs.get("private_key"))
+            else:
+                _fresh = _gen_reality_settings()
+                _rs.setdefault("private_key", _fresh.get("private_key", ""))
+                _rs.setdefault("public_key", _fresh.get("public_key", ""))
+            _rs.setdefault("short_id", _gs_rs.get("short_id") or secrets.token_hex(5)[:10])
+            _rs.setdefault("spiderx", "/")
+            _rs.setdefault("dest", "is1-ssl.mzstatic.com:443")
+            _rs.setdefault("sni", "is1-ssl.mzstatic.com")
+            _changed = True
+            logger.info("Reality inbound «%s» backfilled with pbk", _ib.get("name"))
+        # Xray must LISTEN on the same port the client connects to (external_port),
+        # otherwise the reality config in the client can't reach the server.
+        # If they differ, prefer the internal port (where Xray actually listens)
+        # and expose the same port to the client.
+        _ext = int(_ib.get("external_port") or 0)
+        _int = int(_ib.get("port") or 0)
+        if _ext and _int and _ext != _int:
+            _ib["external_port"] = _int
+            _changed = True
+            logger.info("Reality inbound «%s» client port synced to listen port %s", _ib.get("name"), _int)
+
+    # WS/XHTTP-TLS inbounds are served by the FastAPI relay on the panel's own
+    # port (CONFIG["port"]); the client-facing port stays 443 (Railway TLS).
+    # Syncing port→CONFIG["port"] ensures the relay and config agree.
+    _relay_port = int(CONFIG.get("port") or 8080)
+    for _ib in INBOUNDS.values():
+        _proto = (_ib.get("protocol") or "").lower()
+        _sec = (_ib.get("security") or "").lower()
+        if _proto == "worker" or _proto == "reality" or _sec == "reality":
+            continue
+        if int(_ib.get("port") or 0) != _relay_port:
+            _ib["port"] = _relay_port
+            _changed = True
+            logger.info("TLS inbound «%s» relay port synced to %s", _ib.get("name"), _relay_port)
+    if _changed:
+        asyncio.create_task(save_state())
+
     # If a worker is connected, make sure the default Worker inbound exists and
     # points at the worker domain (address/host/sni auto-filled at boot too).
     if WORKER.get("connected"):
@@ -4186,11 +4252,21 @@ def generate_xray_server_config(inbound_id: str = None) -> dict:
 
 
 def _add_inbound_to_xray(cfg: dict, ib: dict, iid: str, host: str):
-    """Add a single inbound to an Xray config dict."""
+    """Add a single inbound to an Xray config dict.
+
+    Only REALITY inbounds are served by Xray: WS/XHTTP TLS inbounds are handled
+    by the FastAPI relay (Railway terminates TLS on the public port), and the
+    Worker inbound is handled by the Cloudflare Worker. Adding TLS inbounds with
+    a fake /etc/xray/cert.pem made Xray fail on Railway (no cert file), which
+    took down Reality too.
+    """
     protocol = ib.get("protocol", "vless")
+    security = ib.get("security", "tls")
+    is_reality = protocol == "reality" or security == "reality"
+    if not is_reality:
+        return  # WS/XHTTP-TLS + worker inbounds are NOT Xray's job
     port = int(ib.get("port", 443))
     network = ib.get("network", "ws")
-    security = ib.get("security", "tls")
     domain = ib.get("domain", host)
     sni_val = ib.get("sni", domain)
     fingerprint = ib.get("fingerprint", "chrome")
