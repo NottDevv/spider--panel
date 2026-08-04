@@ -4325,7 +4325,9 @@ def _add_inbound_to_xray(cfg: dict, ib: dict, iid: str, host: str):
     _raw_port = str(ib.get("port") or "").strip()
     if not _raw_port:
         return
-    port = int(ib.get("port", 443))
+    # Xray listens on the INTERNAL port; the external port is the Railway TCP
+    # proxy port that forwards to it (client config uses external_port).
+    port = int(_raw_port)
     network = ib.get("network", "ws")
     domain = ib.get("domain", host)
     sni_val = ib.get("sni", domain)
@@ -4461,6 +4463,15 @@ async def _xray_start(config: dict) -> bool:
     bin_path = _xray_bin_path()
     if not bin_path.exists():
         logger.warning("xray binary missing; skipping xray start")
+        return False
+    # No reality inbounds configured yet → don't run Xray with an empty config
+    # (it would fail to bind any listener). Stop any running instance.
+    if not (config.get("inbounds") or []):
+        if _xray_proc and _xray_proc.returncode is None:
+            try:
+                _xray_proc.terminate()
+            except Exception:
+                pass
         return False
     async with _xray_restart_lock:
         # Stop existing
