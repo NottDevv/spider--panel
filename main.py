@@ -647,6 +647,7 @@ async def startup():
     # Backfill placeholder domains on any pre-existing inbounds so configs never
     # carry localhost/SERVER_IP when a real domain is available.
     _real = _safe_host(SETTINGS.get("domain"), get_host())
+    _real_is_rlwy = ".rlwy.net" in _real or ".up.railway.app" in _real
     _changed = False
     for _ib in INBOUNDS.values():
         _cur = str(_ib.get("domain") or "")
@@ -657,6 +658,16 @@ async def startup():
         if _cext in ("", "0.0.0.0", "127.0.0.1", "localhost", "SERVER_IP"):
             _ib["external_domain"] = _real
             _changed = True
+        # Railway rotates its public domain (sakura... → production-221d...).
+        # Only DEFAULT inbounds (created by the panel) get their domain refreshed
+        # to the current Railway domain; a manually-set domain is left alone.
+        elif _real_is_rlwy and _cext and (".rlwy.net" in _cext or ".up.railway.app" in _cext) and _cext != _real:
+            _name = str(_ib.get("name") or "")
+            _is_default = any(k in _name for k in ("پیش‌فرض", "Multi-Location", "default", "Default"))
+            if _is_default:
+                _ib["external_domain"] = _real
+                _changed = True
+                logger.info("Inbound «%s» external domain refreshed %s → %s", _name, _cext, _real)
     if _changed:
         asyncio.create_task(save_state())
         logger.info("Backfilled placeholder inbound domains with %s", _real)
@@ -678,14 +689,31 @@ async def startup():
             logger.info("Inbound «%s» moved to free port %s (was %s)", _ib.get("name"), _np, _p)
         _seen_ports[int(_ib.get("port") or 0)] = True
 
-    # Reality migration: every reality inbound must carry a working pbk/sid.
-    # Old inbounds created before the key-gen fix have empty reality_settings —
-    # backfill from the global settings (or generate fresh keys).
+    # Reality migration: every reality inbound must carry a WORKING pbk/sid —
+    # a pbk that is actually the public half of the private key Xray will use.
+    # Old inbounds created before the key-gen fix have empty or mismatched keys;
+    # backfill by deriving pbk from the private key, or generate a fresh pair.
     _gs_rs = SETTINGS.get("reality", {}) or {}
     for _ib in INBOUNDS.values():
         if (_ib.get("protocol") or "").lower() != "reality" and (_ib.get("security") or "").lower() != "reality":
             continue
         _rs = _ib.setdefault("reality_settings", {})
+        _priv = str(_rs.get("private_key") or "")
+        _pub = str(_rs.get("public_key") or "")
+        # If we have a private key, derive its public key — that is the ONLY
+        # pbk that works with Xray (which uses the same private key).
+        _derived = ""
+        if _priv:
+            try:
+                from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+                _p = X25519PrivateKey.from_private_bytes(base64.b64decode(_priv))
+                _derived = base64.b64encode(_p.public_key().public_bytes_raw()).decode()
+            except Exception:
+                _derived = ""
+        if _derived and _derived != _pub:
+            _rs["public_key"] = _derived
+            _changed = True
+            logger.info("Reality inbound «%s» pbk re-derived from private key", _ib.get("name"))
         if not _rs.get("public_key") or not _rs.get("private_key"):
             if _gs_rs.get("public_key") and _gs_rs.get("private_key"):
                 _rs.setdefault("public_key", _gs_rs.get("public_key"))
@@ -694,12 +722,12 @@ async def startup():
                 _fresh = _gen_reality_settings()
                 _rs.setdefault("private_key", _fresh.get("private_key", ""))
                 _rs.setdefault("public_key", _fresh.get("public_key", ""))
-            _rs.setdefault("short_id", _gs_rs.get("short_id") or secrets.token_hex(5)[:10])
-            _rs.setdefault("spiderx", "/")
-            _rs.setdefault("dest", "is1-ssl.mzstatic.com:443")
-            _rs.setdefault("sni", "is1-ssl.mzstatic.com")
             _changed = True
             logger.info("Reality inbound «%s» backfilled with pbk", _ib.get("name"))
+        _rs.setdefault("short_id", _gs_rs.get("short_id") or secrets.token_hex(5)[:10])
+        _rs.setdefault("spiderx", "/")
+        _rs.setdefault("dest", "is1-ssl.mzstatic.com:443")
+        _rs.setdefault("sni", "is1-ssl.mzstatic.com")
         # Xray must LISTEN on the same port the client connects to (external_port),
         # otherwise the reality config in the client can't reach the server.
         # If they differ, prefer the internal port (where Xray actually listens)
