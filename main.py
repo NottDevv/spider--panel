@@ -792,15 +792,16 @@ async def startup():
     if _up_changed:
         asyncio.create_task(save_state())
 
-    asyncio.create_task(_ensure_xray())
-
-    async def _xray_apply_on_boot():
-        await _ensure_xray()
-        if _xray_bin_path().exists():
+    # Ensure Xray is installed and serving reality BEFORE the panel is fully up,
+    # so reality configs work immediately (not in a background task).
+    await _ensure_xray()
+    if _xray_bin_path().exists():
+        try:
             await _xray_apply()
-    asyncio.create_task(_xray_apply_on_boot())
+        except Exception as e:
+            logger.warning(f"Xray apply on boot failed: {e}")
     log_activity("system", "سرور راه‌اندازی شد", "ok")
-    logger.info(f"Spider Gateway v9.2 started on port {CONFIG['port']}")
+    logger.info(f"Spider Gateway v9.2 (commit 24d7594) started on port {CONFIG['port']}")
     asyncio.create_task(_worker_proxy_sync_loop())
 
 # Worker proxy source sync — hourly pull from the daily GitHub list and push to
