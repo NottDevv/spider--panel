@@ -407,26 +407,68 @@ def _gen_ml_dsa65(seed: bytes) -> str:
     return b64.b64encode(bytes(out[:1952])).decode()
 
 
+def _xray_gen_keypair(cmd: str, timeout: float = 5.0) -> dict:
+    """Run an Xray key-generation command (x25519 | mldsa65) and parse the
+    'Name: value' lines. Keys are produced by the Xray binary itself so they
+    always match what the running Xray instance expects."""
+    import subprocess
+    bin_path = _xray_bin_path()
+    if not bin_path.exists():
+        return {}
+    try:
+        proc = subprocess.run([str(bin_path), cmd], capture_output=True, text=True, timeout=timeout)
+    except Exception as e:
+        logger.warning(f"xray {cmd} keygen failed: {e}")
+        return {}
+    out = {}
+    for line in (proc.stdout or "").splitlines():
+        if ":" in line:
+            k, _, v = line.partition(":")
+            out[k.strip().lower()] = v.strip()
+    return out
+
+
 def _gen_reality_settings() -> dict:
-    """Generate a Reality x25519 key pair + short_id + spiderx + mldsa65 seed."""
+    """Generate REALITY keys using the Xray binary itself: the x25519 key pair
+    (private + public) via `xray x25519` and the ML-DSA-65 seed/verify via
+    `xray mldsa65`. Falls back to the cryptography lib only if Xray is missing.
+    short_id is a random hex string (Xray accepts any hex short id)."""
     import base64 as b64
+    xk = _xray_gen_keypair("x25519")
+    mk = _xray_gen_keypair("mldsa65")
+    priv = xk.get("privatekey", "")
+    pub = xk.get("password (publickey)", "")
+    seed = mk.get("seed", "")
+    verify = mk.get("verify", "")
+    if priv and pub:
+        return {
+            "private_key": priv,
+            "public_key": pub,
+            "short_id": secrets.token_hex(5)[:10],
+            "spiderx": "/",
+            "dest": "is1-ssl.mzstatic.com:443",
+            "mldsa65_seed": seed,
+            "mldsa65_verify": verify,
+        }
+    # Xray not available: fall back to a Python x25519 keypair so the panel
+    # still produces a working config shape.
     mldsa_seed = secrets.token_bytes(64)
     try:
         from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
         from cryptography.hazmat.primitives import serialization
-        priv = X25519PrivateKey.generate()
-        priv_bytes = priv.private_bytes(
+        p = X25519PrivateKey.generate()
+        priv_b = p.private_bytes(
             encoding=serialization.Encoding.Raw,
             format=serialization.PrivateFormat.Raw,
             encryption_algorithm=serialization.NoEncryption(),
         )
-        pub_bytes = priv.public_key().public_bytes(
+        pub_b = p.public_key().public_bytes(
             encoding=serialization.Encoding.Raw,
             format=serialization.PublicFormat.Raw,
         )
         return {
-            "private_key": b64.b64encode(priv_bytes).decode(),
-            "public_key": b64.b64encode(pub_bytes).decode(),
+            "private_key": b64.b64encode(priv_b).decode(),
+            "public_key": b64.b64encode(pub_b).decode(),
             "short_id": secrets.token_hex(5)[:10],
             "spiderx": "/",
             "dest": "is1-ssl.mzstatic.com:443",
@@ -888,13 +930,17 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
         ib_sec = (inbound.get("security") if inbound else None) or "tls"
         if ib_sec == "reality":
             rs = inbound.get("reality_settings", {}) if inbound else {}
+            # If the inbound has no reality settings (e.g. created before the
+            # auto-key fix) or is missing a pbk, fall back to the global
+            # reality settings so the config always carries a working pbk/sid.
+            gs = SETTINGS.get("reality", {}) or {}
             if not rs:
-                rs = SETTINGS.get("reality", {})
-            reality_pbk = rs.get("public_key", "")
-            reality_sid = rs.get("short_id", "5a3ff5a13d")
-            reality_spx = rs.get("spiderx", "/")
-            reality_fp = (inbound.get("fingerprint") if inbound else None) or rs.get("fingerprint", "chrome")
-            sni_reality = sni if sni and sni != host else rs.get("sni", "is1-ssl.mzstatic.com")
+                rs = gs
+            reality_pbk = rs.get("public_key", "") or gs.get("public_key", "")
+            reality_sid = rs.get("short_id", "") or gs.get("short_id", "5a3ff5a13d")
+            reality_spx = rs.get("spiderx", "/") or gs.get("spiderx", "/")
+            reality_fp = (inbound.get("fingerprint") if inbound else None) or rs.get("fingerprint", "") or gs.get("fingerprint", "chrome")
+            sni_reality = sni if sni and sni != host else rs.get("sni", "") or gs.get("sni", "is1-ssl.mzstatic.com")
             if transport_type == "xhttp":
                 xh = {}
                 lk = LINKS.get(config_uuid)
@@ -1759,8 +1805,15 @@ async def update_inbound(inbound_id: str, request: Request, _=Depends(require_au
         # Reality security must always be "reality" + have fresh keys
         if ib.get("protocol") == "reality" or ib.get("security") == "reality":
             ib["security"] = "reality"
-            # Auto-update reality_settings with short_id/spiderx if not present
+            # Auto-generate the full reality key set if missing (x25519 pbk/priv,
+            # short_id, mldsa65) so the config always carries a working pbk/sid.
             rs = ib.setdefault("reality_settings", {})
+            if not rs.get("public_key") or not rs.get("private_key"):
+                fresh = _gen_reality_settings()
+                rs.setdefault("private_key", fresh["private_key"])
+                rs.setdefault("public_key", fresh["public_key"])
+                rs.setdefault("mldsa65_seed", fresh["mldsa65_seed"])
+                rs.setdefault("mldsa65_verify", fresh["mldsa65_verify"])
             if not rs.get("short_id"):
                 rs["short_id"] = secrets.token_hex(5)[:10]
             rs.setdefault("spiderx", "/")
@@ -3859,7 +3912,7 @@ def _add_inbound_to_xray(cfg: dict, ib: dict, iid: str, host: str):
     domain = ib.get("domain", host)
     sni_val = ib.get("sni", domain)
     fingerprint = ib.get("fingerprint", "chrome")
-    rs = ib.get("reality_settings", {}) if protocol == "reality" else {}
+    rs = ib.get("reality_settings", {}) if (protocol == "reality" or security == "reality") else {}
     ws_settings = ib.get("ws_settings", {})
     xh_settings = ib.get("xhttp_settings", {})
     grpc_settings = ib.get("grpc_settings", {})
@@ -3898,7 +3951,7 @@ def _add_inbound_to_xray(cfg: dict, ib: dict, iid: str, host: str):
         inbound_obj["settings"]["clients"] = clients
 
     # Transport / Stream settings
-    if protocol == "reality":
+    if protocol == "reality" or security == "reality":
         rs_sni = "is1-ssl.mzstatic.com"  # fixed target per user request
         inbound_obj["streamSettings"] = {
             "network": network if network in ("tcp", "xhttp", "grpc") else "tcp",
