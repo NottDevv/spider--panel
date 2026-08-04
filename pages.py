@@ -182,7 +182,7 @@ input:focus ~ .input-icon{color:var(--spider-blue)}
     <div class="login-sub">به پنل مدیریت خوش آمدید<br>برای ادامه رمز عبور را وارد کنید</div>
     <div class="error-msg" id="err"><i class="ti ti-alert-circle"></i><span id="err-text"></span></div>
     <div class="login-hint">
-      <span class="hint-label">🔑 رمز پیش‌فرض</span>
+      <span class="hint-label"><i class="ti ti-key"></i> رمز پیش‌فرض</span>
       <span class="hint-value" onclick="document.getElementById('pw').value='123456';document.getElementById('pw').focus()">123456</span>
     </div>
     <form id="form">
@@ -655,7 +655,7 @@ a{color:inherit;text-decoration:none}
     <div class="topbar">
       <div><div class="topbar-title"><i class="ti ti-layout-dashboard"></i> داشبورد</div><div class="topbar-sub" id="last-updated">در حال بارگذاری...</div></div>
       <div class="topbar-right">
-        <span class="welcome-text">سلام ادمین 👋</span>
+        <span class="welcome-text">سلام ادمین <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 11a2 2 0 0 0 0-4H7.5a2.5 2.5 0 0 1 0-5h.5a3.5 3.5 0 1 1 0 7"/><path d="M22 9a6 6 0 0 1-6 6"/></svg></span>
         <button class="bell-btn" title="اعلان‌ها"><i class="ti ti-bell"></i></button>
         <button class="btn btn-primary" onclick="openModal('modal-create-user')"><i class="ti ti-user-plus"></i> ایجاد کاربر جدید</button>
       </div>

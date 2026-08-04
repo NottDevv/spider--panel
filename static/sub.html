@@ -595,12 +595,16 @@
     for (var i = 0; i < cfgs.length; i++) {
       var c = cfgs[i];
       if (!c) continue;
+      // Read the real network type from the config link itself (&type=...),
+      // which is authoritative — the user-level transport_type can be stale.
+      var tmatch = c.match(/[?&]type=([a-z0-9-]+)/i);
+      var ctype = tmatch ? tmatch[1].toUpperCase() : 'WS';
       blocks += '<div class="group border border-black/5 dark:border-white/12 bg-black/5 dark:bg-white/5 rounded-2xl p-stack-md flex justify-between items-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer relative overflow-hidden" onclick="copyCfgIndex(' + i + ')">' +
         '<div class="absolute ltr:left-0 rtl:right-0 top-0 bottom-0 w-1 bg-[#00ffff] opacity-0 group-hover:opacity-100 transition-opacity neon-border"></div>' +
         '<div class="flex flex-col gap-1 ltr:pl-2 rtl:pr-2 min-w-0">' +
           '<div class="flex items-center gap-2">' +
             '<span class="font-code-label text-code-label text-on-surface font-bold ltr:text-left rtl:text-right" dir="ltr">' + esc((dd.protocol || 'vless').toUpperCase()) + ' #' + (i + 1) + '</span>' +
-            '<span class="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-code-label text-[10px] text-on-surface-variant">' + esc((dd.transport_type || 'ws').toUpperCase()) + '</span>' +
+            '<span class="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-code-label text-[10px] text-on-surface-variant">' + esc(ctype) + '</span>' +
           '</div>' +
           '<span class="cfg-text text-on-surface-variant truncate max-w-[130px] md:max-w-[320px] ltr:text-left rtl:text-right" dir="ltr">' + esc(c) + '</span>' +
         '</div>' +

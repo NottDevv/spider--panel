@@ -855,7 +855,10 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
         if not reality_pbk or not reality_sid:
             return f"vless://{config_uuid}@{ext_domain}:{ext_port}?encryption=none&security=reality&sni={quote(sni_reality)}&fp={reality_fp}&pbk=MISSING_PBK&sid=MISSING_SID&type=tcp#{remark}"
         rpath = stored_path if stored_path else xs.get("path", "/")
-        rt = user.get("transport_type") or (inbound.get("network") if inbound else None) or "xhttp"
+        # Prefer the inbound's own network so a reality+xhttp inbound always
+        # produces type=xhttp and a reality+tcp inbound produces type=tcp,
+        # regardless of the user-level transport_type.
+        rt = (inbound.get("network") if inbound else None) or user.get("transport_type") or "xhttp"
         if rt == "xhttp":
             xpb = xs.get("xPaddingBytes", "100-1000")
             xmod = xs.get("mode", "auto")
@@ -880,6 +883,38 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
             vless_host = addr_ip
         if addr_port:
             vless_port = addr_port
+        # A VLESS inbound with security="reality" must emit a reality config
+        # (pbk/sid + fixed SNI), not the default TLS one.
+        ib_sec = (inbound.get("security") if inbound else None) or "tls"
+        if ib_sec == "reality":
+            rs = inbound.get("reality_settings", {}) if inbound else {}
+            if not rs:
+                rs = SETTINGS.get("reality", {})
+            reality_pbk = rs.get("public_key", "")
+            reality_sid = rs.get("short_id", "5a3ff5a13d")
+            reality_spx = rs.get("spiderx", "/")
+            reality_fp = (inbound.get("fingerprint") if inbound else None) or rs.get("fingerprint", "chrome")
+            sni_reality = sni if sni and sni != host else rs.get("sni", "is1-ssl.mzstatic.com")
+            if transport_type == "xhttp":
+                xh = {}
+                lk = LINKS.get(config_uuid)
+                if lk:
+                    xh = lk.get("xhttp_settings", {})
+                xpb = xh.get("xPaddingBytes", "100-1000")
+                xmod = xh.get("mode", "auto")
+                xsc = xh.get("scMaxEachPostBytes", "1000000")
+                extra_raw = '{{"xPaddingBytes":"{}","mode":"{}","scMaxEachPostBytes":"{}"}}'.format(xpb, xmod, xsc)
+                extra = quote(extra_raw, safe='')
+                params = (f"encryption=none&security=reality"
+                          f"&sni={quote(sni_reality)}&fp={reality_fp}"
+                          f"&pbk={reality_pbk}&sid={reality_sid}&spx={quote(reality_spx, safe='')}"
+                          f"&type=xhttp&path={quote(stored_path, safe='')}&mode={xmod}&extra={extra}")
+                return f"vless://{config_uuid}@{vless_host}:{vless_port}?{params}#{remark}"
+            # reality over tcp
+            params = (f"encryption=none&security=reality&type=tcp"
+                      f"&sni={quote(sni_reality)}&fp={reality_fp}&alpn=h2,http/1.1"
+                      f"&pbk={reality_pbk}&sid={reality_sid}&spx={quote(reality_spx, safe='')}")
+            return f"vless://{config_uuid}@{vless_host}:{vless_port}?{params}#{remark}"
         if transport_type == "grpc":
             params = f"encryption=none&security=tls&type=grpc&serviceName={quote(stored_path, safe='')}&host={quote(vless_host)}&sni={quote(sni)}&fp=chrome&alpn=h2"
             return f"vless://{config_uuid}@{vless_host}:{vless_port}?{params}#{remark}"
@@ -1648,7 +1683,7 @@ async def create_inbound(request: Request, _=Depends(require_auth)):
 
     # Auto-generate Reality keys (x25519 pbk/priv + short_id + mldsa65 seed)
     # fresh for every reality inbound. SNI target is fixed.
-    if protocol == "reality":
+    if protocol == "reality" or security == "reality":
         fresh = _gen_reality_settings()
         if not reality_settings.get("private_key"):
             reality_settings["private_key"] = fresh["private_key"]
@@ -1721,8 +1756,8 @@ async def update_inbound(inbound_id: str, request: Request, _=Depends(require_au
             ib["network"] = str(body["network"]).lower()
         if "security" in body:
             ib["security"] = str(body["security"]).lower()
-        # Reality protocol must always use security="reality"
-        if ib.get("protocol") == "reality":
+        # Reality security must always be "reality" + have fresh keys
+        if ib.get("protocol") == "reality" or ib.get("security") == "reality":
             ib["security"] = "reality"
             # Auto-update reality_settings with short_id/spiderx if not present
             rs = ib.setdefault("reality_settings", {})
@@ -1730,6 +1765,8 @@ async def update_inbound(inbound_id: str, request: Request, _=Depends(require_au
                 rs["short_id"] = secrets.token_hex(5)[:10]
             rs.setdefault("spiderx", "/")
             rs.setdefault("dest", "is1-ssl.mzstatic.com:443")
+            rs.setdefault("sni", "is1-ssl.mzstatic.com")
+            ib["sni"] = "is1-ssl.mzstatic.com"
             if ib.get("network") not in ("tcp", "xhttp", "grpc"):
                 ib["network"] = "tcp"
         if "domain" in body:

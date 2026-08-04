@@ -3,7 +3,6 @@
 <head>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Spider Panel v4</title>
@@ -13,77 +12,139 @@
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <style>
 
-:root,[data-accent="red"]{
-  --teal:#00e1c1;--blue:#5a78ff;--spider-blue:#2B7FFF;--spider-purple:#7B61FF;--spider-red:#FF2352;
-  --neon:#00e1c1;--neon2:#5a78ff;--purple:#5a78ff;--green:#16A34A;--red:#FF2352;
-  --gold:#F59E0B;--success:#16A34A;--warning:#F59E0B;--danger:#FF2352;
-  --bg:#131313;--bg2:rgba(19,19,19,.85);--bg3:rgba(255,255,255,.07);--txt:#e2e2e2;--txt2:#b4b5b5;
-  --r:12px;--radius:16px;--radius-lg:20px;--radius-xl:28px;
-  --glass:rgba(19,19,19,.7);--surface-glass:rgba(19,19,19,.55);
-  --grad1:#00e1c1;--grad2:#5a78ff;--grad:linear-gradient(135deg,#00e1c1,#5a78ff);
-  --gradient:linear-gradient(90deg,#00e1c1,#5a78ff);
-  --border:rgba(255,255,255,.1);
-  --glow:0 0 40px rgba(0,225,193,.12);--glow-strong:0 0 50px rgba(0,225,193,.25);
-  --logo-shadow:drop-shadow(0 0 20px rgba(0,225,193,.4));
-  --tab-bg:#00e1c1;--tab-color:#000;--tab-glow:0 0 16px rgba(0,225,193,.35);
-  --nav-bg:rgba(0,225,193,.1);--nav-color:#00e1c1;
-  --border-glow:rgba(0,225,193,.25);--input-glow:rgba(0,225,193,.12);
-  --orb1:rgba(0,225,193,.08);--orb2:rgba(90,120,255,.07);
-  --surface:#FFFFFF;--text-primary:#e2e2e2;--text-secondary:#b4b5b5;
-  --shadow-sm:0 1px 3px rgba(0,0,0,.2);--shadow-md:0 4px 16px rgba(0,0,0,.3);
-  --shadow-lg:0 16px 48px rgba(0,0,0,.5);--shadow-hover:0 8px 30px rgba(0,0,0,.4);
+/* Ultra-dark sub-style theme — absolute black, no glass, fixed teal accent.
+   Matches the /sub page exactly. */
+:root{
+  --teal:#ffffff;--blue:#9db4ff;--spider-blue:#9db4ff;--spider-purple:#b9a6ff;--spider-red:#ffffff;
+  --neon:#ffffff;--neon2:#e6e6e6;--purple:#b9a6ff;--green:#ffffff;--red:#ffffff;
+  --gold:#ffffff;--success:#ffffff;--warning:#ffffff;--danger:#ffffff;
+  --bg:#000000;--bg2:#000000;--bg3:rgba(255,255,255,.06);--txt:#ffffff;--txt2:#c9c9ce;
+  --r:12px;--radius:14px;--radius-lg:16px;--radius-xl:24px;
+  --glass:#0a0a0d;--surface-glass:#0a0a0d;
+  --grad1:#ffffff;--grad2:#e6e6e6;--grad:linear-gradient(135deg,#ffffff,#e6e6e6);
+  --gradient:linear-gradient(90deg,#ffffff,#e6e6e6);
+  --border:rgba(255,255,255,.06);
+  --glow:none;--glow-strong:none;
+  --logo-shadow:none;
+  --tab-bg:#ffffff;--tab-color:#000;--tab-glow:none;
+  --nav-bg:rgba(255,255,255,.12);--nav-color:#ffffff;
+  --border-glow:rgba(255,255,255,.35);--input-glow:rgba(255,255,255,.12);
+  --orb1:rgba(255,255,255,.05);--orb2:rgba(255,255,255,.03);
+  --surface:#FFFFFF;--text-primary:#ffffff;--text-secondary:#c9c9ce;
+  --shadow-sm:0 8px 32px rgba(0,0,0,.55);--shadow-md:0 8px 32px rgba(0,0,0,.6);
+  --shadow-lg:0 16px 48px rgba(0,0,0,.7);--shadow-hover:0 8px 32px rgba(0,0,0,.6);
 }
-[data-accent="green"]{
-  --neon:#00e676;--neon2:#69f0ae;--glow:0 0 30px rgba(0,230,118,.15);--glow-strong:0 0 40px rgba(0,230,118,.25);
-  --grad1:#00e676;--grad2:#00c853;--grad:linear-gradient(135deg,#00e676,#00c853);
-  --logo-shadow:drop-shadow(0 0 20px rgba(0,230,118,.5));
-  --tab-bg:#00e676;--tab-color:#000;--tab-glow:0 0 16px rgba(0,230,118,.4);
-  --nav-bg:rgba(0,230,118,.1);--nav-color:#00e676;
-  --border-glow:rgba(0,230,118,.25);--input-glow:rgba(0,230,118,.15);
-  --orb1:rgba(0,230,118,.12);--orb2:rgba(0,200,80,.08);
-}
-[data-accent="blue"]{
-  --neon:#5a78ff;--neon2:#82b1ff;--glow:0 0 30px rgba(90,120,255,.15);--glow-strong:0 0 40px rgba(90,120,255,.25);
-  --grad1:#5a78ff;--grad2:#00e1c1;--grad:linear-gradient(135deg,#5a78ff,#00e1c1);
-  --logo-shadow:drop-shadow(0 0 20px rgba(90,120,255,.5));
-  --tab-bg:#5a78ff;--tab-color:#fff;--tab-glow:0 0 16px rgba(90,120,255,.4);
-  --nav-bg:rgba(90,120,255,.1);--nav-color:#5a78ff;
-  --border-glow:rgba(90,120,255,.25);--input-glow:rgba(90,120,255,.15);
-  --orb1:rgba(90,120,255,.12);--orb2:rgba(0,225,193,.08);
-}
-[data-theme="light"][data-accent="red"],
-[data-theme="light"]:not([data-accent]){
-  --bg:#f5f5f7;--bg2:rgba(255,255,255,.92);--bg3:rgba(0,0,0,.06);--txt:#1a1a1a;--txt2:#555555;
-  --neon:#009688;--glass:rgba(255,255,255,.8);--surface-glass:rgba(255,255,255,.72);
+
+/* ── Light mode (iOS-style, pure black text) ── */
+[data-theme="light"]{
+  --teal:#000000;--blue:#0a84ff;--spider-blue:#0a84ff;--spider-purple:#5e4ec4;--spider-red:#000000;
+  --neon:#000000;--neon2:#000000;--purple:#5e4ec4;--green:#000000;--red:#000000;
+  --gold:#000000;--success:#000000;--warning:#000000;--danger:#000000;
+  --bg:#f2f2f7;--bg2:#f2f2f7;--bg3:rgba(0,0,0,.06);--txt:#000000;--txt2:#3a3a3e;
+  --r:12px;--radius:14px;--radius-lg:16px;--radius-xl:24px;
+  --glass:#ffffff;--surface-glass:#ffffff;
+  --grad1:#000000;--grad2:#000000;--grad:linear-gradient(135deg,#000000,#000000);
+  --gradient:linear-gradient(90deg,#000000,#000000);
   --border:rgba(0,0,0,.08);
-  --glow:0 0 20px rgba(0,225,193,.15);--shadow-sm:0 1px 3px rgba(0,0,0,.05);--shadow-md:0 4px 16px rgba(0,0,0,.07);--shadow-lg:0 12px 40px rgba(0,0,0,.1);
+  --glow:none;--glow-strong:none;
+  --logo-shadow:none;
+  --tab-bg:#000000;--tab-color:#fff;--tab-glow:none;
+  --nav-bg:rgba(0,0,0,.08);--nav-color:#000000;
+  --border-glow:rgba(0,0,0,.25);--input-glow:rgba(0,0,0,.08);
+  --orb1:rgba(0,0,0,.05);--orb2:rgba(0,0,0,.03);
+  --surface:#FFFFFF;--text-primary:#000000;--text-secondary:#3a3a3e;
+  --shadow-sm:0 8px 30px rgba(0,0,0,.08);--shadow-md:0 10px 32px rgba(0,0,0,.1);
+  --shadow-lg:0 16px 48px rgba(0,0,0,.12);--shadow-hover:0 10px 32px rgba(0,0,0,.12);
 }
-[data-theme="light"][data-accent="green"]{
-  --bg:#f0f7f3;--bg2:rgba(255,255,255,.92);--bg3:rgba(0,0,0,.06);--txt:#0a1a0a;--txt2:#447744;
-  --neon:#00c853;--glass:rgba(255,255,255,.8);--surface-glass:rgba(255,255,255,.72);--border:rgba(0,0,0,.08);
+/* Light: cards are white, softer shadows */
+[data-theme="light"] .panel,
+[data-theme="light"] .stat,
+[data-theme="light"] .u-card,
+[data-theme="light"] .tbl,
+[data-theme="light"] .sidebar,
+[data-theme="light"] .topbar,
+[data-theme="light"] .modal-c,
+[data-theme="light"] .contact-bubble,
+[data-theme="light"] .login-card{background:#ffffff}
+[data-theme="light"] .f-g input,.f-g select,.f-g textarea,
+[data-theme="light"] .input-glass{background:#ffffff}
+[data-theme="light"] .btn-g{background:rgba(0,0,0,.05)}
+/* Light: no colored/white glow on the background */
+[data-theme="light"] .bg-fx{background:none}
+[data-theme="light"] .bg-grid{background:none}
+
+/* ── Live background (matches /sub) ── */
+.bg-fx{
+  position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none;
+  background:
+    radial-gradient(ellipse 900px 600px at 25% 20%, rgba(0,225,193,0.16) 0%, transparent 70%),
+    radial-gradient(ellipse 700px 500px at 75% 15%, rgba(64,120,255,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 600px 400px at 60% 75%, rgba(139,92,246,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 500px 400px at 10% 80%, rgba(0,180,255,0.07) 0%, transparent 55%);
 }
-[data-theme="light"][data-accent="blue"]{
-  --bg:#f0f2f8;--bg2:rgba(255,255,255,.92);--bg3:rgba(0,0,0,.06);--txt:#0a0a2a;--txt2:#445588;
-  --neon:#5a78ff;--glass:rgba(255,255,255,.8);--surface-glass:rgba(255,255,255,.72);--border:rgba(0,0,0,.08);
+.bg-grid{
+  position:fixed;inset:-2px;z-index:-2;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(0,225,193,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,225,193,0.04) 1px, transparent 1px);
+  background-size:48px 48px;
+  mask-image:radial-gradient(ellipse 90% 80% at 50% 45%, black 20%, transparent 70%);
+  -webkit-mask-image:radial-gradient(ellipse 90% 80% at 50% 45%, black 20%, transparent 70%);
+  animation:grid-drift 36s linear infinite;
 }
+@keyframes grid-drift{from{background-position:0 0}to{background-position:48px 48px}}
 
 *{margin:0;padding:0;box-sizing:border-box}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-@keyframes neonPulse{0%,100%{box-shadow:0 0 5px var(--neon),0 0 10px var(--neon2)}50%{box-shadow:0 0 20px var(--neon),0 0 40px var(--neon2)}}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 @keyframes particle{0%{transform:translateY(100vh) scale(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-10vh) scale(1);opacity:0}}
-@keyframes borderGlow{0%,100%{border-color:var(--border-glow)}50%{border-color:var(--neon)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
 @keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
 @keyframes scaleIn{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
 
 body{
-  font-family:'Vazirmatn','Segoe UI',system-ui,sans-serif;
+  /* iOS system font stack — SF Pro on Apple devices, graceful fallbacks
+     elsewhere; RTL Persian text uses the system Arabic UI font on iOS. */
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text',system-ui,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
   background:var(--bg);color:var(--txt);overflow-x:hidden;
   min-height:100vh;line-height:1.6;
   transition:background .4s ease,color .4s ease;
+}
+/* Persian: iOS uses the built-in system Arabic font for RTL text */
+html[lang="fa"] body{
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI','Tahoma',system-ui,sans-serif;
+}
+/* Dark mode: ultra-white text */
+[data-theme="dark"] body{
+  color:#ffffff;
+  text-shadow:none;
+}
+[data-theme="dark"] .panel-h,
+[data-theme="dark"] .stat-l,
+[data-theme="dark"] .set-lbl,
+[data-theme="dark"] .u-card-name,
+[data-theme="dark"] .scn-item .scn-ip,
+[data-theme="dark"] td,
+[data-theme="dark"] th,
+[data-theme="dark"] .f-g label,
+[data-theme="dark"] .topbar-greet,
+[data-theme="dark"] .sb-brand-t{
+  text-shadow:none;
+}
+/* Neon accent in dark mode is white to match the text */
+[data-theme="dark"]{
+  --neon:#ffffff;--neon2:#e6e6e6;--teal:#ffffff;--green:#ffffff;--success:#ffffff;
+  --grad1:#ffffff;--grad2:#e6e6e6;
+  --tab-bg:#ffffff;--nav-color:#ffffff;--nav-bg:rgba(255,255,255,.12);--border-glow:rgba(255,255,255,.35);--input-glow:rgba(255,255,255,.12);
+  --glow:none;--glow-strong:none;
+  --logo-shadow:none;
+  --spider-red:#ffffff;--red:#ffffff;--danger:#ffffff;
+}
+/* White grid for the live background in dark mode */
+[data-theme="dark"] .bg-grid{
+  background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
 }
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:rgba(43,127,255,.25);border-radius:4px}
@@ -117,15 +178,13 @@ input,select,button,textarea{font-family:inherit}
         .login-card {
             position: relative;
             z-index: 1;
-            background: var(--surface-glass);
-            backdrop-filter: blur(28px) saturate(180%);
-            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            background: #0e0e12;
             border: 1px solid var(--border);
             border-radius: var(--radius-xl);
             padding: 32px 28px;
             width: 100%;
             max-width: 400px;
-            box-shadow: var(--shadow-lg), var(--glow);
+            box-shadow: var(--shadow-lg);
             animation: scaleIn .5s ease;
             overflow: hidden;
         }
@@ -217,9 +276,7 @@ input,select,button,textarea{font-family:inherit}
         .input-glass {
             width: 100%;
             padding: 12px 16px 12px 48px;
-            background: rgba(255,255,255,.04);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            background: #121216;
             border: 1.5px solid var(--border);
             border-radius: var(--radius);
             color: var(--txt);
@@ -231,7 +288,7 @@ input,select,button,textarea{font-family:inherit}
         .input-glass:focus {
             border-color: var(--neon);
             box-shadow: 0 0 0 4px var(--input-glow);
-            background: rgba(255,255,255,.06);
+            background: #121216;
         }
         .input-glass::placeholder {
             color: var(--txt2);
@@ -293,17 +350,20 @@ input,select,button,textarea{font-family:inherit}
 #px-map .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.9); }
 .px-country { fill: rgba(255,255,255,.12); stroke: rgba(255,255,255,.25); stroke-width: .5; cursor: pointer; transition: fill .15s; }
 .px-country:hover { fill: rgba(255,255,255,.25); }
-.px-country.has { fill: rgba(0,225,193,.35); stroke: rgba(0,225,193,.85); stroke-width: .6; }
+.px-country.has { fill: rgba(255,255,255,.28); stroke: rgba(255,255,255,.7); stroke-width: .6; }
+[data-theme="light"] .px-country.has { fill: rgba(0,0,0,.18); stroke: rgba(0,0,0,.55); stroke-width: .6; }
 .px-country.sel { fill: var(--neon) !important; stroke: #fff !important; stroke-width: 1; }
 .px-ipbox { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; background: rgba(0,0,0,.3); max-height: 170px; overflow-y: auto; }
 .px-ip { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 10px; cursor: pointer; transition: all .15s; }
 .px-ip:hover { background: rgba(255,255,255,.04); }
-.px-ip.sel { background: rgba(0,225,193,.1); border: 1px solid rgba(0,225,193,.3); }
+.px-ip.sel { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.25); }
+[data-theme="light"] .px-ip.sel { background: rgba(0,0,0,.05); border: 1px solid rgba(0,0,0,.18); }
 .px-ip input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--neon); cursor: pointer; flex-shrink: 0; }
 .px-ip-ad { font-family: monospace; font-size: 12px; direction: ltr; color: var(--txt); }
 .px-ip-pt { font-family: monospace; font-size: 10px; color: var(--txt2); }
 .px-ping { margin-left: auto; font-family: monospace; font-size: 10px; font-weight: 700; direction: ltr; flex-shrink: 0; }
-.px-tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(0,225,193,.1); border: 1px solid rgba(0,225,193,.25); border-radius: 8px; font-size: 11px; color: var(--neon); margin: 3px 3px 0 0; }
+.px-tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.22); border-radius: 8px; font-size: 11px; color: var(--neon); margin: 3px 3px 0 0; }
+[data-theme="light"] .px-tag { background: rgba(0,0,0,.05); border-color: rgba(0,0,0,.15); }
 .px-tag .x { cursor: pointer; opacity: .6; }
 .px-tag .x:hover { opacity: 1; }
 .px-path {
@@ -347,7 +407,8 @@ input,select,button,textarea{font-family:inherit}
 .scn-saved-t { font-size: 11px; font-weight: 700; color: var(--txt2); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: .5px; }
 .scn-saved-t::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 .scn-saved-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.scn-tag { font-family: monospace; direction: ltr; font-size: 11px; padding: 4px 10px; background: rgba(0,225,193,.1); border: 1px solid rgba(0,225,193,.25); border-radius: 8px; color: var(--neon); }
+.scn-tag { font-family: monospace; direction: ltr; font-size: 11px; padding: 4px 10px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.22); border-radius: 8px; color: var(--neon); }
+[data-theme="light"] .scn-tag { background: rgba(0,0,0,.05); border-color: rgba(0,0,0,.15); }
 .scn-empty { color: var(--txt2); font-size: 11px; padding: 12px; text-align: center; border: 1px dashed var(--border); border-radius: 10px; }
 .scn-dom-list { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; max-height: 200px; overflow-y: auto; }
 .scn-dom { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(0,0,0,.25); border: 1px solid var(--border); border-radius: 10px; font-family: monospace; direction: ltr; font-size: 12px; }
@@ -374,14 +435,13 @@ input,select,button,textarea{font-family:inherit}
 
 /* Sidebar - Glass */
 .sidebar{
-  width:260px;background:var(--surface-glass);backdrop-filter:blur(28px) saturate(160%);
-  -webkit-backdrop-filter:blur(28px) saturate(160%);
-  border-left:1px solid var(--border);display:flex;flex-direction:column;
+  width:260px;background:#0a0a0d;
+  border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;
   position:fixed;top:0;bottom:0;right:0;z-index:100;transition:transform .35s cubic-bezier(.4,0,.2,1);
-  overflow-y:auto;overflow-x:hidden;box-shadow:var(--shadow-sm);
+  overflow-y:auto;overflow-x:hidden;box-shadow:0 8px 32px rgba(0,0,0,.6);
 }
 .sb-brand{padding:22px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)}
-.sb-brand img{width:42px;height:42px;mix-blend-mode:screen;filter:drop-shadow(0 2px 8px rgba(43,127,255,.3))}
+.sb-brand img{width:42px;height:42px;mix-blend-mode:screen}
 .sb-brand-t{font-size:17px;font-weight:800;letter-spacing:3px;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .sb-brand-t span{color:inherit;-webkit-text-fill-color:inherit}
 .sb-brand-s{font-size:10px;color:var(--txt2);letter-spacing:5px;margin-top:2px}
@@ -392,7 +452,7 @@ input,select,button,textarea{font-family:inherit}
   border-radius:12px;margin:2px 0;position:relative;
 }
 .nav-item:hover{color:var(--txt);background:rgba(43,127,255,.06)}
-.nav-item.active{color:var(--nav-color);background:var(--nav-bg);border:1px solid var(--border-glow);box-shadow:0 0 16px rgba(43,127,255,.12)}
+.nav-item.active{color:var(--nav-color);background:var(--nav-bg);border:1px solid var(--border-glow)}
 .nav-item .nav-ic{width:20px;height:20px;display:inline-flex;flex-shrink:0}
 .sb-foot{padding:16px 22px;border-top:1px solid var(--border);font-size:11px;color:var(--txt2)}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-left:6px;animation:pulse 2s infinite}
@@ -400,45 +460,44 @@ input,select,button,textarea{font-family:inherit}
 /* Main area */
 .main-area{flex:1;min-width:0;margin-right:260px;display:flex;flex-direction:column;position:relative;z-index:1}
 .topbar{
-  padding:14px 24px;background:var(--surface-glass);backdrop-filter:blur(24px);
-  -webkit-backdrop-filter:blur(24px);
+  padding:14px 24px;background:#0a0a0d;
   border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;
   position:sticky;top:0;z-index:50;
 }
 .topbar-greet{font-size:14px}.topbar-greet strong{color:var(--neon)}
 .topbar-r{display:flex;gap:8px;align-items:center}
 .lang-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;background:var(--bg3);border:1px solid var(--border);color:var(--txt);font-size:12px;font-weight:700;cursor:pointer;transition:all .2s}
-.lang-btn:hover{border-color:var(--border-glow);color:var(--neon);box-shadow:0 0 12px rgba(43,127,255,.15)}
+.lang-btn:hover{border-color:var(--border-glow);color:var(--neon)}
 .content{min-width:0;padding:20px 24px;flex:1;overflow-x:hidden;overflow-y:auto;position:relative;z-index:1}
 
-/* LTR (English) adjustments */
-html[lang="en"] body, html[lang="en"] .sidebar, html[lang="en"] .panel, html[lang="en"] .btn { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; }
+/* LTR (English) adjustments — iOS system font */
+html[lang="en"] body, html[lang="en"] .sidebar, html[lang="en"] .panel, html[lang="en"] .btn { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, 'Segoe UI', Roboto, sans-serif; }
 
-/* Cards - Glass */
+/* Cards - solid */
 .panel{
-  background:var(--surface-glass);backdrop-filter:blur(20px) saturate(160%);
-  -webkit-backdrop-filter:blur(20px) saturate(160%);
-  border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px;
-  margin-bottom:16px;transition:all .3s;animation:fadeIn .4s ease;box-shadow:var(--shadow-sm);
+  background:#0a0a0d;
+  border:1px solid rgba(255,255,255,.05);border-radius:var(--radius-lg);padding:22px;
+  margin-bottom:16px;transition:all .3s;animation:fadeIn .4s ease;box-shadow:0 8px 32px rgba(0,0,0,.55);
 }
-.panel:hover{border-color:var(--border-glow);box-shadow:var(--shadow-md),var(--glow)}
+.panel:hover{border-color:var(--border-glow);box-shadow:0 8px 32px rgba(0,0,0,.6)}
 .panel-h{
   font-size:15px;font-weight:700;margin-bottom:14px;
   display:flex;align-items:center;gap:8px;
 }
-.panel-h .glow{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.panel-h .glow{color:var(--neon)}
 
 /* Stats */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
 .stat{
-  background:var(--surface-glass);backdrop-filter:blur(14px);
-  border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 16px;
+  background:#0a0a0d;
+  border:1px solid rgba(255,255,255,.05);border-radius:var(--radius-lg);padding:20px 16px;
   text-align:center;transition:all .3s;animation:fadeIn .5s ease;position:relative;overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,.55);
 }
-.stat::after{content:'';position:absolute;top:0;right:0;width:4px;height:36px;background:var(--gradient);border-radius:0 0 0 6px}
-.stat:hover{border-color:var(--border-glow);transform:translateY(-3px);box-shadow:var(--shadow-md),var(--glow)}
+.stat::after{content:'';position:absolute;top:0;right:0;width:4px;height:36px;background:var(--neon);border-radius:0 0 0 6px}
+.stat:hover{border-color:var(--border-glow);transform:translateY(-3px);box-shadow:0 8px 32px rgba(0,0,0,.6)}
 .stat-icon{margin-bottom:8px;color:var(--neon)}
-.stat-v{font-size:26px;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.stat-v{font-size:26px;font-weight:800;color:var(--neon)}
 .stat-l{font-size:11px;color:var(--txt2);margin-top:4px}
 
 /* Buttons */
@@ -447,20 +506,20 @@ html[lang="en"] body, html[lang="en"] .sidebar, html[lang="en"] .panel, html[lan
   border:none;border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;
   transition:all .25s;font-family:inherit;text-decoration:none;position:relative;
 }
-.btn-p{background:var(--gradient);color:#fff;box-shadow:0 4px 16px rgba(43,127,255,.25)}
-.btn-p:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(43,127,255,.4)}
-.btn-g{background:var(--bg3);color:var(--txt);border:1px solid var(--border)}.btn-g:hover{background:rgba(43,127,255,.1);color:var(--txt)}
+.btn-p{background:var(--neon);color:var(--tab-color);box-shadow:0 4px 16px var(--neon)}
+.btn-p:hover{transform:translateY(-2px);filter:brightness(1.1);box-shadow:0 8px 24px var(--neon)}
+.btn-g{background:#121216;color:var(--txt);border:1px solid rgba(255,255,255,.08)}.btn-g:hover{background:var(--nav-bg);color:var(--neon);border-color:var(--border-glow)}
 .btn-r{background:rgba(255,35,82,.1);color:var(--spider-red);border:1px solid rgba(255,35,82,.2)}.btn-r:hover{background:rgba(255,35,82,.2)}
 .btn-gr{background:rgba(22,163,74,.1);color:var(--green);border:1px solid rgba(22,163,74,.2)}.btn-b{background:rgba(68,138,255,.1);color:var(--blue);border:1px solid rgba(68,138,255,.2)}
 .btn-sm{padding:5px 12px;font-size:11px;border-radius:10px}
 .btn-icon{width:36px;height:36px;padding:0;justify-content:center;border-radius:12px}
 
 /* Tables */
-.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;border-radius:var(--radius-lg);border:1px solid var(--border);background:var(--surface-glass);backdrop-filter:blur(14px)}
+.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%;border-radius:var(--radius-lg);border:1px solid rgba(255,255,255,.05);background:#0a0a0d;box-shadow:0 8px 32px rgba(0,0,0,.55)}
 table{width:100%;min-width:0;border-collapse:collapse}
 /* Users as cards on mobile (replaces the wide table) */
 .u-cards{display:flex;flex-direction:column;gap:10px}
-.u-card{background:var(--surface-glass);backdrop-filter:blur(14px);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow-sm)}
+.u-card{background:#0a0a0d;border:1px solid rgba(255,255,255,.05);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 8px 32px rgba(0,0,0,.55)}
 .u-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .u-card-name{font-size:15px;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .u-card-traffic{font-size:12px;color:var(--txt)}
@@ -498,13 +557,12 @@ tr{animation:fadeIn .3s ease}
 }
 .modal.show{display:flex;animation:fadeIn .2s ease}
 .modal-c{
-  background:var(--surface-glass);backdrop-filter:blur(28px) saturate(180%);
-  -webkit-backdrop-filter:blur(28px) saturate(180%);
-  border:1px solid var(--border);border-radius:var(--radius-xl);padding:28px;
+  background:#0e0e12;
+  border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-xl);padding:28px;
   width:100%;max-width:480px;max-height:85vh;overflow-y:auto;
-  box-shadow:var(--shadow-lg),var(--glow);animation:scaleIn .3s ease;position:relative;
+  box-shadow:0 16px 48px rgba(0,0,0,.7);animation:scaleIn .3s ease;position:relative;
 }
-.modal-c::before{content:'';position:absolute;top:0;right:0;width:150px;height:150px;background:radial-gradient(circle,rgba(123,97,255,.08),transparent 70%);pointer-events:none}
+.modal-c::before{content:'';position:absolute;top:0;right:0;width:150px;height:150px;background:radial-gradient(circle,var(--orb1),transparent 70%);pointer-events:none}
 .modal-t{font-size:19px;font-weight:700;margin-bottom:18px;position:relative}
 .modal-t .glow{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .modal-btns{display:flex;gap:8px;margin-top:18px;position:relative}
@@ -514,13 +572,16 @@ tr{animation:fadeIn .3s ease}
 .f-g{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;flex:1}
 .f-g label{font-size:11px;font-weight:600;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px}
 .f-g input,.f-g select,.f-g textarea{
-  width:100%;padding:11px 14px;background:rgba(255,255,255,.04);
-  border:1.5px solid var(--border);border-radius:var(--radius);
+  width:100%;padding:11px 14px;background:#121216;
+  border:1px solid var(--border);border-radius:12px;
   color:var(--txt);font-size:13px;outline:none;transition:all .2s;
 }
-.f-g input:focus,.f-g select:focus,.f-g textarea:focus{border-color:var(--neon);box-shadow:0 0 0 4px var(--input-glow)}
-.f-g select{cursor:pointer;appearance:none;-webkit-appearance:none}
-.f-g select option{background:#0B1121;color:var(--txt)}
+.f-g input:hover,.f-g select:hover,.f-g textarea:hover{border-color:var(--border-glow)}
+.f-g input:focus,.f-g select:focus,.f-g textarea:focus{
+  border-color:var(--neon);background:#121216;
+}
+.f-g select{cursor:pointer;appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--neon) 50%),linear-gradient(135deg,var(--neon) 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat}
+.f-g select option{background:#121216;color:var(--txt)}
 .f-r{display:flex;gap:10px;flex-wrap:wrap}
 
 /* Tabs */
@@ -531,12 +592,12 @@ tr{animation:fadeIn .3s ease}
   font-family:inherit;transition:all .25s;
 }
 .tab:hover{color:var(--txt)}
-.tab.active{background:var(--tab-bg);color:var(--tab-color);box-shadow:var(--tab-glow);border-color:transparent}
+.tab.active{background:var(--tab-bg);color:var(--tab-color);border-color:transparent}
 
 /* Toast */
 .toast{
   position:fixed;bottom:30px;left:50%;transform:translateX(-50%);
-  background:var(--surface-glass);backdrop-filter:blur(24px);
+  background:var(--surface-glass);
   border:1px solid var(--border);color:var(--txt);padding:12px 28px;
   border-radius:30px;font-size:13px;z-index:999;opacity:0;
   transition:opacity .3s;pointer-events:none;box-shadow:var(--shadow-lg);
@@ -577,7 +638,7 @@ tr{animation:fadeIn .3s ease}
   opacity:0;transition:opacity .25s;z-index:0;
 }
 .ib-pick:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
-.ib-pick.selected{border-color:var(--neon);box-shadow:0 0 0 1px var(--neon),var(--glow)}
+.ib-pick.selected{border-color:var(--neon);box-shadow:0 0 0 1px var(--neon)}
 .ib-pick.selected::before{opacity:.12}
 .ib-pick > *{position:relative;z-index:1}
 .ib-pick-ic{
@@ -627,16 +688,15 @@ tr{animation:fadeIn .3s ease}
 .contact-bubble{
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
   width:150px;height:150px;border-radius:50%;
-  background:var(--surface-glass);backdrop-filter:blur(20px) saturate(160%);
-  -webkit-backdrop-filter:blur(20px) saturate(160%);
+  background:#0a0a0d;
   border:1.5px solid var(--border);color:var(--txt);text-decoration:none;
-  box-shadow:var(--shadow-md),var(--glow);transition:all .3s ease;position:relative;overflow:hidden;
+  box-shadow:var(--shadow-md);transition:all .3s ease;position:relative;overflow:hidden;
 }
 .contact-bubble::before{content:'';position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(180deg,rgba(255,255,255,.08),transparent);pointer-events:none}
 .contact-bubble svg{width:40px;height:40px;color:var(--neon);transition:transform .3s ease}
 .contact-bubble span{font-size:13px;font-weight:700}
 .contact-bubble small{font-size:10px;color:var(--txt2);direction:ltr}
-.contact-bubble:hover{transform:translateY(-6px);border-color:var(--border-glow);box-shadow:var(--shadow-lg),var(--glow-strong)}
+.contact-bubble:hover{transform:translateY(-6px);border-color:var(--border-glow);box-shadow:var(--shadow-lg)}
 .contact-bubble:hover svg{transform:scale(1.15)}
 .contact-bubble.tg:hover svg{color:#229ED9}
 .contact-bubble.gh:hover svg{color:#a5a5a5}
@@ -693,6 +753,10 @@ tr{animation:fadeIn .3s ease}
 <body>
 
 <canvas id="particles"></canvas>
+
+<!-- Live animated background (matches /sub) -->
+<div class="bg-fx"></div>
+<div class="bg-grid"></div>
 
 <!-- ═══════ LOGIN ═══════ -->
 <div class="login-wrap" id="login-wrap" style="display:none">
@@ -783,7 +847,8 @@ tr{animation:fadeIn .3s ease}
     <div class="topbar">
       <div class="topbar-greet" id="grt"></div>
       <div class="topbar-r">
-        <button class="lang-btn" id="lang-btn" onclick="toggleLang()" title="تغییر زبان / Change language"><span id="lang-flag">🇬🇧</span><span id="lang-label">EN</span></button>
+        <button class="lang-btn" id="theme-btn" onclick="toggleThemeMode()" title="حالت روشن/تاریک / Dark-Light mode"><span id="theme-ic" class="material-symbols-outlined" style="font-size:18px">light_mode</span><span id="theme-label">روشن</span></button>
+        <button class="lang-btn" id="lang-btn" onclick="toggleLang()" title="تغییر زبان / Change language"><span id="lang-flag" class="lang-flag"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span><span id="lang-label">EN</span></button>
         <button class="btn btn-sm btn-g sidebar-tog" onclick="toggleSidebar()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
       </div>
     </div>
@@ -838,9 +903,9 @@ tr{animation:fadeIn .3s ease}
 
           <!-- Sub-tab selector -->
           <div class="scn-tabs" role="tablist">
-            <button class="scn-tab active" id="scn-tab-cf" onclick="scnSwitch('cf',this)"><span>☁️</span> Cloudflare</button>
-            <button class="scn-tab" id="scn-tab-railway" onclick="scnSwitch('railway',this)"><span>🛤️</span> Railway</button>
-            <button class="scn-tab" id="scn-tab-tcp" onclick="scnSwitch('tcp',this)"><span>🔌</span> TCP</button>
+            <button class="scn-tab active" id="scn-tab-cf" onclick="scnSwitch('cf',this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg> Cloudflare</button>
+            <button class="scn-tab" id="scn-tab-railway" onclick="scnSwitch('railway',this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 19h10M4 19H3v-3l2-5h11l3 5v3h-1M5 11l1-7h9l1 7"/></svg> Railway</button>
+            <button class="scn-tab" id="scn-tab-tcp" onclick="scnSwitch('tcp',this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 7a3 3 0 0 1-3 3 3 3 0 0 1 0 6 3 3 0 0 1-3-3"/><path d="M14 17a3 3 0 0 1 3-3 3 3 0 0 1 0-6 3 3 0 0 1 3 3"/></svg> TCP</button>
           </div>
 
           <!-- CLOUDFLARE PANE -->
@@ -931,22 +996,16 @@ tr{animation:fadeIn .3s ease}
 
         <div class="panel">
           <div class="panel-h"><span class="glow" data-i18n="appearance">تنظیمات ظاهری</span></div>
-
-          <div class="set-row"><span class="set-lbl" data-i18n="theme">تم</span>
+          <div class="set-row">
+            <span class="set-lbl" data-i18n="themeMode">حالت نمایش</span>
             <div style="display:flex;gap:8px">
               <button class="btn btn-sm btn-g" onclick="setTheme('dark')"><span data-i18n="dark">تاریک</span></button>
               <button class="btn btn-sm btn-g" onclick="setTheme('light')"><span data-i18n="light">روشن</span></button>
             </div>
           </div>
-
-          <div class="set-row"><span class="set-lbl" data-i18n="color">رنگ</span>
-            <div class="theme-dots">
-              <div class="theme-dot red" onclick="setAccent('red')" data-i18n-title="red" title="قرمز"></div>
-              <div class="theme-dot green" onclick="setAccent('green')" data-i18n-title="green" title="سبز"></div>
-              <div class="theme-dot blue" onclick="setAccent('blue')" data-i18n-title="blue" title="آبی"></div>
-            </div>
+          <div class="set-row" style="border-bottom:none">
+            <span class="set-lbl" data-i18n="fixedTheme">فونت و رنگ هماهنگ با صفحه ساب + iOS است.</span>
           </div>
-
         </div>
 
         <div class="panel">
@@ -1032,9 +1091,9 @@ tr{animation:fadeIn .3s ease}
       <div class="cu-custom-wrap">
         <button type="button" class="btn btn-g cu-custom-btn" id="cu-custom-btn" onclick="cuToggleCustomMenu(event)"><span id="cu-custom-label" data-i18n="noCustomIp">— بدون آی‌پی اختصاصی —</span><span>▾</span></button>
         <div class="cu-custom-menu" id="cu-custom-menu">
-          <button type="button" class="cu-custom-opt" data-val="" onclick="cuPickCustom('', this)"><span>🚫</span> <span data-i18n="noCustomOpt">بدون آی‌پی اختصاصی</span></button>
-          <button type="button" class="cu-custom-opt" data-val="railway" onclick="cuPickCustom('railway', this)"><span>🛤️</span> Railway</button>
-          <button type="button" class="cu-custom-opt" data-val="cf" onclick="cuPickCustom('cf', this)"><span>☁️</span> Cloudflare</button>
+          <button type="button" class="cu-custom-opt" data-val="" onclick="cuPickCustom('', this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M4.93 4.93l14.14 14.14"/></svg> <span data-i18n="noCustomOpt">بدون آی‌پی اختصاصی</span></button>
+          <button type="button" class="cu-custom-opt" data-val="railway" onclick="cuPickCustom('railway', this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 19h10M4 19H3v-3l2-5h11l3 5v3h-1M5 11l1-7h9l1 7"/></svg> Railway</button>
+          <button type="button" class="cu-custom-opt" data-val="cf" onclick="cuPickCustom('cf', this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg> Cloudflare</button>
         </div>
       </div>
       <div id="cu-custom-preview" style="margin-top:8px"></div>
@@ -1095,66 +1154,44 @@ tr{animation:fadeIn .3s ease}
   <div class="modal-t"><span class="glow" id="ib-title">ایجاد اینباند جدید</span></div>
   <form onsubmit="submitInbound(event)">
     <input type="hidden" id="ib-id">
-    <!-- Common -->
     <div class="f-g"><label data-i18n="inboundName">نام اینباند</label><input type="text" id="ib-name" required data-i18n-placeholder="inboundName" placeholder="مثال: Main-WS"></div>
-    <div class="f-r">
-      <div class="f-g"><label data-i18n="proto">پروتکل</label><select id="ib-proto" onchange="onInboundProtoChange()">
-        <option value="vless">VLESS</option>
-        <option value="vmess">VMess</option>
-        <option value="trojan">Trojan</option>
-      </select></div>
-      <div class="f-g"><label data-i18n="port">پورت</label><input type="number" id="ib-port" required placeholder="443"></div>
-    </div>
-    <div class="f-r">
-      <div class="f-g"><label data-i18n="extPort">پورت خارجی</label><input type="number" id="ib-ext-port" data-i18n-placeholder="optional" placeholder="اختیاری"></div>
-      <div class="f-g"><label>Fingerprint</label><select id="ib-fingerprint">
-        <option value="chrome">Chrome</option>
-        <option value="firefox">Firefox</option>
-        <option value="safari">Safari</option>
-        <option value="edge">Edge</option>
-        <option value="random">Random</option>
-      </select></div>
-    </div>
+    <div class="f-g"><label data-i18n="intPort">پورت اصلی (پورتی که سرور روی آن گوش میدهد)</label><input type="number" id="ib-port" required placeholder="8443" dir="ltr"></div>
+    <div class="f-g"><label data-i18n="securityType">امنیت</label><select id="ib-security" onchange="onSecurityChange()">
+      <option value="tls">TLS</option>
+      <option value="reality">Reality</option>
+    </select></div>
+    <div style="font-size:10px;color:var(--txt2);margin-bottom:10px">پروتکل اینباند VLESS است؛ تنها امنیت را انتخاب کنید (TLS یا Reality).</div>
 
-    <!-- TLS / Reality Group -->
-    <div id="ib-sec-wrap" class="hidden">
-      <div class="f-g"><label data-i18n="securityType">نوع امنیت</label><select id="ib-security" onchange="onSecurityChange()">
-        <option value="tls">TLS</option>
-        <option value="reality">Reality</option>
-        <option value="none">None</option>
-      </select></div>
-      <!-- TLS fields -->
-      <div id="ib-tls-fields">
-        <div class="f-g"><label data-i18n="domain">دامنه</label><input type="text" id="ib-domain" placeholder="example.com" dir="ltr" oninput="onDomainChange()"></div>
+    <!-- TLS fields -->
+    <div id="ib-tls-fields">
+      <div class="f-g"><label data-i18n="extDomain">دامنه خارجی (در آدرس کانفیگ)</label><input type="text" id="ib-extdomain" dir="ltr" data-i18n-placeholder="extDomainPlace" placeholder="مثال: tokaido.proxy.rlwy.net"></div>
+      <div class="f-r">
+        <div class="f-g"><label data-i18n="extPortCfg">پورت خارجی (در آدرس کانفیگ)</label><input type="number" id="ib-extport" value="443" dir="ltr" placeholder="443"></div>
         <div class="f-g"><label>SNI</label><input type="text" id="ib-sni" value="is1-ssl.mzstatic.com" dir="ltr" readonly data-i18n-title="sniFixed" title="SNI هدف ثابت"></div>
       </div>
-      <!-- Reality fields -->
-      <div id="ib-reality-fields" class="hidden">
-        <div class="divider"></div>
-        <div style="font-size:11px;color:var(--neon);font-weight:700;margin-bottom:8px" data-i18n="realitySettings">تنظیمات Reality</div>
-        <div class="f-r">
-          <div class="f-g"><label>Private Key (x25519)</label><input type="text" id="ib-privkey" dir="ltr" data-i18n-placeholder="autoGen" placeholder="تولید خودکار"></div>
-          <div class="f-g"><label>Public Key</label><input type="text" id="ib-pubkey" dir="ltr" data-i18n-placeholder="autoGen" placeholder="تولید خودکار" readonly></div>
-        </div>
-        <button type="button" class="btn btn-sm btn-b" onclick="generateRealityKeysUI()" style="width:100%;margin-bottom:10px"><span data-i18n="genRealityKey">تولید کلید Reality (x25519)</span></button>
-        <div class="f-g"><label data-i18n="dest">Destination</label><input type="text" id="ib-dest" value="is1-ssl.mzstatic.com:443" dir="ltr"></div>
-        <div class="f-g"><label data-i18n="serverNames">Server Names (SNI)</label><input type="text" id="ib-servernames" value="is1-ssl.mzstatic.com" dir="ltr" data-i18n-placeholder="commaSep" placeholder="با کاما جدا کنید"></div>
-        <div class="f-g"><label data-i18n="shortIds">Short IDs</label><div style="display:flex;gap:6px"><input type="text" id="ib-shortids" value="" dir="ltr" data-i18n-placeholder="hex8" placeholder="هگز ۸ رقمی — خالی = تصادفی" style="flex:1"><button type="button" class="btn btn-sm" onclick="generateShortId()" style="white-space:nowrap"><span data-i18n="generate">+ تولید</span></button></div></div>
-        <div class="f-g"><label data-i18n="spiderx">SpiderX</label><input type="text" id="ib-spiderx" dir="ltr" placeholder="/" value="/"></div>
-        <div class="f-g"><label data-i18n="extDomain">External Domain</label><input type="text" id="ib-extdomain" dir="ltr" data-i18n-placeholder="extDomainPlace" placeholder="دامنه خارجی برای کانفیگ کلاینت"></div>
-        <div class="f-g"><label data-i18n="extPortCfg">External Port</label><input type="number" id="ib-extport" value="443" dir="ltr" placeholder="443"></div>
+    </div>
+
+    <!-- Reality fields -->
+    <div id="ib-reality-fields" class="hidden">
+      <div class="divider"></div>
+      <div style="font-size:11px;color:var(--neon);font-weight:700;margin-bottom:8px" data-i18n="realitySettings">تنظیمات Reality</div>
+      <div class="f-r">
+        <div class="f-g"><label>Private Key (x25519)</label><input type="text" id="ib-privkey" dir="ltr" data-i18n-placeholder="autoGen" placeholder="تولید خودکار"></div>
+        <div class="f-g"><label>Public Key</label><input type="text" id="ib-pubkey" dir="ltr" data-i18n-placeholder="autoGen" placeholder="تولید خودکار" readonly></div>
       </div>
+      <button type="button" class="btn btn-sm btn-b" onclick="generateRealityKeysUI()" style="width:100%;margin-bottom:10px"><span data-i18n="genRealityKey">تولید کلید Reality (x25519)</span></button>
+      <div class="f-g"><label data-i18n="dest">Destination</label><input type="text" id="ib-dest" value="is1-ssl.mzstatic.com:443" dir="ltr"></div>
+      <div class="f-g"><label data-i18n="serverNames">Server Names (SNI)</label><input type="text" id="ib-servernames" value="is1-ssl.mzstatic.com" dir="ltr" data-i18n-placeholder="commaSep" placeholder="با کاما جدا کنید"></div>
+      <div class="f-g"><label data-i18n="shortIds">Short IDs</label><div style="display:flex;gap:6px"><input type="text" id="ib-shortids" value="" dir="ltr" data-i18n-placeholder="hex8" placeholder="هگز ۸ رقمی — خالی = تصادفی" style="flex:1"><button type="button" class="btn btn-sm" onclick="generateShortId()" style="white-space:nowrap"><span data-i18n="generate">+ تولید</span></button></div></div>
+      <div class="f-g"><label data-i18n="spiderx">SpiderX</label><input type="text" id="ib-spiderx" dir="ltr" placeholder="/" value="/"></div>
+      <div class="f-g"><label data-i18n="extDomain">دامنه خارجی (در آدرس کانفیگ)</label><input type="text" id="ib-extdomain" dir="ltr" data-i18n-placeholder="extDomainPlace" placeholder="مثال: tokaido.proxy.rlwy.net"></div>
+      <div class="f-g"><label data-i18n="extPortCfg">پورت خارجی (در آدرس کانفیگ)</label><input type="number" id="ib-extport" value="443" dir="ltr" placeholder="443"></div>
     </div>
 
     <!-- Network group -->
     <div class="divider"></div>
     <div id="ib-net-wrap">
-      <div class="f-r">
-        <div class="f-g"><label data-i18n="intPort">پورت داخلی (Xray listen)</label><input type="number" id="ib-port" value="8443" dir="ltr"></div>
-        <div class="f-g"><label data-i18n="extPortCfg2">پورت خارجی (کانفیگ)</label><input type="number" id="ib-extport2" value="25459" dir="ltr"></div>
-      </div>
-      <div style="font-size:10px;color:var(--txt2);margin-bottom:10px" data-i18n="portHint">پورت داخلی = پورتی که Xray روی آن گوش میدهد. پورت خارجی = پورتی که در کانفیگ ظاهر میشود (آدرس کانفیگ: domain:external_port).</div>
-      <div class="f-g"><label data-i18n="network">شبکه</label><select id="ib-network" onchange="onNetworkChange()">
+      <div class="f-g"><label data-i18n="network">نوع انتقال (Transport)</label><select id="ib-network" onchange="onNetworkChange()">
         <option value="tcp">TCP</option>
         <option value="ws">WebSocket</option>
         <option value="xhttp">XHTTP</option>
@@ -1229,7 +1266,7 @@ var I18N = {
     'scnRailwayTip': 'اسکن زنده از رنج‌های اعلام‌شده Railway (اروپا). IPهای پاسخ‌دهنده مرتب و ۱۰ تای اول به صورت خودکار ذخیره می‌شوند.',
     'scnTcpTip': 'دامنه موردنظر را وارد کنید؛ IP دامنه (DNS) نمایش داده می‌شود و پینگ TCP آن به صورت زنده گزارش می‌شود. دامنه‌های Railway به صورت پیش‌فرض وجود دارند و قابل افزودن/حذف هستند.',
     'addDomain': 'افزودن دامنه', 'checkDomains': 'شروع بررسی دامنه‌ها', 'checking': 'در حال بررسی...', 'checkingDomains': 'در حال بررسی دامنه‌ها...',
-    'serverResources': 'Server Resources', 'appearance': 'تنظیمات ظاهری', 'theme': 'تم', 'dark': 'تاریک', 'light': 'روشن', 'color': 'رنگ',
+    'serverResources': 'Server Resources', 'appearance': 'تنظیمات ظاهری', 'themeMode': 'حالت نمایش', 'fixedTheme': 'فونت و رنگ هماهنگ با صفحه ساب + iOS است.', 'theme': 'تم', 'dark': 'تاریک', 'light': 'روشن', 'color': 'رنگ', 'lightMode': 'حالت روشن فعال شد', 'darkMode': 'حالت تاریک فعال شد',
     'red': 'قرمز', 'green': 'سبز', 'blue': 'آبی', 'proxyList': 'Proxy List', 'countryProxyList': 'لیست پروکسی‌های کشورها', 'refreshList': 'به‌روزرسانی لیست',
     'proxyNote': 'پروکسی‌های رایگان سریع از بین می‌روند — برای تازه نگه‌داشتن لیست، گاهی به‌روزرسانی کنید.',
     'panelMusic': 'Panel Music', 'bgMusic': 'Background Music', 'toggleMusic': 'روشن/خاموش', 'changePassword': 'Change Password', 'curPass': 'رمز فعلی', 'newPass': 'رمز جدید', 'changePassBtn': 'تغییر رمز',
@@ -1249,7 +1286,7 @@ var I18N = {
     'securityType': 'نوع امنیت', 'realitySettings': 'تنظیمات Reality', 'autoGen': 'تولید خودکار', 'genRealityKey': 'تولید کلید Reality (x25519)',
     'dest': 'Destination', 'serverNames': 'Server Names (SNI)', 'shortIds': 'Short IDs', 'hex8': 'هگز ۸ رقمی — خالی = تصادفی', 'generate': '+ تولید', 'spiderx': 'SpiderX',
     'extDomain': 'External Domain', 'extPortCfg': 'External Port', 'extDomainPlace': 'دامنه خارجی برای کانفیگ کلاینت', 'commaSep': 'با کاما جدا کنید',
-    'intPort': 'پورت داخلی (Xray listen)', 'extPortCfg2': 'پورت خارجی (کانفیگ)', 'portHint': 'پورت داخلی = پورتی که Xray روی آن گوش میدهد. پورت خارجی = پورتی که در کانفیگ ظاهر میشود (آدرس کانفیگ: domain:external_port).',
+    'intPort': 'پورت اصلی (پورتی که سرور روی آن گوش میدهد)', 'extPortCfg2': 'پورت خارجی (کانفیگ)', 'portHint': 'پورت داخلی = پورتی که Xray روی آن گوش میدهد. پورت خارجی = پورتی که در کانفیگ ظاهر میشود (آدرس کانفیگ: domain:external_port).',
     'network': 'شبکه', 'serviceName': 'Service Name', 'createInbound': 'ایجاد اینباند', 'editInbound': 'ویرایش اینباند', 'inboundCreated': 'اینباند با موفقیت ذخیره شد',
     'config': 'کانفیگ', 'copy': 'کپی', 'close': 'بستن', 'copied': 'کانفیگ کپی شد', 'noCfg': 'کانفیگی موجود نیست', 'errCopy': 'خطا در کپی', 'notFound': 'یافت نشد', 'delete': 'حذف', 'edit': 'ویرایش', 'unlimited': 'نامحدود', 'expired': 'منقضی', 'daysUnit': ' روز', 'default': 'پیش‌فرض', 'usersCount': 'کاربران', 'secNetwork': 'شبکه', 'security': 'امنیت', 'action': 'عملیات', 'expiry': 'انقضا', 'connTh': 'اتصال',
     'confirmDeleteUser': 'آیا از حذف این کاربر اطمینان دارید؟', 'confirmDeleteInbound': 'آیا از حذف این اینباند اطمینان دارید؟', 'keysGenerated': 'کلیدهای Reality تولید شد', 'errKeyGen': 'خطا در تولید کلید', 'shortIdGen': 'Short ID تولید شد', 'shortIdNew': 'Short ID جدید تولید شد',
@@ -1271,7 +1308,7 @@ var I18N = {
     'scnRailwayTip': 'Live scan of announced Railway ranges (Europe). Working IPs are sorted and the first 10 are auto-saved.',
     'scnTcpTip': 'Enter a domain; its IP (DNS) is resolved and its TCP ping is reported live. Railway domains are pre-loaded and can be added/removed.',
     'addDomain': 'Add Domain', 'checkDomains': 'Check Domains', 'checking': 'Checking...', 'checkingDomains': 'Checking domains...',
-    'serverResources': 'Server Resources', 'appearance': 'Appearance', 'theme': 'Theme', 'dark': 'Dark', 'light': 'Light', 'color': 'Color',
+    'serverResources': 'Server Resources', 'appearance': 'Appearance', 'themeMode': 'Display Mode', 'fixedTheme': 'Font & colors matched to the sub page + iOS.', 'theme': 'Theme', 'dark': 'Dark', 'light': 'Light', 'color': 'Color', 'lightMode': 'Light mode enabled', 'darkMode': 'Dark mode enabled',
     'red': 'Red', 'green': 'Green', 'blue': 'Blue', 'proxyList': 'Proxy List', 'countryProxyList': 'Country proxy list', 'refreshList': 'Refresh List',
     'proxyNote': 'Free proxies die fast — refresh occasionally to keep the list fresh.',
     'panelMusic': 'Panel Music', 'bgMusic': 'Background Music', 'toggleMusic': 'On/Off', 'changePassword': 'Change Password', 'curPass': 'Current Password', 'newPass': 'New Password', 'changePassBtn': 'Change Password',
@@ -1291,7 +1328,7 @@ var I18N = {
     'securityType': 'Security Type', 'realitySettings': 'Reality Settings', 'autoGen': 'Auto-generated', 'genRealityKey': 'Generate Reality Keys (x25519)',
     'dest': 'Destination', 'serverNames': 'Server Names (SNI)', 'shortIds': 'Short IDs', 'hex8': '8-digit hex — empty = random', 'generate': '+ Generate', 'spiderx': 'SpiderX',
     'extDomain': 'External Domain', 'extPortCfg': 'External Port', 'extDomainPlace': 'External domain shown in the client config', 'commaSep': 'Separate with commas',
-    'intPort': 'Internal Port (Xray listen)', 'extPortCfg2': 'External Port (config)', 'portHint': 'Internal port = what Xray listens on. External port = what appears in the config (config address: domain:external_port).',
+    'intPort': 'Main port (the port the server listens on)', 'extPortCfg2': 'External Port (config)', 'portHint': 'Internal port = what Xray listens on. External port = what appears in the config (config address: domain:external_port).',
     'network': 'Network', 'serviceName': 'Service Name', 'createInbound': 'Create Inbound', 'editInbound': 'Edit Inbound', 'inboundCreated': 'Inbound saved successfully',
     'config': 'Config', 'copy': 'Copy', 'close': 'Close', 'copied': 'Config copied', 'noCfg': 'No config available', 'errCopy': 'Copy failed', 'notFound': 'Not found', 'delete': 'Delete', 'edit': 'Edit', 'unlimited': 'Unlimited', 'expired': 'Expired', 'daysUnit': ' days', 'default': 'Default', 'usersCount': 'Users', 'secNetwork': 'Network', 'security': 'Security', 'action': 'Actions', 'expiry': 'Expiry', 'connTh': 'Conn',
     'confirmDeleteUser': 'Are you sure you want to delete this user?', 'confirmDeleteInbound': 'Are you sure you want to delete this inbound?', 'keysGenerated': 'Reality keys generated', 'errKeyGen': 'Key generation failed', 'shortIdGen': 'Short ID generated', 'shortIdNew': 'New Short ID generated',
@@ -1318,7 +1355,7 @@ function applyLang() {
   document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) { el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder'))); });
   document.querySelectorAll('[data-i18n-title]').forEach(function(el) { el.setAttribute('title', t(el.getAttribute('data-i18n-title'))); });
   var lb = $id('lang-label');
-  if (lb) { lb.textContent = LANG === 'en' ? 'FA' : 'EN'; $id('lang-flag').textContent = LANG === 'en' ? '🇮🇷' : '🇬🇧'; }
+  if (lb) { lb.textContent = LANG === 'en' ? 'FA' : 'EN'; }
   updateGreeting();
   if (typeof ALL_USERS !== 'undefined' && ALL_USERS.length) renderUsers();
   if (typeof ALL_IB !== 'undefined' && ALL_IB.length) renderInbounds();
@@ -1419,23 +1456,29 @@ function initParticles() {
 }
 
 // ─── Theme ───
-function loadAccent() { setAccent(selectedAccent); }
-function loadTheme() { setTheme(selectedTheme); }
-function setAccent(a) {
-  selectedAccent = a;
-  document.documentElement.setAttribute('data-accent', a);
-  localStorage.setItem('spider-accent', a);
-  // Update active dot
-  document.querySelectorAll('.theme-dot').forEach(function(d) { d.classList.remove('active'); });
-  var dot = document.querySelector('.theme-dot.' + a);
-  if (dot) dot.classList.add('active');
+// ─── Light / Dark mode ───
+function applyThemeUI() {
+  var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  var ic = $id('theme-ic'), lb = $id('theme-label');
+  if (ic) ic.textContent = isLight ? 'dark_mode' : 'light_mode';
+  if (lb) lb.textContent = isLight ? (LANG === 'en' ? 'Dark' : 'تاریک') : (LANG === 'en' ? 'Light' : 'روشن');
 }
-
+function loadTheme() {
+  document.documentElement.setAttribute('data-theme', selectedTheme || 'dark');
+  applyThemeUI();
+}
 function setTheme(t) {
-  selectedTheme = t;
-  document.documentElement.setAttribute('data-theme', t);
-  localStorage.setItem('spider-theme', t);
+  selectedTheme = (t === 'light') ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', selectedTheme);
+  localStorage.setItem('spider-theme', selectedTheme);
+  applyThemeUI();
 }
+function toggleThemeMode() {
+  setTheme(selectedTheme === 'light' ? 'dark' : 'light');
+  toast(t(selectedTheme === 'light' ? 'lightMode' : 'darkMode'), 'ok');
+}
+function loadAccent() {}
+function setAccent() {}
 
 // ─── Auth ───
 async function checkAuth() {
@@ -1443,7 +1486,8 @@ async function checkAuth() {
     var r = await api('/api/me');
     if (r.authenticated) { showApp(); return; }
   } catch(e) {}
-  showLogin();
+  // Not authenticated — send to the real panel login page.
+  window.location.href = '/login';
 }
 
 function showLogin() { $id('login-wrap').style.display = 'flex'; $id('app-wrap').classList.remove('active'); }
@@ -1509,8 +1553,8 @@ function initLoginShader() {
 async function doLogout() {
   try { await api('/api/logout', {method: 'POST'}); } catch(e) {}
   localStorage.removeItem('spider_session');
-  $id('app-wrap').classList.remove('active');
-  showLogin();
+  // Go to the real panel login page (login.html) instead of the inline form.
+  window.location.href = '/login';
 }
 
 function updateGreeting() {
@@ -1865,60 +1909,11 @@ function selectedInboundIds() {
   return ids;
 }
 
-function openCreateInbound() {
-  $id('ib-title').textContent = t('createInbound');
-  $id('ib-id').value = '';
-  $id('ib-name').value = '';
-  $id('ib-proto').value = 'vless';
-  $id('ib-port').value = '';
-  $id('ib-ext-port').value = '';
-  $id('ib-domain').value = '';
-  $id('ib-sni').value = '';
-  $id('ib-network').value = 'ws';
-  $id('ib-security').value = 'tls';
-  $id('ib-fingerprint').value = 'chrome';
-  $id('ib-submit').textContent = t('createInbound');
-  onInboundProtoChange();
-  openModal('mod-inbound');
-}
-
-function editInbound(iid) {
-  var ib = ALL_IB.find(function(x) { return x.inbound_id === iid; });
-  if (!ib) return;
-  $id('ib-title').textContent = t('editInbound');
-  $id('ib-id').value = iid;
-  $id('ib-name').value = ib.name || '';
-  $id('ib-proto').value = ib.protocol || 'vless';
-  $id('ib-port').value = ib.port || '';
-  $id('ib-ext-port').value = ib.external_port || '';
-  $id('ib-domain').value = ib.domain || '';
-  $id('ib-sni').value = ib.sni || '';
-  $id('ib-network').value = ib.network || 'ws';
-  $id('ib-security').value = ib.security || 'tls';
-  $id('ib-fingerprint').value = ib.fingerprint || 'chrome';
-  $id('ib-submit').textContent = t('updateInbound');
-  onInboundProtoChange();
-  openModal('mod-inbound');
-}
-
-function onInboundProtoChange() {
-  var p = $id('ib-proto').value;
-  var secWrap = $id('ib-sec-wrap');
-  if (p === 'vless' || p === 'vmess' || p === 'trojan') {
-    secWrap.classList.remove('hidden');
-    $id('ib-security').value = 'tls';
-  } else {
-    secWrap.classList.add('hidden');
-  }
-  onSecurityChange();
-}
-
 function onSecurityChange() {
   var sec = $id('ib-security').value;
   var tlsF = $id('ib-tls-fields'), realF = $id('ib-reality-fields');
   if (sec === 'reality') { tlsF.classList.add('hidden'); realF.classList.remove('hidden'); }
-  else if (sec === 'tls') { tlsF.classList.remove('hidden'); realF.classList.add('hidden'); }
-  else { tlsF.classList.add('hidden'); realF.classList.add('hidden'); }
+  else { tlsF.classList.remove('hidden'); realF.classList.add('hidden'); }
 }
 
 function onNetworkChange() {
@@ -1965,30 +1960,24 @@ function openCreateInbound() {
   $id('ib-title').textContent = t('createInbound');
   $id('ib-id').value = '';
   $id('ib-name').value = '';
-  $id('ib-port').value = '';
-  $id('ib-ext-port').value = '';
-  $id('ib-domain').value = '';
-  $id('ib-sni').value = '';
+  $id('ib-port').value = '8443';
+  $id('ib-sni').value = 'is1-ssl.mzstatic.com';
   $id('ib-extdomain').value = '';
-  $id('ib-extport').value = '';
+  $id('ib-extport').value = '443';
   $id('ib-privkey').value = '';
   $id('ib-pubkey').value = '';
   $id('ib-shortids').value = '';
   $id('ib-spiderx').value = '/';
-  $id('ib-extdomain').value = '';
-  $id('ib-extport').value = '443';
   $id('ib-dest').value = 'is1-ssl.mzstatic.com:443';
   $id('ib-servernames').value = 'is1-ssl.mzstatic.com';
-  $id('ib-proto').value = 'vless';
   $id('ib-security').value = 'tls';
-  $id('ib-network').value = 'tcp';
-  $id('ib-fingerprint').value = 'chrome';
+  $id('ib-network').value = 'ws';
   $id('ib-wspath').value = '/';
   $id('ib-xhttppath').value = '/';
   $id('ib-xhttp-mode').value = 'auto';
   $id('ib-grpc-svc').value = 'grpc';
   $id('ib-submit').textContent = t('createInbound');
-  onInboundProtoChange();
+  onSecurityChange();
   onNetworkChange();
   openModal('mod-inbound');
 }
@@ -1999,21 +1988,17 @@ function editInbound(iid) {
   $id('ib-title').textContent = t('editInbound');
   $id('ib-id').value = iid;
   $id('ib-name').value = ib.name || '';
-  $id('ib-port').value = ib.port || '';
-  $id('ib-ext-port').value = ib.external_port || '';
-  $id('ib-domain').value = ib.domain || '';
-  $id('ib-sni').value = ib.sni || '';
-  $id('ib-proto').value = ib.protocol || 'vless';
+  $id('ib-port').value = ib.port || '8443';
+  $id('ib-sni').value = ib.sni || 'is1-ssl.mzstatic.com';
   $id('ib-security').value = ib.security || 'tls';
-  $id('ib-network').value = ib.network || 'tcp';
-  $id('ib-fingerprint').value = ib.fingerprint || 'chrome';
+  $id('ib-network').value = ib.network || 'ws';
+  $id('ib-extdomain').value = ib.external_domain || '';
+  $id('ib-extport').value = ib.external_port || '443';
   var rs = ib.reality_settings || {};
   $id('ib-privkey').value = (rs || {}).private_key || ib.private_key || '';
   $id('ib-pubkey').value = (rs || {}).public_key || ib.public_key || '';
   $id('ib-shortids').value = (rs || {}).short_ids || '';
   $id('ib-spiderx').value = (rs || {}).spiderx || '/';
-  $id('ib-extdomain').value = ib.external_domain || '';
-  $id('ib-extport').value = ib.external_port || '443';
   $id('ib-dest').value = (rs || {}).dest || 'is1-ssl.mzstatic.com:443';
   $id('ib-servernames').value = (rs || {}).server_names || (rs || {}).sni || 'is1-ssl.mzstatic.com';
   var ws = ib.ws_settings || {}; var xh = ib.xhttp_settings || {};
@@ -2022,7 +2007,7 @@ function editInbound(iid) {
   $id('ib-xhttp-mode').value = xh.mode || 'auto';
   $id('ib-grpc-svc').value = (ib.grpc_settings || {}).serviceName || 'grpc';
   $id('ib-submit').textContent = t('updateInbound');
-  onInboundProtoChange();
+  onSecurityChange();
   onNetworkChange();
   openModal('mod-inbound');
 }
@@ -2032,24 +2017,20 @@ async function submitInbound(e) {
   var btn = $id('ib-submit'); btn.disabled = true;
   btn.textContent = t('saving');
   var iid = $id('ib-id').value;
-  var proto = $id('ib-proto').value;
   var network = $id('ib-network').value;
   var security = $id('ib-security').value;
-  var domain = $id('ib-domain').value;
-  var sni = $id('ib-sni').value || domain;
-  var fp = $id('ib-fingerprint').value || 'chrome';
+  var sni = $id('ib-sni').value || 'is1-ssl.mzstatic.com';
 
+  // All inbounds are VLESS now.
   var body = {
     name: $id('ib-name').value,
-    protocol: proto,
+    protocol: 'vless',
     port: parseInt($id('ib-port').value) || 8443,
-    external_port: parseInt($id('ib-extport2').value) || parseInt($id('ib-extport').value) || null,
+    external_port: parseInt($id('ib-extport').value) || null,
     external_domain: $id('ib-extdomain').value || '',
     network: network,
     security: security,
-    domain: domain,
-    sni: sni,
-    fingerprint: fp
+    sni: sni
   };
 
   // Reality settings
@@ -2060,8 +2041,7 @@ async function submitInbound(e) {
       dest: $id('ib-dest').value || 'is1-ssl.mzstatic.com:443',
       server_names: ($id('ib-servernames').value || '').split(',').map(function(s){return s.trim()}).filter(Boolean),
       short_ids: $id('ib-shortids').value || '',
-      spiderx: $id('ib-spiderx').value || '/',
-      fingerprint: fp
+      spiderx: $id('ib-spiderx').value || '/'
     };
   }
 
@@ -2499,13 +2479,56 @@ function scnChipClass(ms) {
   return ms < 150 ? 'good' : ms < 400 ? 'ok' : 'bad';
 }
 
+// Browser-side ping: loads an image from the target IP:port and times the
+// round-trip. This scans from the USER's own network (like the Reza_Gm
+// scanner), not from the Railway server. Port 443 uses https; other ports
+// fall back to http. Browsers may block direct requests to arbitrary IPs
+// (mixed-content / TLS on HTTPS pages); those targets are re-measured by the
+// server as a fallback so the scan still completes.
+function scnBrowserPing(target, timeoutMs) {
+  return new Promise(function(resolve) {
+    var t0 = Date.now();
+    var img = new Image();
+    var tid = setTimeout(function() { img.src = ''; resolve(null); }, timeoutMs);
+    img.onload = function() {
+      clearTimeout(tid);
+      var ms = Date.now() - t0;
+      resolve(ms < timeoutMs ? ms : null);
+    };
+    img.onerror = function() {
+      // A fast error (TLS/cert or mixed-content) is NOT a ping. Treat as null
+      // so it falls back to the server measurement.
+      clearTimeout(tid);
+      resolve(null);
+    };
+    var port = parseInt((target.split(':')[1]) || '443');
+    img.src = (port === 443 ? 'https' : 'http') + '://' + target + '/__ping?t=' + Math.random();
+  });
+}
+
 async function scnPingBatch(targets, timeout) {
-  try {
-    var d = await api('/api/scanner/ping-batch', {method: 'POST', body: {targets: targets, timeout: timeout || 1.6}});
-    var map = {};
-    (d.results || []).forEach(function(r) { map[r.target] = r; });
-    return map;
-  } catch (e) { return {}; }
+  var out = {};
+  var tmo = timeout || 1.6;
+  var needServer = [];
+  await Promise.all(targets.map(function(t) {
+    return scnBrowserPing(t, tmo * 1000).then(function(ms) {
+      var parts = t.split(':');
+      var port = parseInt(parts[1]) || 443;
+      if (ms != null) {
+        out[t] = { target: t, ip: parts[0], port: port, latency_ms: ms, ok: true, src: 'browser' };
+      } else {
+        needServer.push(t);
+      }
+    });
+  }));
+  // Server fallback for targets the browser couldn't reach directly.
+  if (needServer.length) {
+    try {
+      var d = await api('/api/scanner/ping-batch', {method: 'POST', body: {targets: needServer, timeout: tmo}});
+      (d.results || []).forEach(function(r) { out[r.target] = { target: r.target, ip: r.ip, port: r.port, latency_ms: r.latency_ms, ok: r.ok, src: 'server' }; });
+    } catch (e) {}
+  }
+  return out;
 }
 
 async function scnRunCF() {
@@ -2697,7 +2720,7 @@ function cuToggleCustomMenu(e) {
 
 function cuPickCustom(val, el, skipRender) {
   cuCustomType = val || '';
-  $id('cu-custom-label').textContent = val === 'railway' ? '🛤️ Railway' : val === 'cf' ? '☁️ Cloudflare' : t('noCustomIp');
+  $id('cu-custom-label').textContent = val === 'railway' ? 'Railway' : val === 'cf' ? 'Cloudflare' : t('noCustomIp');
   document.querySelectorAll('.cu-custom-opt').forEach(function(o) {
     o.classList.toggle('active', o.getAttribute('data-val') === (val || ''));
   });
