@@ -1028,8 +1028,7 @@ tr{animation:fadeIn .3s ease}
               </div>
             </div>
             <div class="f-g"><label data-i18n="cfAccountId">Account ID</label><input type="text" id="wk-account" dir="ltr" placeholder="e.g. 1a2b3c..."></div>
-            <div class="f-g"><label data-i18n="cfWorkerName">Worker Name</label><input type="text" id="wk-name" dir="ltr" placeholder="spider-proxy"></div>
-            <div class="f-g"><label data-i18n="cfWorkerDomain">Worker Domain</label><input type="text" id="wk-domain" dir="ltr" placeholder="spider-proxy.username.workers.dev"></div>
+            <div class="px-hint" data-i18n="workerAutoName">نام و دامنه Worker به‌صورت خودکار از اکانت Cloudflare گرفته می‌شود.</div>
             <button class="btn btn-p" style="width:100%;margin-top:10px" onclick="workerSetup()"><span data-i18n="cfConnect">اتصال و Deploy</span></button>
           </div>
 
@@ -1300,7 +1299,7 @@ var LANG = localStorage.getItem('spider-lang') || 'fa';
 var I18N = {
   fa: {
     'dash': 'داشبورد', 'users': 'کاربران', 'inbounds': 'اینباندها', 'scanner': 'اسکنر IP', 'worker': 'Worker', 'settings': 'تنظیمات', 'contact': 'Contact Me', 'logout': 'خروج',
-    'workerSetupTip': 'پنل را به Cloudflare Worker متصل کنید تا کاربرانی که Proxy IP انتخاب می‌کنند از مسیر Worker عبور کنند. ترافیک از Railway عبور نمی‌کند.', 'cfToken': 'Cloudflare API Token', 'getToken': 'گرفتن توکن', 'cfAccountId': 'Account ID', 'cfWorkerName': 'Worker Name', 'cfWorkerDomain': 'Worker Domain', 'cfConnect': 'اتصال و Deploy', 'connected': 'متصل', 'disconnected': 'قطع', 'workerStatus': 'وضعیت', 'workerUrl': 'Worker URL', 'lastSync': 'آخرین Sync', 'lastError': 'آخرین خطا', 'proxyPool': 'Proxy IP Pool', 'addProxy': 'افزودن کشور', 'workerSettings': 'تنظیمات Worker', 'removeConn': 'حذف اتصال Worker', 'noProxyYet': 'هنوز کشوری اضافه نکرده‌اید', 'connecting': 'در حال اتصال...', 'workerConnected': 'Worker متصل و Deploy شد', 'syncing': 'در حال Sync...', 'synced': 'Sync شد', 'confirmRemoveWorker': 'اتصال Worker حذف شود؟', 'workerRemoved': 'اتصال Worker حذف شد', 'proxyCodePrompt': 'کد کشور (مثلا de):', 'proxyCountryPrompt': 'نام کشور:', 'proxyHostPrompt': 'آدرس Proxy IP (مثلا de.example.com):', 'proxyPortPrompt': 'پورت Proxy IP:', 'proxySaved': 'کشور ذخیره و Worker بروزرسانی شد', 'confirmDelProxy': 'این کشور حذف شود؟', 'proxyDeleted': 'کشور حذف شد', 'workerFillAll': 'همه فیلدها را پر کنید', 'workerProxyEnabled': 'Worker Proxy IP', 'workerProxyNone': 'بدون Proxy', 'workerRouteTip': 'کانفیگ کاربر روی دامنه Worker با مسیر /route/{کد کشور} ساخته می‌شود و از Railway عبور نمی‌کند.', 'proxySource': 'منبع پروکسی روزانه', 'autoSyncHourly': 'بروزرسانی خودکار (ساعتی)', 'updateNow': 'بروزرسانی از منبع', 'updatingFromSource': 'در حال بروزرسانی از منبع', 'sourceUpdated': 'بروزرسانی شد', 'sourceError': 'خطا در بروزرسانی منبع', 'countries': 'کشور', 'syncsDone': 'تعداد بروزرسانی‌ها', 'pickCountry': 'یک کشور انتخاب کنید',
+    'workerSetupTip': 'پنل را به Cloudflare Worker متصل کنید تا کاربرانی که Proxy IP انتخاب می‌کنند از مسیر Worker عبور کنند. ترافیک از Railway عبور نمی‌کند.', 'cfToken': 'Cloudflare API Token', 'getToken': 'گرفتن توکن', 'cfAccountId': 'Account ID', 'cfWorkerName': 'Worker Name', 'cfWorkerDomain': 'Worker Domain', 'cfConnect': 'اتصال و Deploy', 'connected': 'متصل', 'disconnected': 'قطع', 'workerStatus': 'وضعیت', 'workerUrl': 'Worker URL', 'lastSync': 'آخرین Sync', 'lastError': 'آخرین خطا', 'proxyPool': 'Proxy IP Pool', 'addProxy': 'افزودن کشور', 'workerSettings': 'تنظیمات Worker', 'removeConn': 'حذف اتصال Worker', 'noProxyYet': 'هنوز کشوری اضافه نکرده‌اید', 'connecting': 'در حال اتصال...', 'workerConnected': 'Worker متصل و Deploy شد', 'syncing': 'در حال Sync...', 'synced': 'Sync شد', 'confirmRemoveWorker': 'اتصال Worker حذف شود؟', 'workerRemoved': 'اتصال Worker حذف شد', 'proxyCodePrompt': 'کد کشور (مثلا de):', 'proxyCountryPrompt': 'نام کشور:', 'proxyHostPrompt': 'آدرس Proxy IP (مثلا de.example.com):', 'proxyPortPrompt': 'پورت Proxy IP:', 'proxySaved': 'کشور ذخیره و Worker بروزرسانی شد', 'confirmDelProxy': 'این کشور حذف شود؟', 'proxyDeleted': 'کشور حذف شد', 'workerFillAll': 'همه فیلدها را پر کنید', 'workerProxyEnabled': 'Worker Proxy IP', 'workerProxyNone': 'بدون Proxy', 'workerRouteTip': 'کانفیگ کاربر روی دامنه Worker با مسیر /route/{کد کشور} ساخته می‌شود و از Railway عبور نمی‌کند.', 'workerAutoName': 'نام و دامنه Worker به‌صورت خودکار از اکانت Cloudflare گرفته می‌شود.', 'proxySource': 'منبع پروکسی روزانه', 'autoSyncHourly': 'بروزرسانی خودکار (ساعتی)', 'updateNow': 'بروزرسانی از منبع', 'updatingFromSource': 'در حال بروزرسانی از منبع', 'sourceUpdated': 'بروزرسانی شد', 'sourceError': 'خطا در بروزرسانی منبع', 'countries': 'کشور', 'syncsDone': 'تعداد بروزرسانی‌ها', 'pickCountry': 'یک کشور انتخاب کنید',
     'tab.dash': 'داشبورد', 'tab.users': 'مدیریت کاربران', 'tab.inbounds': 'مدیریت اینباندها', 'tab.scanner': 'اسکنر آی‌پی', 'tab.settings': 'تنظیمات',
     'newUser': 'کاربر جدید', 'newInbound': 'اینباند جدید', 'domain': 'دامنه',
     'loading': 'در حال بارگذاری...', 'noUsers': 'هیچ کاربری وجود ندارد', 'noInbounds': 'هیچ اینباندی وجود ندارد', 'errLoadUsers': 'خطا در بارگذاری کاربران', 'errLoadInbounds': 'خطا در بارگذاری اینباندها', 'errLoadStats': 'خطا در بارگذاری آمار',
@@ -1346,7 +1345,7 @@ var I18N = {
   },
   en: {
     'dash': 'Dashboard', 'users': 'Users', 'inbounds': 'Inbounds', 'scanner': 'IP Scanner', 'worker': 'Worker', 'settings': 'Settings', 'contact': 'Contact Me', 'logout': 'Logout',
-    'workerSetupTip': 'Connect the panel to a Cloudflare Worker so users who pick a Proxy IP route through the Worker. Traffic never crosses Railway.', 'cfToken': 'Cloudflare API Token', 'getToken': 'Get Token', 'cfAccountId': 'Account ID', 'cfWorkerName': 'Worker Name', 'cfWorkerDomain': 'Worker Domain', 'cfConnect': 'Connect & Deploy', 'connected': 'Connected', 'disconnected': 'Disconnected', 'workerStatus': 'Status', 'workerUrl': 'Worker URL', 'lastSync': 'Last Sync', 'lastError': 'Last Error', 'proxyPool': 'Proxy IP Pool', 'addProxy': 'Add Country', 'workerSettings': 'Worker Settings', 'removeConn': 'Remove Worker Connection', 'noProxyYet': 'No country added yet', 'connecting': 'Connecting...', 'workerConnected': 'Worker connected & deployed', 'syncing': 'Syncing...', 'synced': 'Synced', 'confirmRemoveWorker': 'Remove the Worker connection?', 'workerRemoved': 'Worker connection removed', 'proxyCodePrompt': 'Country code (e.g. de):', 'proxyCountryPrompt': 'Country name:', 'proxyHostPrompt': 'Proxy IP host (e.g. de.example.com):', 'proxyPortPrompt': 'Proxy IP port:', 'proxySaved': 'Country saved, worker updated', 'confirmDelProxy': 'Delete this country?', 'proxyDeleted': 'Country deleted', 'workerFillAll': 'Fill in all fields', 'workerProxyEnabled': 'Worker Proxy IP', 'workerProxyNone': 'No Proxy', 'workerRouteTip': 'The user config is built on the Worker domain with a /route/{code} path — traffic never crosses Railway.', 'proxySource': 'Daily Proxy Source', 'autoSyncHourly': 'Auto-update (hourly)', 'updateNow': 'Update Now', 'updatingFromSource': 'Updating from source', 'sourceUpdated': 'Updated', 'sourceError': 'Failed to update source', 'countries': 'countries', 'syncsDone': 'Syncs done', 'pickCountry': 'Pick a country',
+    'workerSetupTip': 'Connect the panel to a Cloudflare Worker so users who pick a Proxy IP route through the Worker. Traffic never crosses Railway.', 'cfToken': 'Cloudflare API Token', 'getToken': 'Get Token', 'cfAccountId': 'Account ID', 'cfWorkerName': 'Worker Name', 'cfWorkerDomain': 'Worker Domain', 'cfConnect': 'Connect & Deploy', 'connected': 'Connected', 'disconnected': 'Disconnected', 'workerStatus': 'Status', 'workerUrl': 'Worker URL', 'lastSync': 'Last Sync', 'lastError': 'Last Error', 'proxyPool': 'Proxy IP Pool', 'addProxy': 'Add Country', 'workerSettings': 'Worker Settings', 'removeConn': 'Remove Worker Connection', 'noProxyYet': 'No country added yet', 'connecting': 'Connecting...', 'workerConnected': 'Worker connected & deployed', 'syncing': 'Syncing...', 'synced': 'Synced', 'confirmRemoveWorker': 'Remove the Worker connection?', 'workerRemoved': 'Worker connection removed', 'proxyCodePrompt': 'Country code (e.g. de):', 'proxyCountryPrompt': 'Country name:', 'proxyHostPrompt': 'Proxy IP host (e.g. de.example.com):', 'proxyPortPrompt': 'Proxy IP port:', 'proxySaved': 'Country saved, worker updated', 'confirmDelProxy': 'Delete this country?', 'proxyDeleted': 'Country deleted', 'workerFillAll': 'Fill in all fields', 'workerProxyEnabled': 'Worker Proxy IP', 'workerProxyNone': 'No Proxy', 'workerRouteTip': 'The user config is built on the Worker domain with a /route/{code} path — traffic never crosses Railway.', 'workerAutoName': 'Worker name and domain are fetched automatically from your Cloudflare account.', 'proxySource': 'Daily Proxy Source', 'autoSyncHourly': 'Auto-update (hourly)', 'updateNow': 'Update Now', 'updatingFromSource': 'Updating from source', 'sourceUpdated': 'Updated', 'sourceError': 'Failed to update source', 'countries': 'countries', 'syncsDone': 'Syncs done', 'pickCountry': 'Pick a country',
     'tab.dash': 'Dashboard', 'tab.users': 'Manage Users', 'tab.inbounds': 'Manage Inbounds', 'tab.scanner': 'IP Scanner', 'tab.settings': 'Settings',
     'newUser': 'New User', 'newInbound': 'New Inbound', 'domain': 'Domain',
     'loading': 'Loading...', 'noUsers': 'No users found', 'noInbounds': 'No inbounds found', 'errLoadUsers': 'Error loading users', 'errLoadInbounds': 'Error loading inbounds', 'errLoadStats': 'Error loading stats',
@@ -2192,7 +2191,27 @@ function updateNeonBars(){
 
 // --- Panel Audio (auto-play from static folder) ---
 function togglePanelAudio(){var p=$id('panel-audio-player');var sw=$id('audio-autoplay');sw.classList.toggle('on');var on=sw.classList.contains('on');if(on){p.play().catch(function(){})}else{p.pause()};localStorage.setItem('spider_audio', on?'1':'0')}
-(function initPanelAudio(){var p=$id('panel-audio-player');p.src='/static/music-panel.mp3';p.volume=0.3;var sw=$id('audio-autoplay');var saved=localStorage.getItem('spider_audio');sw.classList.toggle('on', saved!=='0');if(saved!=='0'){p.play().catch(function(){})}})();
+// Panel music: browsers block autoplay, so we wait for the first user click/tap
+// (autoplay policy) and only then start playing if the switch is ON.
+(function initPanelAudio(){
+  var p=$id('panel-audio-player');
+  if (!p) return;
+  p.src='/static/music-panel.mp3'; p.volume=0.3; p.load();
+  var sw=$id('audio-autoplay');
+  var saved=localStorage.getItem('spider_audio');
+  sw.classList.toggle('on', saved!=='0');
+  var started=false;
+  function start(){
+    if (started) return; started=true;
+    if (saved!=='0') { p.play().catch(function(){}); }
+    document.removeEventListener('click', start);
+    document.removeEventListener('touchstart', start);
+    document.removeEventListener('keydown', start);
+  }
+  document.addEventListener('click', start);
+  document.addEventListener('touchstart', start);
+  document.addEventListener('keydown', start);
+})();
 
 // The old Leaflet map + proxy-IP selector was removed — per-inbound options
 // (worker countries, scanned-IP switches) live inside the create-user modal.
@@ -2268,31 +2287,28 @@ function scnBrowserPing(target, timeoutMs) {
     fetch(url, { mode: 'no-cors', cache: 'no-store', signal: controller ? controller.signal : undefined })
       .then(function() {
         var ms = performance.now() - t0;
-        resolve(ms < timeoutMs ? ms : null);
+        resolve({ ok: ms < timeoutMs, ms: ms });
       })
       .catch(function() {
-        // A fast error (TLS/cert) is NOT a latency sample — treat as reachable
-        // only if it took long enough to imply a connection attempt.
+        // A fast error (TLS/cert) is still a live result — just not a good one.
         var ms = performance.now() - t0;
-        resolve(ms >= 150 && ms < timeoutMs ? ms : null);
+        resolve({ ok: ms < timeoutMs && ms >= 150, ms: ms });
       });
     setTimeout(function() {
       if (controller) { try { controller.abort(); } catch (e) {} }
-      resolve(null);
+      resolve({ ok: false, ms: null });
     }, timeoutMs);
   });
 }
 
 async function scnPingBatch(targets, timeout) {
   var out = {};
-  var tmo = timeout || 2.0;
+  var tmo = timeout || 1.2;
   await Promise.all(targets.map(function(t) {
-    return scnBrowserPing(t, tmo * 1000).then(function(ms) {
+    return scnBrowserPing(t, tmo * 1000).then(function(res) {
       var parts = t.split(':');
       var port = parseInt(parts[1]) || 443;
-      if (ms != null) {
-        out[t] = { target: t, ip: parts[0], port: port, latency_ms: ms, ok: true, src: 'browser' };
-      }
+      out[t] = { target: t, ip: parts[0], port: port, latency_ms: res.ms, ok: !!res.ok, src: 'browser' };
     });
   }));
   return out;
@@ -2330,18 +2346,21 @@ async function scnRunIPs(which) {
 
   var found = [];
   var tried = 0;
+  var live = {};   // ip -> {ms, ok} of last attempt (success and failure both shown)
   var loops = 0;
-  while (found.length < count && loops < count * 40) {
+  var BATCH = 32;  // bigger batches = faster coverage
+  while (found.length < count && loops < count * 20) {
     if (SCN_STOP) break;
     loops++;
     var batch = [];
-    for (var b = 0; b < 16 && found.length + batch.length < count; b++) {
+    for (var b = 0; b < BATCH && found.length + batch.length < count * 3; b++) {
       batch.push(scnRandIp(ranges[Math.floor(Math.random() * ranges.length)]) + ':' + port);
     }
-    var resMap = await scnPingBatch(batch, 1.4);
+    var resMap = await scnPingBatch(batch, 0.9);  // short timeout = fast cycle
     Object.keys(resMap).forEach(function(t) {
       tried++;
       var r = resMap[t];
+      live[t.split(':')[0]] = { ms: r.latency_ms, ok: r.ok };
       if (r && r.ok) {
         found.push({ip: t.split(':')[0], port: r.port, ms: r.latency_ms});
       }
@@ -2357,10 +2376,17 @@ async function scnRunIPs(which) {
       scnSaveLive(which, found.map(function(f) { return f.ip + ':' + f.port; }), true);
     }
 
-    // render
+    // render: success (green) and failure (red) both live
     var rows = '';
+    Object.keys(live).forEach(function(ip) {
+      var r = live[ip];
+      rows += '<div class="scn-item"><span class="scn-ip">' + ip + '</span><span class="scn-port">:' + port + '</span>' +
+        (r.ok ? scnMsHtml(r.ms, false) : '<span class="scn-ms bad">✗</span>') + '</div>';
+    });
     found.forEach(function(f) {
-      rows += '<div class="scn-item"><span class="scn-ip">' + f.ip + '</span><span class="scn-port">:' + f.port + '</span>' + scnMsHtml(f.ms) + '</div>';
+      if (!live[f.ip] || !live[f.ip].ok) {
+        rows += '<div class="scn-item"><span class="scn-ip">' + f.ip + '</span><span class="scn-port">:' + f.port + '</span>' + scnMsHtml(f.ms, false) + '</div>';
+      }
     });
     list.innerHTML = rows || '<div class="scn-empty">' + t('noHit') + '</div>';
     $id(pfx + '-found').textContent = found.length;
@@ -2584,14 +2610,12 @@ function wkDeleteSelected() {
 async function workerSetup() {
   var token = ($id('wk-token').value || '').trim();
   var account = ($id('wk-account').value || '').trim();
-  var name = ($id('wk-name').value || '').trim();
-  var domain = ($id('wk-domain').value || '').trim();
-  if (!token || !account || !name || !domain) { toast(t('workerFillAll'), 'err'); return; }
+  if (!token || !account) { toast(t('workerFillAll'), 'err'); return; }
   var btn = null;
   document.querySelectorAll('#worker-setup .btn-p').forEach(function(b){ btn = b; });
   if (btn) { btn.disabled = true; btn.textContent = t('connecting'); }
   try {
-    var w = await api('/api/worker/setup', {method: 'POST', body: {token: token, account_id: account, worker_name: name, worker_domain: domain}});
+    var w = await api('/api/worker/setup', {method: 'POST', body: {token: token, account_id: account}});
     $id('wk-token').value = '';
     toast(t('workerConnected'), 'ok');
     await loadWorker();

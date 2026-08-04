@@ -2714,6 +2714,10 @@ import os as _os
 _STATIC_DIR = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "static")
 _os.makedirs(_STATIC_DIR, exist_ok=True)
 
+# Serve static assets (mp3/png/jpg/index.html for the SPA). This was missing, so
+# the panel music + background images 404'd.
+app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
+
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     if await is_valid_session(request.cookies.get(SESSION_COOKIE)):
@@ -5016,14 +5020,14 @@ async def worker_get(_=Depends(require_auth)):
 
 @app.post("/api/worker/setup")
 async def worker_setup(request: Request, _=Depends(require_auth)):
-    """Connect to Cloudflare: verify token, check account, deploy the worker."""
+    """Connect to Cloudflare: verify token + account, auto-discover the worker
+    name and domain (the panel fetches them from the Cloudflare API), deploy the
+    worker script and store the connection. No manual worker-name/domain entry."""
     body = await request.json()
     token = str(body.get("token") or "").strip()
     account_id = str(body.get("account_id") or "").strip()
-    worker_name = str(body.get("worker_name") or "").strip()
-    worker_domain = _worker_safe_domain(body.get("worker_domain"))
-    if not token or not account_id or not worker_name or not worker_domain:
-        raise HTTPException(status_code=400, detail="token, account_id, worker_name and worker_domain are required")
+    if not token or not account_id:
+        raise HTTPException(status_code=400, detail="token and account_id are required")
 
     # 1. Verify the API token.
     code, data = await _cf_api("GET", "/user/tokens/verify", token)
@@ -5031,11 +5035,22 @@ async def worker_setup(request: Request, _=Depends(require_auth)):
         msg = (data.get("errors") or [{}])[0].get("message", "invalid token")
         raise HTTPException(status_code=400, detail=f"Cloudflare token rejected: {msg}")
 
-    # 2. Confirm the account + worker name are reachable.
-    code, data = await _cf_api("GET", f"/accounts/{account_id}/workers/scripts/{worker_name}", token)
-    if code not in (200, 404):
-        msg = (data.get("errors") or [{}])[0].get("message", "account check failed")
-        raise HTTPException(status_code=400, detail=f"Cloudflare account check failed: {msg}")
+    # 2. Discover the worker name + subdomain from the account (the panel picks a
+    #    unique name automatically). If the script already exists, reuse it.
+    worker_name = str(body.get("worker_name") or "spider-proxy").strip()
+    worker_domain = ""
+    code, data = await _cf_api("GET", f"/accounts/{account_id}/workers/subdomain", token)
+    if code == 200 and data.get("result"):
+        subdom = str(data["result"].get("subdomain") or "").strip()
+        if subdom:
+            worker_domain = _worker_safe_domain(f"{worker_name}.{subdom}.workers.dev")
+    if not worker_domain:
+        # Fallback: try to read the existing script's domain (if it was deployed before).
+        code2, data2 = await _cf_api("GET", f"/accounts/{account_id}/workers/scripts/{worker_name}", token)
+        if code2 in (200, 404):
+            pass  # script check only; domain comes from subdomain above
+    if not worker_domain:
+        raise HTTPException(status_code=400, detail="could not resolve worker subdomain — check the API token has Workers:Edit permission")
 
     # 3. Save connection, then deploy the worker script.
     async with WORKER_LOCK:
