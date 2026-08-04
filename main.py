@@ -655,28 +655,29 @@ async def startup():
     for _ib in INBOUNDS.values():
         _proto = (_ib.get("protocol") or "").lower()
         _sec = (_ib.get("security") or "").lower()
-        # Reality inbounds keep their domain/ports EMPTY on purpose — the admin
-        # fills them in. Don't auto-fill them.
-        if _proto == "reality" or _sec == "reality":
-            continue
+        _is_reality = _proto == "reality" or _sec == "reality"
         _cur = str(_ib.get("domain") or "")
-        if _cur in ("", "0.0.0.0", "127.0.0.1", "localhost", "SERVER_IP"):
-            _ib["domain"] = _real
-            _changed = True
         _cext = str(_ib.get("external_domain") or "")
-        if _cext in ("", "0.0.0.0", "127.0.0.1", "localhost", "SERVER_IP"):
-            _ib["external_domain"] = _real
-            _changed = True
         # Railway rotates its public domain (sakura... → production-221d...).
-        # Only DEFAULT inbounds (created by the panel) get their domain refreshed
-        # to the current Railway domain; a manually-set domain is left alone.
-        elif _real_is_rlwy and _cext and (".rlwy.net" in _cext or ".up.railway.app" in _cext) and _cext != _real:
-            _name = str(_ib.get("name") or "")
-            _is_default = any(k in _name for k in ("پیش‌فرض", "Multi-Location", "default", "Default"))
-            if _is_default:
+        # If an inbound points at an OLD rlwy/railway domain, refresh it to the
+        # current reachable domain. This applies to EVERY inbound (reality too),
+        # but only when the domain is already filled — an empty reality inbound
+        # (waiting for the admin) stays empty.
+        if _real_is_rlwy and _cext and (".rlwy.net" in _cext or ".up.railway.app" in _cext) and _cext != _real:
+            _ib["external_domain"] = _real
+            if _is_reality or _cur in ("", "0.0.0.0", "127.0.0.1", "localhost", "SERVER_IP"):
+                _ib["domain"] = _real
+            _changed = True
+            logger.info("Inbound «%s» external domain refreshed %s → %s", _ib.get("name"), _cext, _real)
+        # Fill placeholder/empty domains (non-reality only; reality stays empty
+        # until the admin configures it).
+        elif not _is_reality:
+            if _cur in ("", "0.0.0.0", "127.0.0.1", "localhost", "SERVER_IP"):
+                _ib["domain"] = _real
+                _changed = True
+            if _cext in ("", "0.0.0.0", "127.0.0.1", "localhost", "SERVER_IP"):
                 _ib["external_domain"] = _real
                 _changed = True
-                logger.info("Inbound «%s» external domain refreshed %s → %s", _name, _cext, _real)
     if _changed:
         asyncio.create_task(save_state())
         logger.info("Backfilled placeholder inbound domains with %s", _real)
