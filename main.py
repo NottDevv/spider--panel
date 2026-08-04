@@ -595,16 +595,19 @@ async def startup():
         )
         if not has_reality:
             rs = _gen_reality_settings()
+            # Reality inbound: domain + ports are LEFT EMPTY — the admin fills
+            # them in (external domain + external port + listen port). The pbk
+            # keypair is auto-generated here so it's always ready.
             INBOUNDS["default-reality"] = {
                 "name": "Reality+XHTTP پیش‌فرض",
                 "protocol": "reality",
-                "port": 8443,
+                "port": "",
                 "network": "xhttp",
                 "security": "reality",
-                "domain": _safe_host(SETTINGS.get("domain"), get_host()),
-                "external_domain": _safe_host(SETTINGS.get("domain"), get_host()),
+                "domain": "",
+                "external_domain": "",
                 "sni": "is1-ssl.mzstatic.com",
-                "external_port": 8443,
+                "external_port": "",
                 "fingerprint": "chrome",
                 "reality_settings": rs,
                 "xhttp_settings": {
@@ -650,6 +653,12 @@ async def startup():
     _real_is_rlwy = ".rlwy.net" in _real or ".up.railway.app" in _real
     _changed = False
     for _ib in INBOUNDS.values():
+        _proto = (_ib.get("protocol") or "").lower()
+        _sec = (_ib.get("security") or "").lower()
+        # Reality inbounds keep their domain/ports EMPTY on purpose — the admin
+        # fills them in. Don't auto-fill them.
+        if _proto == "reality" or _sec == "reality":
+            continue
         _cur = str(_ib.get("domain") or "")
         if _cur in ("", "0.0.0.0", "127.0.0.1", "localhost", "SERVER_IP"):
             _ib["domain"] = _real
@@ -1063,6 +1072,14 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
             rs = SETTINGS.get("reality", {})
         if not xs:
             xs = SETTINGS.get("xhttp", {})
+        # If this reality inbound hasn't been configured yet (no domain or no
+        # listen port), don't emit a config that silently points at the panel's
+        # default domain — the admin must fill in their own domain/port.
+        if inbound and (
+            not str(inbound.get("external_domain") or "").strip()
+            or not str(inbound.get("port") or "").strip()
+        ):
+            return ""
         reality_pbk = rs.get("public_key", "")
         reality_sid = rs.get("short_id", "")
         reality_spx = rs.get("spiderx", "/")
@@ -2115,7 +2132,8 @@ async def update_inbound(inbound_id: str, request: Request, _=Depends(require_au
                 ib["external_domain"] = wdom
                 ib["sni"] = ib.get("sni") or "www.hcaptcha.com"
         if "port" in body:
-            ib["port"] = int(body["port"])
+            _pv = str(body["port"] or "").strip()
+            ib["port"] = int(_pv) if _pv else ""  # "" = unconfigured (reality)
         if "network" in body:
             ib["network"] = str(body["network"]).lower()
         if "security" in body:
@@ -2149,7 +2167,8 @@ async def update_inbound(inbound_id: str, request: Request, _=Depends(require_au
         if "spoof_ip" in body:
             ib["spoof_ip"] = str(body["spoof_ip"]).strip()
         if "external_port" in body:
-            ib["external_port"] = int(body["external_port"])
+            _ev = str(body["external_port"] or "").strip()
+            ib["external_port"] = int(_ev) if _ev else ""
         if "fingerprint" in body:
             ib["fingerprint"] = str(body["fingerprint"]).strip()
         if "reality_settings" in body and isinstance(body["reality_settings"], dict):
@@ -2916,7 +2935,14 @@ async def api_user_sub(username: str):
         for iid_ in inbound_ids:
             ib = INBOUNDS.get(iid_)
             try:
-                if ib and (ib.get("protocol") or "").lower() == "worker":
+                _p = (ib.get("protocol") if ib else "").lower()
+                _s = (ib.get("security") if ib else "").lower()
+                # A reality inbound without a configured domain/port isn't ready
+                # yet — skip it so the sub never shows a broken config.
+                if ib and (_p == "reality" or _s == "reality"):
+                    if not str(ib.get("external_domain") or "").strip() or not str(ib.get("port") or "").strip():
+                        continue
+                if ib and _p == "worker":
                     configs.extend(_worker_configs(uid_, user, ib, stored_path_user, f"Spider-{user.get('username', uid_)}"))
                 else:
                     configs.append(generate_user_config(uid_, user, iid_))
@@ -4293,6 +4319,11 @@ def _add_inbound_to_xray(cfg: dict, ib: dict, iid: str, host: str):
     is_reality = protocol == "reality" or security == "reality"
     if not is_reality:
         return  # WS/XHTTP-TLS + worker inbounds are NOT Xray's job
+    # A reality inbound without a configured port is not ready yet — skip it
+    # so Xray doesn't start on a wrong/default port.
+    _raw_port = str(ib.get("port") or "").strip()
+    if not _raw_port:
+        return
     port = int(ib.get("port", 443))
     network = ib.get("network", "ws")
     domain = ib.get("domain", host)

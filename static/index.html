@@ -907,13 +907,10 @@ tr{animation:fadeIn .3s ease}
       <!-- INBOUNDS TAB -->
       <div class="tab-content hidden" id="tab-inbounds">
         <div class="panel">
-          <div class="panel-h" style="justify-content:space-between">
+          <div class="panel-h">
             <span class="glow" data-i18n="tab.inbounds">مدیریت اینباندها</span>
-            <button class="btn btn-p" onclick="openCreateInbound()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              <span data-i18n="newInbound">اینباند جدید</span>
-            </button>
           </div>
+          <div class="px-hint" data-i18n="inboundFixedHint">فقط اینباندهای پیش‌فرض پنل استفاده می‌شوند. WS/TLS به‌صورت خودکار با دامنه اصلی پنل آماده است؛ Reality را با دامنه و پورت خودتان تکمیل کنید (کلید pbk به‌صورت خودکار ساخته می‌شود).</div>
           <div id="inbounds-list"><div class="empty" data-i18n="loading">در حال بارگذاری...</div></div>
         </div>
 
@@ -1301,6 +1298,7 @@ var I18N = {
     'dash': 'داشبورد', 'users': 'کاربران', 'inbounds': 'اینباندها', 'scanner': 'اسکنر IP', 'worker': 'Worker', 'settings': 'تنظیمات', 'contact': 'Contact Me', 'logout': 'خروج',
     'workerSetupTip': 'پنل را به Cloudflare Worker متصل کنید تا کاربرانی که Proxy IP انتخاب می‌کنند از مسیر Worker عبور کنند. ترافیک از Railway عبور نمی‌کند.', 'cfToken': 'Cloudflare API Token', 'getToken': 'گرفتن توکن', 'cfAccountId': 'Account ID', 'cfWorkerName': 'Worker Name', 'cfWorkerDomain': 'Worker Domain', 'cfConnect': 'اتصال و Deploy', 'connected': 'متصل', 'disconnected': 'قطع', 'workerStatus': 'وضعیت', 'workerUrl': 'Worker URL', 'lastSync': 'آخرین Sync', 'lastError': 'آخرین خطا', 'proxyPool': 'Proxy IP Pool', 'addProxy': 'افزودن کشور', 'workerSettings': 'تنظیمات Worker', 'removeConn': 'حذف اتصال Worker', 'noProxyYet': 'هنوز کشوری اضافه نکرده‌اید', 'connecting': 'در حال اتصال...', 'workerConnected': 'Worker متصل و Deploy شد', 'syncing': 'در حال Sync...', 'synced': 'Sync شد', 'confirmRemoveWorker': 'اتصال Worker حذف شود؟', 'workerRemoved': 'اتصال Worker حذف شد', 'proxyCodePrompt': 'کد کشور (مثلا de):', 'proxyCountryPrompt': 'نام کشور:', 'proxyHostPrompt': 'آدرس Proxy IP (مثلا de.example.com):', 'proxyPortPrompt': 'پورت Proxy IP:', 'proxySaved': 'کشور ذخیره و Worker بروزرسانی شد', 'confirmDelProxy': 'این کشور حذف شود؟', 'proxyDeleted': 'کشور حذف شد', 'workerFillAll': 'همه فیلدها را پر کنید', 'workerProxyEnabled': 'Worker Proxy IP', 'workerProxyNone': 'بدون Proxy', 'workerRouteTip': 'کانفیگ کاربر روی دامنه Worker با مسیر /route/{کد کشور} ساخته می‌شود و از Railway عبور نمی‌کند.', 'workerAutoName': 'نام و دامنه Worker به‌صورت خودکار از اکانت Cloudflare گرفته می‌شود.', 'proxySource': 'منبع پروکسی روزانه', 'autoSyncHourly': 'بروزرسانی خودکار (ساعتی)', 'updateNow': 'بروزرسانی از منبع', 'updatingFromSource': 'در حال بروزرسانی از منبع', 'sourceUpdated': 'بروزرسانی شد', 'sourceError': 'خطا در بروزرسانی منبع', 'countries': 'کشور', 'syncsDone': 'تعداد بروزرسانی‌ها', 'pickCountry': 'یک کشور انتخاب کنید',
     'tab.dash': 'داشبورد', 'tab.users': 'مدیریت کاربران', 'tab.inbounds': 'مدیریت اینباندها', 'tab.scanner': 'اسکنر آی‌پی', 'tab.settings': 'تنظیمات',
+    'inboundFixedHint': 'فقط اینباندهای پیش‌فرض پنل استفاده می‌شوند. WS/TLS به‌صورت خودکار با دامنه اصلی پنل آماده است؛ Reality را با دامنه و پورت خودتان تکمیل کنید (کلید pbk به‌صورت خودکار ساخته می‌شود).', 'inboundFixed': 'افزودن اینباند غیرفعال است — فقط اینباندهای پیش‌فرض.', 'inboundAuto': 'این اینباند خودکار است و نیازی به تنظیم ندارد.',
     'newUser': 'کاربر جدید', 'newInbound': 'اینباند جدید', 'domain': 'دامنه',
     'loading': 'در حال بارگذاری...', 'noUsers': 'هیچ کاربری وجود ندارد', 'noInbounds': 'هیچ اینباندی وجود ندارد', 'errLoadUsers': 'خطا در بارگذاری کاربران', 'errLoadInbounds': 'خطا در بارگذاری اینباندها', 'errLoadStats': 'خطا در بارگذاری آمار',
     'live': '● LIVE', 'scnTip': 'اسکن زنده از رنج‌های Cloudflare. IPهای پاسخ‌دهنده مرتب و ۱۰ تای اول به صورت خودکار ذخیره می‌شوند.',
@@ -1347,6 +1345,7 @@ var I18N = {
     'dash': 'Dashboard', 'users': 'Users', 'inbounds': 'Inbounds', 'scanner': 'IP Scanner', 'worker': 'Worker', 'settings': 'Settings', 'contact': 'Contact Me', 'logout': 'Logout',
     'workerSetupTip': 'Connect the panel to a Cloudflare Worker so users who pick a Proxy IP route through the Worker. Traffic never crosses Railway.', 'cfToken': 'Cloudflare API Token', 'getToken': 'Get Token', 'cfAccountId': 'Account ID', 'cfWorkerName': 'Worker Name', 'cfWorkerDomain': 'Worker Domain', 'cfConnect': 'Connect & Deploy', 'connected': 'Connected', 'disconnected': 'Disconnected', 'workerStatus': 'Status', 'workerUrl': 'Worker URL', 'lastSync': 'Last Sync', 'lastError': 'Last Error', 'proxyPool': 'Proxy IP Pool', 'addProxy': 'Add Country', 'workerSettings': 'Worker Settings', 'removeConn': 'Remove Worker Connection', 'noProxyYet': 'No country added yet', 'connecting': 'Connecting...', 'workerConnected': 'Worker connected & deployed', 'syncing': 'Syncing...', 'synced': 'Synced', 'confirmRemoveWorker': 'Remove the Worker connection?', 'workerRemoved': 'Worker connection removed', 'proxyCodePrompt': 'Country code (e.g. de):', 'proxyCountryPrompt': 'Country name:', 'proxyHostPrompt': 'Proxy IP host (e.g. de.example.com):', 'proxyPortPrompt': 'Proxy IP port:', 'proxySaved': 'Country saved, worker updated', 'confirmDelProxy': 'Delete this country?', 'proxyDeleted': 'Country deleted', 'workerFillAll': 'Fill in all fields', 'workerProxyEnabled': 'Worker Proxy IP', 'workerProxyNone': 'No Proxy', 'workerRouteTip': 'The user config is built on the Worker domain with a /route/{code} path — traffic never crosses Railway.', 'workerAutoName': 'Worker name and domain are fetched automatically from your Cloudflare account.', 'proxySource': 'Daily Proxy Source', 'autoSyncHourly': 'Auto-update (hourly)', 'updateNow': 'Update Now', 'updatingFromSource': 'Updating from source', 'sourceUpdated': 'Updated', 'sourceError': 'Failed to update source', 'countries': 'countries', 'syncsDone': 'Syncs done', 'pickCountry': 'Pick a country',
     'tab.dash': 'Dashboard', 'tab.users': 'Manage Users', 'tab.inbounds': 'Manage Inbounds', 'tab.scanner': 'IP Scanner', 'tab.settings': 'Settings',
+    'inboundFixedHint': 'Only the panel’s default inbounds are used. WS/TLS is ready automatically with the panel’s main domain; fill Reality’s domain & ports yourself (pbk is auto-generated).', 'inboundFixed': 'Adding inbounds is disabled — only the default inbounds.', 'inboundAuto': 'This inbound is automatic — nothing to configure.',
     'newUser': 'New User', 'newInbound': 'New Inbound', 'domain': 'Domain',
     'loading': 'Loading...', 'noUsers': 'No users found', 'noInbounds': 'No inbounds found', 'errLoadUsers': 'Error loading users', 'errLoadInbounds': 'Error loading inbounds', 'errLoadStats': 'Error loading stats',
     'live': '● LIVE', 'scnTip': 'Live scan of Cloudflare ranges. Working IPs are sorted and the first 10 are auto-saved.',
@@ -1921,14 +1920,24 @@ function renderInbounds() {
     html += '<strong>' + esc(ib.name) + '</strong><span class="badge ' + protoBadge + '">' + (ib.protocol || 'vless').toUpperCase() + '</span>';
     html += '</div>';
     html += '<div style="font-size:11px;color:var(--txt2);line-height:1.8">';
-    if (ib.domain) html += t('domain') + ': ' + esc(ib.domain) + '<br>';
-    html += t('port') + ': ' + (ib.port || '-') + (ib.external_port ? ' / ' + t('extPort') + ': ' + ib.external_port : '') + '<br>';
+    var isReality = (ib.protocol === 'reality' || ib.security === 'reality');
+    if (isReality) {
+      // Reality: user fills domain + ports; pbk is auto-generated.
+      html += t('domain') + ': ' + (ib.external_domain || '—') + '<br>';
+      html += t('port') + ': ' + (ib.port || '—') + '<br>';
+    } else if (ib.protocol === 'worker') {
+      html += t('domain') + ': ' + (ib.external_domain || '—') + '<br>';
+      html += t('port') + ': 443 (Worker)<br>';
+    } else {
+      // WS/TLS: fully automatic with the panel's main domain.
+      html += t('domain') + ': ' + (ib.external_domain || '—') + ' (خودکار)<br>';
+      html += t('port') + ': 443 / relay<br>';
+    }
     html += t('secNetwork') + ': ' + (ib.network || 'tcp') + ' | ' + t('security') + ': ' + (ib.security || 'none') + '<br>';
     html += t('usersCount') + ': ' + (ib.users_count || 0);
     html += '</div>';
     html += '<div style="margin-top:10px;display:flex;gap:4px">';
     html += '<button class="btn btn-sm btn-b" onclick="editInbound(\'' + ib.inbound_id + '\')">' + t('edit') + '</button>';
-    html += '<button class="btn btn-sm btn-r" onclick="deleteInbound(\'' + ib.inbound_id + '\')">' + t('delete') + '</button>';
     html += '</div></div>';
   }
   html += '</div>';
@@ -2008,59 +2017,46 @@ async function generateShortId() {
 }
 
 function openCreateInbound() {
-  $id('ib-title').textContent = t('createInbound');
-  $id('ib-id').value = '';
-  $id('ib-name').value = '';
-  $id('ib-port').value = '8443';
-  $id('ib-sni').value = 'is1-ssl.mzstatic.com';
-  $id('ib-extdomain').value = '';
-  $id('ib-extport').value = '443';
-  $id('ib-privkey').value = '';
-  $id('ib-pubkey').value = '';
-  $id('ib-shortids').value = '';
-  $id('ib-spiderx').value = '/';
-  $id('ib-dest').value = 'is1-ssl.mzstatic.com:443';
-  $id('ib-servernames').value = 'is1-ssl.mzstatic.com';
-  $id('ib-security').value = 'tls';
-  $id('ib-network').value = 'ws';
-  $id('ib-wspath').value = '/';
-  $id('ib-xhttppath').value = '/';
-  $id('ib-xhttp-mode').value = 'auto';
-  $id('ib-grpc-svc').value = 'grpc';
-  $id('ib-submit').textContent = t('createInbound');
-  onSecurityChange();
-  onNetworkChange();
-  openModal('mod-inbound');
+  // Adding new inbounds is disabled — only the default inbounds are used.
+  toast(t('inboundFixed'), 'warn');
 }
 
 function editInbound(iid) {
   var ib = ALL_IB.find(function(x) { return x.inbound_id === iid; });
   if (!ib) return;
+  var isReality = (ib.protocol === 'reality' || ib.security === 'reality');
   $id('ib-title').textContent = t('editInbound');
   $id('ib-id').value = iid;
   $id('ib-name').value = ib.name || '';
-  $id('ib-port').value = ib.port || '8443';
   $id('ib-sni').value = ib.sni || 'is1-ssl.mzstatic.com';
-  $id('ib-security').value = ib.security || 'tls';
-  $id('ib-network').value = ib.network || 'ws';
-  $id('ib-extdomain').value = ib.external_domain || '';
-  $id('ib-extport').value = ib.external_port || '443';
   var rs = ib.reality_settings || {};
-  $id('ib-privkey').value = (rs || {}).private_key || ib.private_key || '';
-  $id('ib-pubkey').value = (rs || {}).public_key || ib.public_key || '';
-  $id('ib-shortids').value = (rs || {}).short_ids || '';
+  $id('ib-privkey').value = (rs || {}).private_key || '';
+  $id('ib-pubkey').value = (rs || {}).public_key || '';
+  $id('ib-shortids').value = (rs || {}).short_id || '';
   $id('ib-spiderx').value = (rs || {}).spiderx || '/';
   $id('ib-dest').value = (rs || {}).dest || 'is1-ssl.mzstatic.com:443';
-  $id('ib-servernames').value = (rs || {}).server_names || (rs || {}).sni || 'is1-ssl.mzstatic.com';
+  $id('ib-servernames').value = (rs || {}).sni || 'is1-ssl.mzstatic.com';
   var ws = ib.ws_settings || {}; var xh = ib.xhttp_settings || {};
   $id('ib-wspath').value = ws.path || '/';
   $id('ib-xhttppath').value = xh.path || '/';
   $id('ib-xhttp-mode').value = xh.mode || 'auto';
   $id('ib-grpc-svc').value = (ib.grpc_settings || {}).serviceName || 'grpc';
-  $id('ib-submit').textContent = t('updateInbound');
-  onSecurityChange();
-  onNetworkChange();
-  openModal('mod-inbound');
+
+  if (isReality) {
+    // Reality: user fills domain + ports; pbk is auto-generated.
+    $id('ib-security').value = 'reality';
+    $id('ib-network').value = ib.network || 'xhttp';
+    $id('ib-port').value = ib.port || '';
+    $id('ib-extdomain').value = ib.external_domain || '';
+    $id('ib-extport').value = ib.external_port || '';
+    $id('ib-submit').textContent = t('updateInbound');
+    onSecurityChange();
+    onNetworkChange();
+    openModal('mod-inbound');
+  } else {
+    // WS/TLS: fully automatic — nothing to configure.
+    toast(t('inboundAuto'), 'ok');
+  }
 }
 
 async function submitInbound(e) {
