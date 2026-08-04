@@ -15,20 +15,21 @@
 /* Ultra-dark sub-style theme — absolute black, no glass, fixed teal accent.
    Matches the /sub page exactly. */
 :root{
-  --teal:#ffffff;--blue:#9db4ff;--spider-blue:#9db4ff;--spider-purple:#b9a6ff;--spider-red:#ffffff;
-  --neon:#ffffff;--neon2:#e6e6e6;--purple:#b9a6ff;--green:#ffffff;--red:#ffffff;
-  --gold:#ffffff;--success:#ffffff;--warning:#ffffff;--danger:#ffffff;
+  /* Accent matches the /sub page: teal #00e1c1 on pure black, no glass, no glow. */
+  --teal:#00e1c1;--blue:#9db4ff;--spider-blue:#9db4ff;--spider-purple:#b9a6ff;--spider-red:#ff6b6b;
+  --neon:#00e1c1;--neon2:#2ef2d6;--purple:#b9a6ff;--green:#00e1c1;--red:#ff6b6b;
+  --gold:#00e1c1;--success:#00e1c1;--warning:#ffab00;--danger:#ff6b6b;
   --bg:#000000;--bg2:#000000;--bg3:rgba(255,255,255,.06);--txt:#ffffff;--txt2:#c9c9ce;
   --r:12px;--radius:14px;--radius-lg:16px;--radius-xl:24px;
   --glass:#0a0a0d;--surface-glass:#0a0a0d;
-  --grad1:#ffffff;--grad2:#e6e6e6;--grad:linear-gradient(135deg,#ffffff,#e6e6e6);
-  --gradient:linear-gradient(90deg,#ffffff,#e6e6e6);
+  --grad1:#00e1c1;--grad2:#2ef2d6;--grad:linear-gradient(135deg,#00e1c1,#2ef2d6);
+  --gradient:linear-gradient(90deg,#00e1c1,#2ef2d6);
   --border:rgba(255,255,255,.06);
   --glow:none;--glow-strong:none;
   --logo-shadow:none;
-  --tab-bg:#ffffff;--tab-color:#000;--tab-glow:none;
-  --nav-bg:rgba(255,255,255,.12);--nav-color:#ffffff;
-  --border-glow:rgba(255,255,255,.35);--input-glow:rgba(255,255,255,.12);
+  --tab-bg:#00e1c1;--tab-color:#000;--tab-glow:none;
+  --nav-bg:rgba(0,225,193,.14);--nav-color:#00e1c1;
+  --border-glow:rgba(0,225,193,.4);--input-glow:rgba(0,225,193,.14);
   --orb1:rgba(255,255,255,.05);--orb2:rgba(255,255,255,.03);
   --surface:#FFFFFF;--text-primary:#ffffff;--text-secondary:#c9c9ce;
   --shadow-sm:0 8px 32px rgba(0,0,0,.55);--shadow-md:0 8px 32px rgba(0,0,0,.6);
@@ -133,14 +134,14 @@ html[lang="fa"] body{
 [data-theme="dark"] .sb-brand-t{
   text-shadow:none;
 }
-/* Neon accent in dark mode is white to match the text */
+/* Neon accent in dark mode: teal like the /sub page */
 [data-theme="dark"]{
-  --neon:#ffffff;--neon2:#e6e6e6;--teal:#ffffff;--green:#ffffff;--success:#ffffff;
-  --grad1:#ffffff;--grad2:#e6e6e6;
-  --tab-bg:#ffffff;--nav-color:#ffffff;--nav-bg:rgba(255,255,255,.12);--border-glow:rgba(255,255,255,.35);--input-glow:rgba(255,255,255,.12);
+  --neon:#00e1c1;--neon2:#2ef2d6;--teal:#00e1c1;--green:#00e1c1;--success:#00e1c1;
+  --grad1:#00e1c1;--grad2:#2ef2d6;
+  --tab-bg:#00e1c1;--nav-color:#00e1c1;--nav-bg:rgba(0,225,193,.14);--border-glow:rgba(0,225,193,.4);--input-glow:rgba(0,225,193,.14);
   --glow:none;--glow-strong:none;
   --logo-shadow:none;
-  --spider-red:#ffffff;--red:#ffffff;--danger:#ffffff;
+  --spider-red:#ff6b6b;--red:#ff6b6b;--danger:#ff6b6b;
 }
 /* White grid for the live background in dark mode */
 [data-theme="dark"] .bg-grid{
@@ -415,7 +416,22 @@ input,select,button,textarea{font-family:inherit}
 .scn-dom .rm { margin-left: auto; cursor: pointer; color: var(--red); background: none; border: none; font-size: 14px; opacity: .7; }
 .scn-dom .rm:hover { opacity: 1; }
 .scn-dom-add { display: flex; gap: 8px; }
-.scn-dom-add input { flex: 1; }
+.scn-dom-add input {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 16px;
+  background: #121216;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--txt);
+  font-size: 13px;
+  outline: none;
+  transition: all .2s;
+}
+[data-theme="light"] .scn-dom-add input { background: #ffffff; }
+.scn-dom-add input:focus { border-color: var(--neon); background: #121216; box-shadow: 0 0 0 4px var(--input-glow); }
+[data-theme="light"] .scn-dom-add input:focus { background: #ffffff; }
+.scn-dom-add .btn { border-radius: 999px; }
 .scn-result { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(0,0,0,.25); border: 1px solid var(--border); border-radius: 10px; font-size: 11px; }
 .scn-result .scn-ip { font-family: monospace; direction: ltr; }
 .scn-result .scn-dom-name { color: var(--txt2); font-size: 10px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -479,7 +495,7 @@ html[lang="en"] body, html[lang="en"] .sidebar, html[lang="en"] .panel, html[lan
   border:1px solid rgba(255,255,255,.05);border-radius:var(--radius-lg);padding:22px;
   margin-bottom:16px;transition:all .3s;animation:fadeIn .4s ease;box-shadow:0 8px 32px rgba(0,0,0,.55);
 }
-.panel:hover{border-color:var(--border-glow);box-shadow:0 8px 32px rgba(0,0,0,.6)}
+.panel:hover{border-color:var(--border);box-shadow:0 8px 32px rgba(0,0,0,.6)}
 .panel-h{
   font-size:15px;font-weight:700;margin-bottom:14px;
   display:flex;align-items:center;gap:8px;
@@ -494,7 +510,6 @@ html[lang="en"] body, html[lang="en"] .sidebar, html[lang="en"] .panel, html[lan
   text-align:center;transition:all .3s;animation:fadeIn .5s ease;position:relative;overflow:hidden;
   box-shadow:0 8px 32px rgba(0,0,0,.55);
 }
-.stat::after{content:'';position:absolute;top:0;right:0;width:4px;height:36px;background:var(--neon);border-radius:0 0 0 6px}
 .stat:hover{border-color:var(--border-glow);transform:translateY(-3px);box-shadow:0 8px 32px rgba(0,0,0,.6)}
 .stat-icon{margin-bottom:8px;color:var(--neon)}
 .stat-v{font-size:26px;font-weight:800;color:var(--neon)}
@@ -562,7 +577,7 @@ tr{animation:fadeIn .3s ease}
   width:100%;max-width:480px;max-height:85vh;overflow-y:auto;
   box-shadow:0 16px 48px rgba(0,0,0,.7);animation:scaleIn .3s ease;position:relative;
 }
-.modal-c::before{content:'';position:absolute;top:0;right:0;width:150px;height:150px;background:radial-gradient(circle,var(--orb1),transparent 70%);pointer-events:none}
+.modal-c::before{content:none}
 .modal-t{font-size:19px;font-weight:700;margin-bottom:18px;position:relative}
 .modal-t .glow{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .modal-btns{display:flex;gap:8px;margin-top:18px;position:relative}
@@ -657,6 +672,18 @@ tr{animation:fadeIn .3s ease}
 .ib-pick.selected .ib-pick-check{background:var(--gradient);border-color:transparent;color:#fff;animation:scaleIn .25s ease}
 .ib-pick-check .material-symbols-outlined{font-size:14px}
 
+/* Per-inbound options panel (country multi-select + iOS switches). Theme-aware. */
+.ib-opts{
+  flex-basis:100%;margin-top:4px;padding:10px 12px;
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+  display:flex;flex-direction:column;gap:8px;
+}
+.ib-opts select{
+  width:100%;padding:9px 12px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:10px;color:var(--txt);font-size:12px;outline:none;
+}
+.ib-opts select option{background:var(--bg2);color:var(--txt)}
+
 /* iOS-style switch */
 .ios-switch{
   width:51px;height:31px;border-radius:999px;background:#39393d;
@@ -692,7 +719,7 @@ tr{animation:fadeIn .3s ease}
   border:1.5px solid var(--border);color:var(--txt);text-decoration:none;
   box-shadow:var(--shadow-md);transition:all .3s ease;position:relative;overflow:hidden;
 }
-.contact-bubble::before{content:'';position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(180deg,rgba(255,255,255,.08),transparent);pointer-events:none}
+.contact-bubble::before{content:none}
 .contact-bubble svg{width:40px;height:40px;color:var(--neon);transition:transform .3s ease}
 .contact-bubble span{font-size:13px;font-weight:700}
 .contact-bubble small{font-size:10px;color:var(--txt2);direction:ltr}
@@ -826,6 +853,10 @@ tr{animation:fadeIn .3s ease}
         <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/><path d="M11 8v3l2 2"/></svg></span>
         <span data-i18n="scanner">اسکنر IP</span>
       </div>
+      <div class="nav-item" onclick="switchTab('worker',this)">
+        <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
+        <span data-i18n="worker">Worker</span>
+      </div>
       <div class="nav-item" onclick="switchTab('settings',this)">
         <span class="nav-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></span>
         <span data-i18n="settings">تنظیمات</span>
@@ -886,14 +917,6 @@ tr{animation:fadeIn .3s ease}
           <div id="inbounds-list"><div class="empty" data-i18n="loading">در حال بارگذاری...</div></div>
         </div>
 
-        <!-- Domain Management -->
-        <div class="panel">
-          <div class="panel-h"><span class="glow" data-i18n="domainMgr">مدیریت دامنه</span></div>
-          <form onsubmit="saveDomainSettings(event)">
-            <div class="f-g"><label data-i18n="domain">دامنه</label><input type="text" id="set-domain" placeholder="example.com" dir="ltr"></div>
-            <button class="btn btn-p" style="width:100%;margin-top:8px"><span data-i18n="saveDomain">ذخیره دامنه</span></button>
-          </form>
-        </div>
       </div>
 
       <!-- IP SCANNER TAB -->
@@ -968,6 +991,84 @@ tr{animation:fadeIn .3s ease}
         </div>
       </div>
 
+      <!-- WORKER TAB (Cloudflare Worker proxy manager) -->
+      <div class="tab-content hidden" id="tab-worker">
+        <div class="panel">
+          <div class="panel-h" style="justify-content:space-between">
+            <span class="glow">⚡ <span data-i18n="worker">Worker</span></span>
+            <span id="worker-badge" class="badge badge-g" style="margin-right:auto"></span>
+          </div>
+
+          <!-- DAILY PROXY SOURCE (always available) -->
+          <div class="panel-h" style="margin-top:2px;border-top:1px solid var(--border);padding-top:14px">
+            <span class="glow" data-i18n="proxySource">منبع پروکسی روزانه</span>
+            <span id="wk-source-count" class="badge badge-g" style="margin-right:auto"></span>
+          </div>
+          <div class="set-row">
+            <span class="set-lbl" data-i18n="autoSyncHourly">بروزرسانی خودکار (ساعتی)</span>
+            <button type="button" class="ios-switch" id="wk-auto" onclick="workerToggleAuto()" data-i18n-title="autoSyncHourly" title="بروزرسانی خودکار ساعتی"></button>
+          </div>
+          <div class="set-row" style="border-bottom:none;flex-wrap:wrap;gap:6px">
+            <button class="btn btn-p btn-sm" onclick="workerSyncSource()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
+              <span data-i18n="updateNow">بروزرسانی از منبع</span>
+            </button>
+            <span id="wk-source-status" style="font-size:11px;color:var(--txt2);width:100%"></span>
+          </div>
+
+          <!-- SETUP (not connected) -->
+          <div id="worker-setup">
+            <div class="scn-hint px-hint" data-i18n="workerSetupTip">پنل را به Cloudflare Worker متصل کنید تا کاربرانی که Proxy IP انتخاب می‌کنند از مسیر Worker عبور کنند. ترافیک از Railway عبور نمی‌کند.</div>
+            <div class="f-g" style="margin-top:10px"><label data-i18n="cfToken">Cloudflare API Token</label>
+              <div style="display:flex;gap:8px">
+                <input type="password" id="wk-token" dir="ltr" style="flex:1" autocomplete="off">
+                <a class="btn btn-sm btn-g" href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noopener" style="text-decoration:none;white-space:nowrap">
+                  <span data-i18n="getToken">گرفتن توکن</span>
+                </a>
+              </div>
+            </div>
+            <div class="f-g"><label data-i18n="cfAccountId">Account ID</label><input type="text" id="wk-account" dir="ltr" placeholder="e.g. 1a2b3c..."></div>
+            <div class="f-g"><label data-i18n="cfWorkerName">Worker Name</label><input type="text" id="wk-name" dir="ltr" placeholder="spider-proxy"></div>
+            <div class="f-g"><label data-i18n="cfWorkerDomain">Worker Domain</label><input type="text" id="wk-domain" dir="ltr" placeholder="spider-proxy.username.workers.dev"></div>
+            <button class="btn btn-p" style="width:100%;margin-top:10px" onclick="workerSetup()"><span data-i18n="cfConnect">اتصال و Deploy</span></button>
+          </div>
+
+          <!-- MANAGED (connected) -->
+          <div id="worker-managed" class="hidden">
+            <div class="set-row">
+              <span class="set-lbl" data-i18n="workerStatus">وضعیت</span>
+              <span id="worker-status" class="badge badge-g"></span>
+            </div>
+            <div class="set-row">
+              <span class="set-lbl" data-i18n="workerUrl">Worker URL</span>
+              <a id="worker-url" href="#" target="_blank" rel="noopener" dir="ltr" style="color:var(--neon);font-size:12px"></a>
+            </div>
+            <div class="set-row">
+              <span class="set-lbl" data-i18n="lastSync">آخرین Sync</span>
+              <span id="worker-sync" dir="ltr" style="font-size:12px;color:var(--txt2)"></span>
+            </div>
+            <div class="set-row">
+              <span class="set-lbl" data-i18n="lastError">آخرین خطا</span>
+              <span id="worker-error" dir="ltr" style="font-size:12px;color:var(--red)"></span>
+            </div>
+
+            <div class="panel-h" style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px">
+              <span class="glow" data-i18n="proxyPool">Proxy IP Pool</span>
+              <button class="btn btn-sm btn-p" onclick="workerAddProxy()" style="margin-left:auto">+ <span data-i18n="addProxy">افزودن کشور</span></button>
+              <button class="btn btn-sm btn-g" onclick="workerSync()" title="Re-deploy" style="margin-right:6px">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
+              </button>
+            </div>
+            <div id="worker-proxies"></div>
+
+            <div class="panel-h" style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px">
+              <span class="glow" data-i18n="workerSettings">تنظیمات Worker</span>
+            </div>
+            <button class="btn btn-sm btn-r" onclick="workerDisconnect()" style="margin-top:6px"><span data-i18n="removeConn">حذف اتصال Worker</span></button>
+          </div>
+        </div>
+      </div>
+
       <!-- SETTINGS TAB -->
       <div class="tab-content hidden" id="tab-settings">
 
@@ -1002,24 +1103,6 @@ tr{animation:fadeIn .3s ease}
               <button class="btn btn-sm btn-g" onclick="setTheme('dark')"><span data-i18n="dark">تاریک</span></button>
               <button class="btn btn-sm btn-g" onclick="setTheme('light')"><span data-i18n="light">روشن</span></button>
             </div>
-          </div>
-          <div class="set-row" style="border-bottom:none">
-            <span class="set-lbl" data-i18n="fixedTheme">فونت و رنگ هماهنگ با صفحه ساب + iOS است.</span>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-h"><span class="glow" data-i18n="proxyList">Proxy List</span></div>
-          <div class="set-row">
-            <span class="set-lbl" data-i18n="countryProxyList">لیست پروکسی‌های کشورها</span>
-            <button class="btn btn-p" id="proxy-refresh-btn" onclick="refreshProxyList()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
-              <span data-i18n="refreshList">به‌روزرسانی لیست</span>
-            </button>
-          </div>
-          <div class="set-row" style="border-bottom:none;flex-direction:column;align-items:stretch;gap:6px">
-            <span class="set-lbl" id="proxy-refresh-status" style="font-size:11px" data-i18n="proxyNote">پروکسی‌های رایگان سریع از بین می‌روند — برای تازه نگه‌داشتن لیست، گاهی به‌روزرسانی کنید.</span>
-            <span class="set-lbl" id="proxy-refresh-result" style="font-size:11px;color:var(--txt2)"></span>
           </div>
         </div>
 
@@ -1082,44 +1165,9 @@ tr{animation:fadeIn .3s ease}
     </div>
     <div class="f-g">
       <label data-i18n="inboundsMulti">اینباندها (چندتایی)</label>
-      <div id="cu-inbound" class="f-r" style="gap:6px"></div>
+      <div class="px-hint" data-i18n="inboundPickHint">برای هر اینباند، گزینه‌های مخصوصش نمایش داده می‌شود: Worker → انتخاب کشور، TLS → سوییچ IP اسکنر، Reality → بدون گزینه.</div>
+      <div id="cu-inbound" class="f-r" style="gap:8px;margin-top:6px"></div>
     </div>
-
-    <div class="divider"></div>
-    <div class="f-g">
-      <label data-i18n="customIp">آی‌پی اختصاصی (اسکنر)</label>
-      <div class="cu-custom-wrap">
-        <button type="button" class="btn btn-g cu-custom-btn" id="cu-custom-btn" onclick="cuToggleCustomMenu(event)"><span id="cu-custom-label" data-i18n="noCustomIp">— بدون آی‌پی اختصاصی —</span><span>▾</span></button>
-        <div class="cu-custom-menu" id="cu-custom-menu">
-          <button type="button" class="cu-custom-opt" data-val="" onclick="cuPickCustom('', this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M4.93 4.93l14.14 14.14"/></svg> <span data-i18n="noCustomOpt">بدون آی‌پی اختصاصی</span></button>
-          <button type="button" class="cu-custom-opt" data-val="railway" onclick="cuPickCustom('railway', this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 19h10M4 19H3v-3l2-5h11l3 5v3h-1M5 11l1-7h9l1 7"/></svg> Railway</button>
-          <button type="button" class="cu-custom-opt" data-val="cf" onclick="cuPickCustom('cf', this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg> Cloudflare</button>
-        </div>
-      </div>
-      <div id="cu-custom-preview" style="margin-top:8px"></div>
-      <div class="px-hint" data-i18n="customIpHint">از فایل ذخیره‌شده اسکنر، ۱۰ کانفیگ اضافه در ساب ساخته می‌شود. در بخش Address، فقط روی اینباندهای غیر-Reality قرار می‌گیرند.</div>
-    </div>
-    <div class="divider"></div>
-    <div class="f-g">
-      <label data-i18n="proxyCountry">کشور پروکسی</label>
-      <select id="cu-country" onchange="pxSelectFromDropdown(this.value)">
-        <option value="" data-i18n="noProxy">-- بدون پروکسی --</option>
-      </select>
-    </div>
-    <div class="px-hint" data-i18n="pxHint">کشور را روی نقشه کلیک کنید یا از فهرست بالا انتخاب کنید. سپس IP موردنظر را تیک بزنید — حداکثر ۳ IP.</div>
-    <div id="px-map-wrap">
-      <div class="px-map" id="px-map"></div>
-    </div>
-    <div class="px-tools">
-      <input class="f-g" type="text" id="px-search" data-i18n="searchIp" placeholder="جستجوی IP..." oninput="pxFilterIPs()" style="padding:8px 12px;background:rgba(255,255,255,.04);border:1px solid var(--bg3);border-radius:9px;color:var(--txt)">
-      <button type="button" class="btn btn-sm btn-g" onclick="pxSelectAll()"><span data-i18n="selectAll">انتخاب همه</span></button>
-      <button type="button" class="btn btn-sm btn-g" onclick="pxClearAll()"><span data-i18n="clearAll">پاک کردن</span></button>
-      <button type="button" class="btn btn-sm btn-g" id="px-ping-btn" onclick="pxLoadPings()"><span data-i18n="checkPing">بررسی پینگ</span></button>
-      <button type="button" class="btn btn-sm btn-p" onclick="pxLoadCleanIps()" data-i18n-title="ipRepo" title="دریافت آیپی تمیز از مخزن"><span data-i18n="ipRepo">مخزن آیپی</span></button>
-    </div>
-    <div class="px-ipbox" id="px-ip-list"><div class="px-noselected" data-i18n="firstSelectCountry">ابتدا یک کشور را انتخاب کنید</div></div>
-    <div id="px-tags" style="margin-top:8px"></div>
-    <div class="px-path" id="px-path"></div>
     <div class="modal-btns">
       <button type="button" class="btn btn-g" onclick="closeModal('mod-user')"><span data-i18n="cancel">انصراف</span></button>
       <button type="submit" class="btn btn-p" id="cu-submit"><span data-i18n="submitUser">ایجاد کاربر</span></button>
@@ -1141,7 +1189,6 @@ tr{animation:fadeIn .3s ease}
       <input type="checkbox" id="eu-reset" style="width:auto">
       <label style="margin:0" data-i18n="resetTraffic">بازنشانی ترافیک</label>
     </div>
-    <div class="f-g"><label data-i18n="proxyCountry">Proxy Country</label><select id="eu-country"><option value="" data-i18n="noProxy">-- None --</option></select></div>
     <div class="modal-btns">
       <button type="button" class="btn btn-g" onclick="closeModal('mod-edit-user')"><span data-i18n="cancel">انصراف</span></button>
       <button type="submit" class="btn btn-p"><span data-i18n="saveChanges">ذخیره تغییرات</span></button>
@@ -1252,9 +1299,10 @@ var selectedTheme = localStorage.getItem('spider-theme') || 'dark';
 var LANG = localStorage.getItem('spider-lang') || 'fa';
 var I18N = {
   fa: {
-    'dash': 'داشبورد', 'users': 'کاربران', 'inbounds': 'اینباندها', 'scanner': 'اسکنر IP', 'settings': 'تنظیمات', 'contact': 'Contact Me', 'logout': 'خروج',
+    'dash': 'داشبورد', 'users': 'کاربران', 'inbounds': 'اینباندها', 'scanner': 'اسکنر IP', 'worker': 'Worker', 'settings': 'تنظیمات', 'contact': 'Contact Me', 'logout': 'خروج',
+    'workerSetupTip': 'پنل را به Cloudflare Worker متصل کنید تا کاربرانی که Proxy IP انتخاب می‌کنند از مسیر Worker عبور کنند. ترافیک از Railway عبور نمی‌کند.', 'cfToken': 'Cloudflare API Token', 'getToken': 'گرفتن توکن', 'cfAccountId': 'Account ID', 'cfWorkerName': 'Worker Name', 'cfWorkerDomain': 'Worker Domain', 'cfConnect': 'اتصال و Deploy', 'connected': 'متصل', 'disconnected': 'قطع', 'workerStatus': 'وضعیت', 'workerUrl': 'Worker URL', 'lastSync': 'آخرین Sync', 'lastError': 'آخرین خطا', 'proxyPool': 'Proxy IP Pool', 'addProxy': 'افزودن کشور', 'workerSettings': 'تنظیمات Worker', 'removeConn': 'حذف اتصال Worker', 'noProxyYet': 'هنوز کشوری اضافه نکرده‌اید', 'connecting': 'در حال اتصال...', 'workerConnected': 'Worker متصل و Deploy شد', 'syncing': 'در حال Sync...', 'synced': 'Sync شد', 'confirmRemoveWorker': 'اتصال Worker حذف شود؟', 'workerRemoved': 'اتصال Worker حذف شد', 'proxyCodePrompt': 'کد کشور (مثلا de):', 'proxyCountryPrompt': 'نام کشور:', 'proxyHostPrompt': 'آدرس Proxy IP (مثلا de.example.com):', 'proxyPortPrompt': 'پورت Proxy IP:', 'proxySaved': 'کشور ذخیره و Worker بروزرسانی شد', 'confirmDelProxy': 'این کشور حذف شود؟', 'proxyDeleted': 'کشور حذف شد', 'workerFillAll': 'همه فیلدها را پر کنید', 'workerProxyEnabled': 'Worker Proxy IP', 'workerProxyNone': 'بدون Proxy', 'workerRouteTip': 'کانفیگ کاربر روی دامنه Worker با مسیر /route/{کد کشور} ساخته می‌شود و از Railway عبور نمی‌کند.', 'proxySource': 'منبع پروکسی روزانه', 'autoSyncHourly': 'بروزرسانی خودکار (ساعتی)', 'updateNow': 'بروزرسانی از منبع', 'updatingFromSource': 'در حال بروزرسانی از منبع', 'sourceUpdated': 'بروزرسانی شد', 'sourceError': 'خطا در بروزرسانی منبع', 'countries': 'کشور', 'syncsDone': 'تعداد بروزرسانی‌ها', 'pickCountry': 'یک کشور انتخاب کنید',
     'tab.dash': 'داشبورد', 'tab.users': 'مدیریت کاربران', 'tab.inbounds': 'مدیریت اینباندها', 'tab.scanner': 'اسکنر آی‌پی', 'tab.settings': 'تنظیمات',
-    'newUser': 'کاربر جدید', 'newInbound': 'اینباند جدید', 'domainMgr': 'مدیریت دامنه', 'domain': 'دامنه', 'saveDomain': 'ذخیره دامنه',
+    'newUser': 'کاربر جدید', 'newInbound': 'اینباند جدید', 'domain': 'دامنه',
     'loading': 'در حال بارگذاری...', 'noUsers': 'هیچ کاربری وجود ندارد', 'noInbounds': 'هیچ اینباندی وجود ندارد', 'errLoadUsers': 'خطا در بارگذاری کاربران', 'errLoadInbounds': 'خطا در بارگذاری اینباندها', 'errLoadStats': 'خطا در بارگذاری آمار',
     'live': '● LIVE', 'scnTip': 'اسکن زنده از رنج‌های Cloudflare. IPهای پاسخ‌دهنده مرتب و ۱۰ تای اول به صورت خودکار ذخیره می‌شوند.',
     'ipCount': 'تعداد IP', 'targetPort': 'پورت هدف', 'startScan': 'شروع اسکن', 'stop': 'توقف', 'scanning': 'در حال اسکن...', 'scanStopped': 'اسکن متوقف شد',
@@ -1263,12 +1311,16 @@ var I18N = {
     'scnTcpTip': 'دامنه موردنظر را وارد کنید؛ IP دامنه (DNS) نمایش داده می‌شود و پینگ TCP آن به صورت زنده گزارش می‌شود. دامنه‌های Railway به صورت پیش‌فرض وجود دارند و قابل افزودن/حذف هستند.',
     'addDomain': 'افزودن دامنه', 'checkDomains': 'شروع بررسی دامنه‌ها', 'checking': 'در حال بررسی...', 'checkingDomains': 'در حال بررسی دامنه‌ها...',
     'serverResources': 'Server Resources', 'appearance': 'تنظیمات ظاهری', 'themeMode': 'حالت نمایش', 'fixedTheme': 'فونت و رنگ هماهنگ با صفحه ساب + iOS است.', 'theme': 'تم', 'dark': 'تاریک', 'light': 'روشن', 'color': 'رنگ', 'lightMode': 'حالت روشن فعال شد', 'darkMode': 'حالت تاریک فعال شد',
-    'red': 'قرمز', 'green': 'سبز', 'blue': 'آبی', 'proxyList': 'Proxy List', 'countryProxyList': 'لیست پروکسی‌های کشورها', 'refreshList': 'به‌روزرسانی لیست',
-    'proxyNote': 'پروکسی‌های رایگان سریع از بین می‌روند — برای تازه نگه‌داشتن لیست، گاهی به‌روزرسانی کنید.',
+    'red': 'قرمز', 'green': 'سبز', 'blue': 'آبی',
     'panelMusic': 'Panel Music', 'bgMusic': 'Background Music', 'toggleMusic': 'روشن/خاموش', 'changePassword': 'Change Password', 'curPass': 'رمز فعلی', 'newPass': 'رمز جدید', 'changePassBtn': 'تغییر رمز',
     'contactSub': 'برای پشتیبانی و همکاری با من در ارتباط باشید',
     'createUser': 'ایجاد کاربر جدید', 'editUser': 'ویرایش کاربر', 'username': 'نام کاربری', 'conn': 'اتصال همزمان', 'volume': 'حجم', 'unit': 'واحد', 'expire': 'اعتبار', 'day': 'روز', 'month': 'ماه',
     'inboundsMulti': 'اینباندها (چندتایی)', 'noInboundOpt': 'اینباندی وجود ندارد',
+    'inboundPickHint': 'برای هر اینباند، گزینه‌های مخصوصش نمایش داده می‌شود: Worker → انتخاب کشور، TLS → سوییچ IP اسکنر، Reality → بدون گزینه.',
+    'workerCountries': 'کشورهای چندمنطقه‌ای (چندتایی — Ctrl برای انتخاب چند):',
+    'addCfIps': 'افزودن ۱۰ کانفیگ با IPهای Cloudflare اسکن‌شده',
+    'addRailwayIps': 'افزودن ۱۰ کانفیگ با IPهای Railway اسکن‌شده',
+    'realityNoExtra': 'Reality گزینه اضافه‌ای ندارد — فقط کانفیگ اصلی Reality.',
     'customIp': 'آی‌پی اختصاصی (اسکنر)', 'noCustomIp': '— بدون آی‌پی اختصاصی —', 'noCustomOpt': 'بدون آی‌پی اختصاصی',
     'customIpHint': 'از فایل ذخیره‌شده اسکنر، ۱۰ کانفیگ اضافه در ساب ساخته می‌شود. در بخش Address، فقط روی اینباندهای غیر-Reality قرار می‌گیرند.',
     'loadingIps': 'در حال بارگذاری...', 'noScannedIps': 'هنوز آی‌پی‌ای در فایل اسکنر ذخیره نشده. اول از صفحه اسکنر، اسکن کنید.', 'scannedTo10': 'آی‌پی ذخیره‌شده → ۱۰ کانفیگ:', 'errLoadIps': 'خطا در دریافت آی‌پی‌ها',
@@ -1287,16 +1339,16 @@ var I18N = {
     'config': 'کانفیگ', 'copy': 'کپی', 'close': 'بستن', 'copied': 'کانفیگ کپی شد', 'noCfg': 'کانفیگی موجود نیست', 'errCopy': 'خطا در کپی', 'notFound': 'یافت نشد', 'delete': 'حذف', 'edit': 'ویرایش', 'unlimited': 'نامحدود', 'expired': 'منقضی', 'daysUnit': ' روز', 'default': 'پیش‌فرض', 'usersCount': 'کاربران', 'secNetwork': 'شبکه', 'security': 'امنیت', 'action': 'عملیات', 'expiry': 'انقضا', 'connTh': 'اتصال',
     'confirmDeleteUser': 'آیا از حذف این کاربر اطمینان دارید؟', 'confirmDeleteInbound': 'آیا از حذف این اینباند اطمینان دارید؟', 'keysGenerated': 'کلیدهای Reality تولید شد', 'errKeyGen': 'خطا در تولید کلید', 'shortIdGen': 'Short ID تولید شد', 'shortIdNew': 'Short ID جدید تولید شد',
     'inboundUpdated': 'اینباند بروزرسانی شد', 'inboundCreated': 'اینباند ایجاد شد', 'updateInbound': 'بروزرسانی اینباند', 'inboundDeleted': 'اینباند حذف شد',
-    'refreshingProxy': 'در حال به‌روزرسانی لیست پروکسی‌ها... (ممکن است ۱-۲ دقیقه طول بکشد)', 'proxyRefreshed': 'لیست به‌روزرسانی شد ✓', 'candidatesChecked': 'کاندید بررسی شد →', 'workingProxies': 'پروکسی کارا پیدا شد', 'proxies': 'پروکسی', 'errRefreshProxy': 'خطا در به‌روزرسانی لیست',
     'srv': 'وضعیت زنده سرور', 'cpu': 'پردازنده', 'ram': 'حافظه رم', 'disk': 'دیسک', 'sent': 'ارسال', 'recv': 'دریافت', 'activeUsers': 'کاربران فعال/کل', 'trafficUsed': 'ترافیک مصرفی', 'activeConns': 'اتصالات فعال', 'uptime': 'زمان فعالیت',
     'goodMorning': 'صبح بخیر', 'goodNoon': 'ظهر بخیر', 'goodEvening': 'عصر بخیر', 'admin': 'ادمین',
     'toast.userCreated': 'کاربر ایجاد شد', 'toast.userUpdated': 'کاربر بروزرسانی شد', 'toast.userDeleted': 'کاربر حذف شد', 'toast.userToggled': 'وضعیت کاربر تغییر کرد', 'toast.inboundSaved': 'اینباند ذخیره شد', 'toast.domainSaved': 'دامنه ذخیره شد', 'toast.passChanged': 'رمز تغییر کرد', 'toast.err': 'خطا',
     'login': { 'signIn': 'Sign In' }
   },
   en: {
-    'dash': 'Dashboard', 'users': 'Users', 'inbounds': 'Inbounds', 'scanner': 'IP Scanner', 'settings': 'Settings', 'contact': 'Contact Me', 'logout': 'Logout',
+    'dash': 'Dashboard', 'users': 'Users', 'inbounds': 'Inbounds', 'scanner': 'IP Scanner', 'worker': 'Worker', 'settings': 'Settings', 'contact': 'Contact Me', 'logout': 'Logout',
+    'workerSetupTip': 'Connect the panel to a Cloudflare Worker so users who pick a Proxy IP route through the Worker. Traffic never crosses Railway.', 'cfToken': 'Cloudflare API Token', 'getToken': 'Get Token', 'cfAccountId': 'Account ID', 'cfWorkerName': 'Worker Name', 'cfWorkerDomain': 'Worker Domain', 'cfConnect': 'Connect & Deploy', 'connected': 'Connected', 'disconnected': 'Disconnected', 'workerStatus': 'Status', 'workerUrl': 'Worker URL', 'lastSync': 'Last Sync', 'lastError': 'Last Error', 'proxyPool': 'Proxy IP Pool', 'addProxy': 'Add Country', 'workerSettings': 'Worker Settings', 'removeConn': 'Remove Worker Connection', 'noProxyYet': 'No country added yet', 'connecting': 'Connecting...', 'workerConnected': 'Worker connected & deployed', 'syncing': 'Syncing...', 'synced': 'Synced', 'confirmRemoveWorker': 'Remove the Worker connection?', 'workerRemoved': 'Worker connection removed', 'proxyCodePrompt': 'Country code (e.g. de):', 'proxyCountryPrompt': 'Country name:', 'proxyHostPrompt': 'Proxy IP host (e.g. de.example.com):', 'proxyPortPrompt': 'Proxy IP port:', 'proxySaved': 'Country saved, worker updated', 'confirmDelProxy': 'Delete this country?', 'proxyDeleted': 'Country deleted', 'workerFillAll': 'Fill in all fields', 'workerProxyEnabled': 'Worker Proxy IP', 'workerProxyNone': 'No Proxy', 'workerRouteTip': 'The user config is built on the Worker domain with a /route/{code} path — traffic never crosses Railway.', 'proxySource': 'Daily Proxy Source', 'autoSyncHourly': 'Auto-update (hourly)', 'updateNow': 'Update Now', 'updatingFromSource': 'Updating from source', 'sourceUpdated': 'Updated', 'sourceError': 'Failed to update source', 'countries': 'countries', 'syncsDone': 'Syncs done', 'pickCountry': 'Pick a country',
     'tab.dash': 'Dashboard', 'tab.users': 'Manage Users', 'tab.inbounds': 'Manage Inbounds', 'tab.scanner': 'IP Scanner', 'tab.settings': 'Settings',
-    'newUser': 'New User', 'newInbound': 'New Inbound', 'domainMgr': 'Domain Management', 'domain': 'Domain', 'saveDomain': 'Save Domain',
+    'newUser': 'New User', 'newInbound': 'New Inbound', 'domain': 'Domain',
     'loading': 'Loading...', 'noUsers': 'No users found', 'noInbounds': 'No inbounds found', 'errLoadUsers': 'Error loading users', 'errLoadInbounds': 'Error loading inbounds', 'errLoadStats': 'Error loading stats',
     'live': '● LIVE', 'scnTip': 'Live scan of Cloudflare ranges. Working IPs are sorted and the first 10 are auto-saved.',
     'ipCount': 'IP Count', 'targetPort': 'Target Port', 'startScan': 'Start Scan', 'stop': 'Stop', 'scanning': 'Scanning...', 'scanStopped': 'Scan stopped',
@@ -1305,12 +1357,16 @@ var I18N = {
     'scnTcpTip': 'Enter a domain; its IP (DNS) is resolved and its TCP ping is reported live. Railway domains are pre-loaded and can be added/removed.',
     'addDomain': 'Add Domain', 'checkDomains': 'Check Domains', 'checking': 'Checking...', 'checkingDomains': 'Checking domains...',
     'serverResources': 'Server Resources', 'appearance': 'Appearance', 'themeMode': 'Display Mode', 'fixedTheme': 'Font & colors matched to the sub page + iOS.', 'theme': 'Theme', 'dark': 'Dark', 'light': 'Light', 'color': 'Color', 'lightMode': 'Light mode enabled', 'darkMode': 'Dark mode enabled',
-    'red': 'Red', 'green': 'Green', 'blue': 'Blue', 'proxyList': 'Proxy List', 'countryProxyList': 'Country proxy list', 'refreshList': 'Refresh List',
-    'proxyNote': 'Free proxies die fast — refresh occasionally to keep the list fresh.',
+    'red': 'Red', 'green': 'Green', 'blue': 'Blue',
     'panelMusic': 'Panel Music', 'bgMusic': 'Background Music', 'toggleMusic': 'On/Off', 'changePassword': 'Change Password', 'curPass': 'Current Password', 'newPass': 'New Password', 'changePassBtn': 'Change Password',
     'contactSub': 'Get in touch with me for support and collaboration',
     'createUser': 'Create New User', 'editUser': 'Edit User', 'username': 'Username', 'conn': 'Concurrent Connections', 'volume': 'Traffic', 'unit': 'Unit', 'expire': 'Expiry', 'day': 'Day', 'month': 'Month',
     'inboundsMulti': 'Inbounds (multi-select)', 'noInboundOpt': 'No inbounds available',
+    'inboundPickHint': 'Each inbound shows its own options: Worker → choose countries, TLS → scanned-IP switch, Reality → no extra options.',
+    'workerCountries': 'Multi-location countries (multi-select — Ctrl to pick several):',
+    'addCfIps': 'Add 10 configs with scanned Cloudflare IPs',
+    'addRailwayIps': 'Add 10 configs with scanned Railway IPs',
+    'realityNoExtra': 'Reality needs no extras — only the main Reality config.',
     'customIp': 'Custom IP (Scanner)', 'noCustomIp': '— No custom IP —', 'noCustomOpt': 'No custom IP',
     'customIpHint': 'Adds 10 extra configs in the sub from the scanner file. In the Address field they are only placed on non-Reality inbounds.',
     'loadingIps': 'Loading...', 'noScannedIps': 'No IPs saved in the scanner file yet. Run a scan from the Scanner page first.', 'scannedTo10': 'saved IPs → 10 configs:', 'errLoadIps': 'Error loading IPs',
@@ -1329,7 +1385,6 @@ var I18N = {
     'config': 'Config', 'copy': 'Copy', 'close': 'Close', 'copied': 'Config copied', 'noCfg': 'No config available', 'errCopy': 'Copy failed', 'notFound': 'Not found', 'delete': 'Delete', 'edit': 'Edit', 'unlimited': 'Unlimited', 'expired': 'Expired', 'daysUnit': ' days', 'default': 'Default', 'usersCount': 'Users', 'secNetwork': 'Network', 'security': 'Security', 'action': 'Actions', 'expiry': 'Expiry', 'connTh': 'Conn',
     'confirmDeleteUser': 'Are you sure you want to delete this user?', 'confirmDeleteInbound': 'Are you sure you want to delete this inbound?', 'keysGenerated': 'Reality keys generated', 'errKeyGen': 'Key generation failed', 'shortIdGen': 'Short ID generated', 'shortIdNew': 'New Short ID generated',
     'inboundUpdated': 'Inbound updated', 'inboundCreated': 'Inbound created', 'updateInbound': 'Update Inbound', 'inboundDeleted': 'Inbound deleted',
-    'refreshingProxy': 'Refreshing proxy list... (may take 1-2 minutes)', 'proxyRefreshed': 'List refreshed ✓', 'candidatesChecked': 'candidates checked →', 'workingProxies': 'working proxies found', 'proxies': 'proxies', 'errRefreshProxy': 'Error refreshing the list',
     'srv': 'Live Server Status', 'cpu': 'CPU', 'ram': 'RAM', 'disk': 'Disk', 'sent': 'Sent', 'recv': 'Received', 'activeUsers': 'Active / Total Users', 'trafficUsed': 'Traffic Used', 'activeConns': 'Active Connections', 'uptime': 'Uptime',
     'goodMorning': 'Good morning', 'goodNoon': 'Good afternoon', 'goodEvening': 'Good evening', 'admin': 'Admin',
     'toast.userCreated': 'User created', 'toast.userUpdated': 'User updated', 'toast.userDeleted': 'User deleted', 'toast.userToggled': 'User status changed', 'toast.inboundSaved': 'Inbound saved', 'toast.domainSaved': 'Domain saved', 'toast.passChanged': 'Password changed', 'toast.err': 'Error',
@@ -1342,7 +1397,9 @@ function t(key) {
 }
 function applyLang() {
   document.documentElement.lang = LANG;
-  document.documentElement.dir = LANG === 'en' ? 'ltr' : 'rtl';
+  // Layout direction stays RTL regardless of language so the fixed sidebar,
+  // topbar buttons and the whole layout never jump/mirror on switch.
+  document.documentElement.dir = 'rtl';
   document.querySelectorAll('[data-i18n]').forEach(function(el) {
     var k = el.getAttribute('data-i18n');
     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = t(k);
@@ -1356,7 +1413,6 @@ function applyLang() {
   if (typeof ALL_USERS !== 'undefined' && ALL_USERS.length) renderUsers();
   if (typeof ALL_IB !== 'undefined' && ALL_IB.length) renderInbounds();
   if ($id('dashboard-content') && $id('dashboard-content').innerHTML.indexOf('stat') > -1) loadDashboard();
-  if ($id('px-ip-list')) { try { pxRenderIPs(); pxRenderPreview(); } catch(e){} }
 }
 function toggleLang() {
   LANG = LANG === 'fa' ? 'en' : 'fa';
@@ -1571,6 +1627,7 @@ function switchTab(tab, el) {
   if (tab === 'users') loadUsers();
   if (tab === 'inbounds') loadInbounds();
   if (tab === 'scanner') scnInit();
+  if (tab === 'worker') loadWorker();
   // Close sidebar on mobile
   closeSidebar();
 }
@@ -1585,6 +1642,9 @@ async function loadAll() {
   loadUsers();
   loadInbounds();
   loadProxyCountries();
+  // Keep the worker proxy pool warm so the create-user country dropdowns work
+  // even before the Worker tab is opened.
+  if (typeof loadWorker === 'function') loadWorker();
 }
 
 // ─── Dashboard ───
@@ -1736,7 +1796,12 @@ if (window.matchMedia) {
 }
 
 // ─── User CRUD (SIMPLIFIED) ───
-function openCreateUser() {
+async function openCreateUser() {
+  cuInboundState = { picks: {}, countries: {} };
+  // Refresh worker proxy pool so the country dropdowns are current, then render.
+  if (typeof loadWorker === 'function') {
+    try { await loadWorker(); } catch(e) {}
+  }
   populateInboundSelects();
   $id('cu-name').value = '';
   $id('cu-vol').value = '20';
@@ -1744,12 +1809,7 @@ function openCreateUser() {
   $id('cu-exp').value = '30';
   $id('cu-exp-u').value = 'days';
   $id('cu-conn').value = '2';
-  $id('cu-country').value = '';
-  cuPickCustom('', null, true);
-  pxReset();
-  pxInitMap();
   openModal('mod-user');
-  setTimeout(function(){ if (PX.map) PX.map.invalidateSize(); }, 150);
 }
 
 async function submitCreateUser(e) {
@@ -1757,19 +1817,23 @@ async function submitCreateUser(e) {
   var btn = $id('cu-submit'); btn.disabled = true; btn.textContent = t('creatingUser');
   var v = parseFloat($id('cu-vol').value) || 0, vu = $id('cu-vol-u').value;
   var ex = parseInt($id('cu-exp').value) || 0, eu = $id('cu-exp-u').value;
-  var proxy_ips = Object.keys(PX.selected || {});
-  var proxy_ip = proxy_ips.length ? proxy_ips[0] : '';
+  var inbound_ids = selectedInboundIds();
+  // Per-inbound custom-IP switches + worker countries.
+  var cuSw = cuCustomStates();   // { inboundId: {cf:bool, railway:bool} }
+  var cuCountries = cuWorkerCountries();  // { inboundId: [codes] }
+  var cfIds = inbound_ids.filter(function(i){ return cuSw[i] && cuSw[i].cf; });
+  var rwIds = inbound_ids.filter(function(i){ return cuSw[i] && cuSw[i].railway; });
   try {
     var r = await api('/api/users', {method: 'POST', body: {
       username: $id('cu-name').value,
       traffic_limit_gb: vu === 'GB' ? v : v / 1024,
       expire_days: eu === 'months' ? ex * 30 : ex,
       concurrent_connections: parseInt($id('cu-conn').value) || 2,
-      inbound_ids: selectedInboundIds(),
-      proxy_country: ($id('cu-country')||{}).value||'',
-      proxy_ip: proxy_ip,
-      proxy_ips: proxy_ips,
-      custom_ip_type: cuCustomType || ''
+      inbound_ids: inbound_ids,
+      proxy_countries: cuCountries[Object.keys(cuCountries)[0]] || [],
+      proxy_ip_enabled: !!Object.keys(cuCountries).length,
+      // Mark which inbounds want scanned custom-IP configs (worker→cf, tls→railway).
+      custom_ip_inbounds: { cf: cfIds, railway: rwIds }
     }});
     toast(r.username + ' ' + t('userCreated'), 'ok');
     closeModal('mod-user');
@@ -1787,7 +1851,6 @@ function editUser(uid) {
   $id('eu-exp').value = u.expire_at ? Math.ceil((new Date(u.expire_at) - new Date()) / 86400000) : 0;
   $id('eu-status').value = u.status || 'active';
   $id('eu-conn').value = u.concurrent_connections || 2;
-  $id('eu-country').value = u.proxy_country || '';
   openModal('mod-edit-user');
 }
 
@@ -1802,7 +1865,6 @@ async function submitEditUser(e) {
       concurrent_connections: parseInt($id('eu-conn').value) || 2,
       status: $id('eu-status').value,
       reset_traffic: $id('eu-reset') ? $id('eu-reset').checked : false
-      ,proxy_country: ($id('eu-country')||{}).value||''
     }});
     toast(t('toast.userUpdated'), 'ok');
     closeModal('mod-edit-user');
@@ -1875,33 +1937,27 @@ function renderInbounds() {
 }
 
 function populateInboundSelects() {
-  var wrap = $id('cu-inbound');
-  if (!wrap) return;
-  var html = ALL_IB.map(function(ib) {
-    var proto = (ib.protocol||'vless').toUpperCase();
-    var net = (ib.network||'tcp').toUpperCase();
-    var sec = (ib.security||'tls').toUpperCase();
-    var checked = ALL_IB.length === 1 ? ' selected' : '';
-    var ic = proto === 'REALITY' ? 'shield' : (net === 'XHTTP' ? 'swap_horiz' : 'cloud');
-    return '<div class="ib-pick' + checked + '" data-id="' + esc(ib.inbound_id) + '" onclick="toggleIbPick(this)">' +
-      '<div class="ib-pick-ic"><span class="material-symbols-outlined">' + ic + '</span></div>' +
-      '<div class="ib-pick-info">' +
-        '<div class="ib-pick-name">' + esc(ib.name) + '</div>' +
-        '<div class="ib-pick-meta">' + proto + ' · ' + net + ' · ' + sec + '</div>' +
-      '</div>' +
-      '<div class="ib-pick-check"><span class="material-symbols-outlined">check</span></div>' +
-    '</div>';
-  }).join('');
-  wrap.innerHTML = html || '<span style="font-size:11px;color:var(--txt2)">' + t('noInboundOpt') + '</span>';
+  // Default-select every inbound so per-inbound options show immediately.
+  if (!Object.keys(cuInboundState.picks).length) {
+    cuInboundState.picks = {};
+    ALL_IB.forEach(function(ib){ cuInboundState.picks[ib.inbound_id] = true; });
+    cuInboundState.countries = {};
+  }
+  cuRenderInboundOpts();
 }
 
 function toggleIbPick(el) {
-  el.classList.toggle('selected');
+  cuToggleIbPick(el);
 }
 
 function selectedInboundIds() {
   var ids = [];
-  document.querySelectorAll('.ib-pick.selected').forEach(function(c){ ids.push(c.getAttribute('data-id')); });
+  Object.keys(cuInboundState.picks).forEach(function(id) {
+    if (cuInboundState.picks[id]) ids.push(id);
+  });
+  if (!ids.length) {
+    document.querySelectorAll('.ib-pick.selected').forEach(function(c){ ids.push(c.getAttribute('data-id')); });
+  }
   return ids;
 }
 
@@ -2085,16 +2141,6 @@ async function changePassword(e) {
   } catch(e) { toast(e.message, 'err'); }
 }
 
-async function saveDomainSettings(e) {
-  e.preventDefault();
-  try {
-    await api('/api/tools/settings', {method: 'POST', body: {
-      domain: $id('set-domain').value
-    }});
-    toast(t('toast.domainSaved'), 'ok');
-  } catch(e) { toast(e.message, 'err'); }
-}
-
 // ─── Modal ───
 function openModal(id) { $id(id).classList.add('show'); }
 function closeModal(id) { $id(id).classList.remove('show'); }
@@ -2102,10 +2148,10 @@ function closeModal(id) { $id(id).classList.remove('show'); }
 // ─── Helpers ───
 function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function fmtBytes(b) {
-  if (!b || b === 0) return '۰ B';
+  if (!b || b <= 0) return '0 B';
   var u = ['B','KB','MB','GB','TB'], i = 0;
   while (b >= 1024 && i < 4) { b /= 1024; i++; }
-  return b.toFixed(i === 0 ? 0 : 1) + ' ' + u[i];
+  return b.toFixed(i === 0 ? 0 : 2) + ' ' + u[i];
 }
 function fmtUptime(s) {
   if (!s) return '۰s';
@@ -2148,281 +2194,9 @@ function updateNeonBars(){
 function togglePanelAudio(){var p=$id('panel-audio-player');var sw=$id('audio-autoplay');sw.classList.toggle('on');var on=sw.classList.contains('on');if(on){p.play().catch(function(){})}else{p.pause()};localStorage.setItem('spider_audio', on?'1':'0')}
 (function initPanelAudio(){var p=$id('panel-audio-player');p.src='/static/music-panel.mp3';p.volume=0.3;var sw=$id('audio-autoplay');var saved=localStorage.getItem('spider_audio');sw.classList.toggle('on', saved!=='0');if(saved!=='0'){p.play().catch(function(){})}})();
 
-async function refreshProxyList(){
-  var btn = $id('proxy-refresh-btn');
-  var status = $id('proxy-refresh-status');
-  var result = $id('proxy-refresh-result');
-  if (btn){ btn.disabled = true; }
-  if (status){ status.textContent = t('refreshingProxy'); }
-  if (result){ result.textContent = ''; }
-  try {
-    var r = await api('/api/proxy-ips/refresh', {method: 'POST'});
-    if (status){ status.textContent = t('proxyRefreshed'); }
-    if (result){
-      result.textContent = r.candidates + ' ' + t('candidatesChecked') + ' → ' + r.working + ' ' + t('workingProxies');
-      result.style.color = 'var(--green)';
-    }
-    // Refresh the country dropdown so new countries appear
-    loadProxyCountries();
-    toast(t('proxyRefreshed') + ': ' + r.working + ' ' + t('proxies'), 'ok');
-  } catch(e) {
-    if (status){ status.textContent = t('errRefreshProxy'); }
-    if (result){ result.textContent = e.message || t('toast.err'); result.style.color = 'var(--red)'; }
-    toast(e.message || t('errRefreshProxy'), 'err');
-  } finally {
-    if (btn){ btn.disabled = false; }
-  }
-}
-
-function loadProxyCountries(){
-  api('/api/proxy-ips/countries').then(function(d){
-    PX.countries = d.countries || [];
-    PX.countrySet = {};
-    PX.countries.forEach(function(c){ PX.countrySet[c.code] = true; });
-    var opts = PX.countries.map(function(c){
-      return '<option value="'+c.code+'">'+c.code+' — '+(A2NAME[c.code]||c.code)+' ('+c.count+' IP)</option>';
-    }).join('');
-    var empty='<option value="">' + t('noProxy') + '</option>';
-    var cuSel=$id('cu-country');if(cuSel)cuSel.innerHTML=empty+opts;
-    var euSel=$id('eu-country');if(euSel)euSel.innerHTML=empty+opts;
-  }).catch(function(){});
-}
-
-// ═══ PROXY IP SELECTOR (Leaflet map + IP list) ═══
-var NUM2A2 = {
-  20:'AD',784:'AE',8:'AL',51:'AM',32:'AR',40:'AT',36:'AU',31:'AZ',70:'BA',50:'BD',
-  56:'BE',100:'BG',48:'BH',76:'BR',112:'BY',124:'CA',756:'CH',152:'CL',156:'CN',170:'CO',
-  196:'CY',203:'CZ',276:'DE',208:'DK',214:'DO',233:'EE',818:'EG',724:'ES',246:'FI',250:'FR',
-  826:'GB',268:'GE',292:'GI',300:'GR',344:'HK',191:'HR',348:'HU',360:'ID',372:'IE',376:'IL',
-  356:'IN',368:'IQ',364:'IR',352:'IS',380:'IT',392:'JP',404:'KE',417:'KG',410:'KR',414:'KW',
-  398:'KZ',438:'LI',440:'LT',442:'LU',428:'LV',504:'MA',498:'MD',807:'MK',496:'MN',480:'MU',
-  484:'MX',458:'MY',566:'NG',528:'NL',578:'NO',524:'NP',554:'NZ',604:'PE',608:'PH',586:'PK',
-  616:'PL',630:'PR',620:'PT',634:'QA',642:'RO',688:'RS',643:'RU',682:'SA',690:'SC',752:'SE',
-  702:'SG',705:'SI',703:'SK',760:'SY',260:'TF',764:'TH',792:'TR',158:'TW',804:'UA',840:'US',
-  860:'UZ',704:'VN',710:'ZA',716:'ZW'
-};
-var A2NAME = {
-  AD:'آندورا',AE:'امارات متحده',AL:'آلبانی',AM:'ارمنستان',AR:'آرژانتین',AT:'اتریش',AU:'استرالیا',AZ:'آذربایجان',
-  BA:'بوسنی و هرزگوین',BD:'بنگلادش',BE:'بلژیک',BG:'بلغارستان',BH:'بحرین',BR:'برزیل',BY:'بلاروس',CA:'کانادا',
-  CH:'سوئیس',CL:'شیلی',CN:'چین',CO:'کلمبیا',CY:'قبرس',CZ:'جمهوری چک',DE:'آلمان',DK:'دانمارک',DO:'دومینیکن',
-  EE:'استونی',EG:'مصر',ES:'اسپانیا',FI:'فنلاند',FR:'فرانسه',GB:'بریتانیا',GE:'گرجستان',GI:'جبل‌الطارق',
-  GR:'یونان',HK:'هنگ‌کنگ',HR:'کرواسی',HU:'مجارستان',ID:'اندونزی',IE:'ایرلند',IL:'اسرائیل',IN:'هند',
-  IQ:'عراق',IR:'ایران',IS:'ایسلند',IT:'ایتالیا',JP:'ژاپن',KE:'کنیا',KG:'قرقیزستان',KR:'کره جنوبی',
-  KW:'کویت',KZ:'قزاقستان',LI:'لیختن‌اشتاین',LT:'لیتوانی',LU:'لوکزامبورگ',LV:'لتونی',MA:'مراکش',MD:'مولداوی',
-  MK:'مقدونیه شمالی',MN:'مغولستان',MU:'موریس',MX:'مکزیک',MY:'مالزی',NG:'نیجریه',NL:'هلند',NO:'نروژ',
-  NP:'نپال',NZ:'نیوزیلند',PE:'پرو',PH:'فیلیپین',PK:'پاکستان',PL:'لهستان',PR:'پورتوریکو',PT:'پرتغال',
-  QA:'قطر',RO:'رومانی',RS:'صربستان',RU:'روسیه',SA:'عربستان سعودی',SC:'سیشل',SE:'سوئد',SG:'سنگاپور',
-  SI:'اسلوونی',SK:'اسلواکی',SY:'سوریه',TF:'سرزمین‌های جنوبی فرانسه',TH:'تایلند',TR:'ترکیه',TW:'تایوان',
-  UA:'اوکراین',US:'ایالات متحده',UZ:'ازبکستان',VN:'ویتنام',ZA:'آفریقای جنوبی',ZW:'زیمبابوه'
-};
-var PX = { map:null, countries:[], countrySet:{}, paths:{}, selectedCountry:'', ips:[], selected:{}, filter:'', pings:{} };
-var PX_MAX = 3;
-
-function pxReset(){
-  PX.selectedCountry='';
-  PX.ips=[];
-  PX.selected={};
-  PX.filter='';
-  PX.pings={};
-  var ip = $id('px-ip-list'); if(ip) ip.innerHTML = '<div class="px-noselected">' + t('firstSelectCountry') + '</div>';
-  var tags = $id('px-tags'); if(tags) tags.innerHTML='';
-  var path = $id('px-path'); if(path) path.innerHTML='';
-  var sea = $id('px-search'); if(sea) sea.value='';
-  var sel = $id('cu-country'); if(sel) sel.value='';
-  pxClearMapSelection();
-}
-
-function pxClearMapSelection(){
-  for (var c in PX.paths){ PX.paths[c].setStyle({fill: PX.countrySet[c] ? 'rgba(255,23,68,.35)' : 'rgba(255,255,255,.12)'}); }
-}
-
-function pxInitMap(){
-  if (PX.map) return;
-  if (typeof window.L === 'undefined' || typeof window.topojson === 'undefined'){
-    var w=$id('px-map-wrap'); if(w) w.innerHTML='<div class="px-hint">نقشه در دسترس نیست (اینترنت/CDN). از فهرست کشور بالا استفاده کنید.</div>';
-    return;
-  }
-  PX.map = L.map('px-map', { scrollWheelZoom:false, zoomControl:true, attributionControl:true }).setView([20, 0], 2);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 6, minZoom: 2, attribution:''
-  }).addTo(PX.map);
-  fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
-    .then(function(r){ return r.json(); })
-    .then(function(topo){
-      var geojson = topojson.feature(topo, topo.objects.countries);
-      L.geoJSON(geojson, {
-        style: function(feature){
-          var a2 = NUM2A2[parseInt(feature.id)];
-          var has = a2 && PX.countrySet[a2];
-          return { className:'px-country'+(has?' has':''), fillColor: has ? 'rgba(255,23,68,.35)' : 'rgba(255,255,255,.12)', fillOpacity:1, color: has ? 'rgba(255,23,68,.8)' : 'rgba(255,255,255,.25)', weight:.6 };
-        },
-        onEachFeature: function(feature, layer){
-          var a2 = NUM2A2[parseInt(feature.id)];
-          var name = (feature.properties && feature.properties.name) || a2 || '';
-          if (a2) PX.paths[a2] = layer;
-          layer.on('click', function(){
-            if (a2 && PX.countrySet[a2]) pxSelectCountry(a2);
-            else if (a2) toast(t('noProxyCountry'), 'err');
-          });
-          layer.bindTooltip((a2 && A2NAME[a2]) || name || '', { sticky:true });
-        }
-      }).addTo(PX.map);
-    })
-    .catch(function(){
-      var w=$id('px-map-wrap'); if(w) w.innerHTML='<div class="px-hint">' + t('errLoadMap') + '</div>';
-    });
-}
-
-function pxSelectCountry(code){
-  PX.selectedCountry = code;
-  var sel=$id('cu-country'); if(sel) sel.value = code;
-  pxClearMapSelection();
-  if (code && PX.paths[code]) PX.paths[code].setStyle({ fillColor:'var(--neon)', fillOpacity:1, color:'#fff', weight:1.2 });
-  pxLoadIPs(code);
-}
-
-function pxSelectFromDropdown(code){
-  if (!code){ pxReset(); return; }
-  pxSelectCountry(code);
-}
-
-function pxLoadCleanIps(){
-  api('/api/proxy-ips/clean-repo').then(function(d){
-    var ips = (d && d.ips) || [];
-    if (!ips.length){ toast(t('noCleanIps'), 'err'); return; }
-    var added = 0;
-    ips.forEach(function(ip){
-      if (!PX.ips.includes(ip)) PX.ips.push(ip);
-    });
-    for (var i = 0; i < PX.ips.length && Object.keys(PX.selected).length < PX_MAX; i++){
-      if (PX.selected[PX.ips[i]]) continue;
-      PX.selected[PX.ips[i]] = true;
-      added++;
-    }
-    PX.pings = {};
-    pxRenderIPs();
-    pxRenderPreview();
-    toast(added + ' ' + t('cleanIpsAdded') + ' (' + ips.length + ' ' + t('received') + ')', 'ok');
-    pxLoadPings();
-  }).catch(function(e){
-    toast(e && e.message ? e.message : t('errRepo'), 'err');
-  });
-}
-
-function pxLoadIPs(code){
-  var box = $id('px-ip-list');
-  PX.ips=[]; PX.selected={}; PX.filter=''; PX.pings={};
-  var sea=$id('px-search'); if(sea) sea.value='';
-  pxRenderPreview();
-  if (!box) return;
-  box.innerHTML = '<div class="px-loading">' + t('loadingIps') + '</div>';
-  api('/api/proxy-ips/' + code).then(function(d){
-    PX.ips = (d.proxies || []).map(function(p){ return p.ip + ':' + p.port; });
-    pxRenderIPs();
-    pxRenderPreview();
-    pxLoadPings();
-  }).catch(function(){
-    box.innerHTML = '<div class="px-noselected">' + t('noIpCountry') + '</div>';
-  });
-}
-
-function pxLoadPings(){
-  var code = PX.selectedCountry;
-  if (!code || !PX.ips.length) return;
-  var btn = $id('px-ping-btn');
-  if (btn){ btn.disabled = true; btn.textContent = t('checkingPing'); }
-  api('/api/proxy-ips/' + code + '/ping?ips=' + encodeURIComponent(PX.ips.join(','))).then(function(d){
-    var results = d.results || [];
-    PX.pings = {};
-    results.forEach(function(r){ PX.pings[r.ip + ':' + r.port] = r; PX.pings[r.ip] = r; });
-    pxRenderIPs();
-  }).catch(function(){
-    toast(t('errPing'), 'err');
-  }).finally(function(){
-    if (btn){ btn.disabled = false; btn.textContent = t('checkPing'); }
-  });
-}
-
-function pxFilterIPs(){ PX.filter = ($id('px-search').value || '').toLowerCase(); pxRenderIPs(); }
-
-function pxSelectAll(){
-  PX.ips.forEach(function(ip){
-    if (Object.keys(PX.selected).length >= PX_MAX) return;
-    PX.selected[ip]=true;
-  });
-  pxRenderIPs(); pxRenderPreview();
-}
-function pxClearAll(){ PX.selected={}; pxRenderIPs(); pxRenderPreview(); }
-
-function pxToggleIP(ip){
-  if (PX.selected[ip]) delete PX.selected[ip];
-  else {
-    if (Object.keys(PX.selected).length >= PX_MAX){
-      toast(t('maxIps').replace('{n}', PX_MAX), 'err');
-      return;
-    }
-    PX.selected[ip] = true;
-  }
-  pxRenderPreview();
-  var chk = document.querySelector('.px-ip[data-ip="'+ip+'"] input');
-  if (chk) chk.checked = !!PX.selected[ip];
-  var it = document.querySelector('.px-ip[data-ip="'+ip+'"]');
-  if (it) it.classList.toggle('sel', !!PX.selected[ip]);
-}
-
-function pxPingHtml(ip){
-  var r = PX.pings[ip];
-  if (!r) return '';
-  if (r.status === 'ok' && r.latency_ms != null){
-    var cls = r.latency_ms < 150 ? '#00e676' : r.latency_ms < 400 ? '#ffab00' : '#ff6b6b';
-    var proto = r.proxy_proto === 'socks5' ? 'S5' : 'HTTP';
-    var tip = (r.egress_ip ? 'IP خروجی: ' + r.egress_ip + ' (' + proto + ')' : 'پروکسی فعال (' + proto + ')');
-    return '<span class="px-ping" style="color:'+cls+'" title="'+tip+'">'+
-      (r.egress_ip ? r.egress_ip : r.latency_ms+'ms') + '</span>';
-  }
-  if (r.status === 'tcp-only' && r.latency_ms != null){
-    return '<span class="px-ping" style="color:#ffab00" title="فقط TCP (پروکسی نیست — IP تغییر نمی‌کند)">TCP ' + r.latency_ms + 'ms</span>';
-  }
-  return '<span class="px-ping" style="color:#ff6b6b" title="عدم دسترسی">✗</span>';
-}
-
-function pxRenderIPs(){
-  var list=$id('px-ip-list'), q=PX.filter, html='', shown=0;
-  PX.ips.forEach(function(ip){
-    if (q && ip.indexOf(q)===-1) return;
-    shown++;
-    var sel = PX.selected[ip];
-    var parts = ip.split(':');
-    html += '<div class="px-ip'+(sel?' sel':'')+'" data-ip="'+ip+'" onclick="pxToggleIP(\''+ip+'\')">'+
-      '<input type="checkbox" '+(sel?'checked':'')+' onclick="event.stopPropagation()">'+
-      '<span class="px-ip-ad">'+parts[0]+'</span>'+
-      '<span class="px-ip-pt">:'+(parts[1]||'')+'</span>'+
-      pxPingHtml(parts[0]) +
-      '</div>';
-  });
-  if (!PX.ips.length) html = '<div class="px-noselected">' + t('selectCountry') + '</div>';
-  else if (!shown) html = '<div class="px-noselected">' + t('noResult') + '</div>';
-  list.innerHTML = html + '<div style="font-size:10px;color:var(--txt2);padding:6px 4px 2px">' + shown + ' IP — ' + Object.keys(PX.selected).length + ' ' + t('selected') + '</div>';
-}
-
-function pxRenderPreview(){
-  var tags=$id('px-tags'), pathEl=$id('px-path');
-  var keys=Object.keys(PX.selected);
-  if (tags){
-    tags.innerHTML = keys.length ? '<div style="font-size:10px;color:var(--txt2);margin-bottom:2px">' + t('selectedIps') + ' ('+keys.length+'/'+PX_MAX+'):</div>' +
-      keys.map(function(ip){ return '<span class="px-tag">'+ip+' <span class="x" onclick="event.stopPropagation();pxToggleIP(\''+ip+'\')">✕</span></span>'; }).join('') : '';
-  }
-  if (pathEl){
-    var code = PX.selectedCountry;
-    if (keys.length && code){
-      pathEl.innerHTML = '<span class="dim">' + t('pathPreview') + '</span><br>/proxyIP/<span style="color:var(--neon)">'+keys.join(',')+'</span>/ws/<span class="dim">&lt;uuid&gt;</span>';
-      pathEl.style.display='block';
-    } else {
-      pathEl.innerHTML = '';
-      pathEl.style.display='none';
-    }
-  }
-}
+// The old Leaflet map + proxy-IP selector was removed — per-inbound options
+// (worker countries, scanned-IP switches) live inside the create-user modal.
+function loadProxyCountries(){}  // kept as no-op for loadAll()
 
 // ═══ IP SCANNER ═══
 var SCN_CF_RANGES = [
@@ -2443,7 +2217,7 @@ var SCN_DOM_DEFAULTS = [
   'reseau.proxy.rlwy.net', 'shortline.proxy.rlwy.net'
 ];
 var SCN_STOP = false;
-var scnCtx = { cf: {found: [], tried: 0}, railway: {found: [], tried: 0} };
+var scnCtx = { cf: {found: [], tried: 0, gen: 0, seq: 0}, railway: {found: [], tried: 0, gen: 0, seq: 0} };
 
 function scnRandIp(range) {
   var seg = [range[0], range[1], range[2], range[3]];
@@ -2481,49 +2255,46 @@ function scnChipClass(ms) {
 // fall back to http. Browsers may block direct requests to arbitrary IPs
 // (mixed-content / TLS on HTTPS pages); those targets are re-measured by the
 // server as a fallback so the scan still completes.
+// Browser-side ping using fetch() with no-cors — measures the round-trip from
+// the USER's own network (works on mobile + desktop, no server needed). This is
+// the simplest reliable way to rank IPs by latency from the user's connection.
 function scnBrowserPing(target, timeoutMs) {
   return new Promise(function(resolve) {
-    var t0 = Date.now();
-    var img = new Image();
-    var tid = setTimeout(function() { img.src = ''; resolve(null); }, timeoutMs);
-    img.onload = function() {
-      clearTimeout(tid);
-      var ms = Date.now() - t0;
-      resolve(ms < timeoutMs ? ms : null);
-    };
-    img.onerror = function() {
-      // A fast error (TLS/cert or mixed-content) is NOT a ping. Treat as null
-      // so it falls back to the server measurement.
-      clearTimeout(tid);
-      resolve(null);
-    };
     var port = parseInt((target.split(':')[1]) || '443');
-    img.src = (port === 443 ? 'https' : 'http') + '://' + target + '/__ping?t=' + Math.random();
+    var url = (port === 443 ? 'https' : 'http') + '://' + target + '/';
+    var controller = null;
+    try { controller = new AbortController(); } catch (e) {}
+    var t0 = performance.now();
+    fetch(url, { mode: 'no-cors', cache: 'no-store', signal: controller ? controller.signal : undefined })
+      .then(function() {
+        var ms = performance.now() - t0;
+        resolve(ms < timeoutMs ? ms : null);
+      })
+      .catch(function() {
+        // A fast error (TLS/cert) is NOT a latency sample — treat as reachable
+        // only if it took long enough to imply a connection attempt.
+        var ms = performance.now() - t0;
+        resolve(ms >= 150 && ms < timeoutMs ? ms : null);
+      });
+    setTimeout(function() {
+      if (controller) { try { controller.abort(); } catch (e) {} }
+      resolve(null);
+    }, timeoutMs);
   });
 }
 
 async function scnPingBatch(targets, timeout) {
   var out = {};
-  var tmo = timeout || 1.6;
-  var needServer = [];
+  var tmo = timeout || 2.0;
   await Promise.all(targets.map(function(t) {
     return scnBrowserPing(t, tmo * 1000).then(function(ms) {
       var parts = t.split(':');
       var port = parseInt(parts[1]) || 443;
       if (ms != null) {
         out[t] = { target: t, ip: parts[0], port: port, latency_ms: ms, ok: true, src: 'browser' };
-      } else {
-        needServer.push(t);
       }
     });
   }));
-  // Server fallback for targets the browser couldn't reach directly.
-  if (needServer.length) {
-    try {
-      var d = await api('/api/scanner/ping-batch', {method: 'POST', body: {targets: needServer, timeout: tmo}});
-      (d.results || []).forEach(function(r) { out[r.target] = { target: r.target, ip: r.ip, port: r.port, latency_ms: r.latency_ms, ok: r.ok, src: 'server' }; });
-    } catch (e) {}
-  }
   return out;
 }
 
@@ -2539,6 +2310,9 @@ async function scnRunIPs(which) {
   scnCtx[which].running = true;
   scnCtx[which].found = [];
   scnCtx[which].tried = 0;
+  // Generation token: bumped by scnClearSaved() so a still-running scan loop
+  // can't re-write the file after the user cleared it.
+  var runGen = ++scnCtx[which].gen;
   SCN_STOP = false;
   var pfx = which === 'cf' ? 'scn-cf' : 'scn-rw';
   var ranges = which === 'cf' ? SCN_CF_RANGES : SCN_RW_RANGES;
@@ -2577,8 +2351,9 @@ async function scnRunIPs(which) {
     scnCtx[which].found = found.slice();
     scnCtx[which].tried = tried;
     // Live-save the current best list (replaces the file, capped at 10 by the
-    // backend) so the saved first-10 stays in sync with the scan.
-    if (found.length) {
+    // backend) so the saved first-10 stays in sync with the scan. Skip if the
+    // scan was cleared mid-run (generation changed).
+    if (found.length && scnCtx[which].gen === runGen) {
       scnSaveLive(which, found.map(function(f) { return f.ip + ':' + f.port; }), true);
     }
 
@@ -2604,7 +2379,11 @@ async function scnRunIPs(which) {
 }
 
 function scnSaveLive(which, entries, replace) {
-  api('/api/scanner/save', {method: 'POST', body: {type: which, ips: entries, replace: !!replace}}).then(function(d) {
+  // seq (per-type write token) guards against a clear() being overwritten by
+  // an older save that was already in flight — the server drops stale writes.
+  api('/api/scanner/save', {method: 'POST', body: {type: which, ips: entries, replace: !!replace, seq: scnCtx[which].seq}}).then(function(d) {
+    if (d && typeof d.seq === 'number') scnCtx[which].seq = d.seq;
+    if (d && d.stale) return;
     scnRenderSavedTags(which, d.ips || []);
   }).catch(function() {});
 }
@@ -2612,6 +2391,7 @@ function scnSaveLive(which, entries, replace) {
 async function scnLoadSaved(which) {
   try {
     var d = await api('/api/scanner/ips/' + which);
+    if (typeof d.seq === 'number') scnCtx[which].seq = d.seq;
     scnRenderSavedTags(which, d.ips || []);
   } catch (e) {}
 }
@@ -2623,7 +2403,25 @@ function scnRenderSavedTags(which, ips) {
 }
 
 function scnClearSaved(which) {
-  api('/api/scanner/save', {method: 'POST', body: {type: which, ips: []}}).then(function() {
+  // Stop any running scan so it can't re-write the file after we clear it.
+  SCN_STOP = true;
+  scnCtx[which].running = false;
+  scnCtx[which].found = [];
+  scnCtx[which].tried = 0;
+  // Bump the generation token: a still-running scan loop will skip its next
+  // save, and the seq token makes the server drop any in-flight stale write.
+  scnCtx[which].gen++;
+  var pfx = which === 'cf' ? 'scn-cf' : 'scn-rw';
+  var list = $id(pfx + '-list');
+  if (list) list.innerHTML = '<div class="scn-empty">' + t('startPrompt') + '</div>';
+  $id(pfx + '-found').textContent = '0';
+  $id(pfx + '-tried').textContent = '0';
+  $id(pfx + '-best').textContent = '--';
+  $id(pfx + '-bar').style.width = '0%';
+  var sb = list ? list.parentElement.querySelector('.btn-p') : null;
+  if (sb) { sb.disabled = false; sb.textContent = t('startScan'); }
+  api('/api/scanner/save', {method: 'POST', body: {type: which, ips: [], replace: true, seq: scnCtx[which].seq}}).then(function(d) {
+    if (d && typeof d.seq === 'number') scnCtx[which].seq = d.seq;
     scnRenderSavedTags(which, []);
     toast(t('saveCleared') + ' (' + which + ')', 'ok');
   }).catch(function() {});
@@ -2702,45 +2500,309 @@ function scnInit() {
   scnLoadSaved('railway');
 }
 
-// ═══ CUSTOM-IP PICKER (create-user modal) ═══
-var cuCustomType = '';
+// ═══ CLOUDFLARE WORKER (proxy manager) ═══
+var WK_STATE = {connected: false, proxies: []};
 
-function cuToggleCustomMenu(e) {
-  if (e) e.stopPropagation();
-  var m = $id('cu-custom-menu');
-  if (!m) return;
-  var isOpen = m.style.display === 'block';
-  document.querySelectorAll('.cu-custom-menu').forEach(function(x) { x.style.display = 'none'; });
-  m.style.display = isOpen ? 'none' : 'block';
-}
-
-function cuPickCustom(val, el, skipRender) {
-  cuCustomType = val || '';
-  $id('cu-custom-label').textContent = val === 'railway' ? 'Railway' : val === 'cf' ? 'Cloudflare' : t('noCustomIp');
-  document.querySelectorAll('.cu-custom-opt').forEach(function(o) {
-    o.classList.toggle('active', o.getAttribute('data-val') === (val || ''));
-  });
-  var m = $id('cu-custom-menu'); if (m) m.style.display = 'none';
-  if (!skipRender) cuRenderCustomPreview();
-}
-
-async function cuRenderCustomPreview() {
-  var box = $id('cu-custom-preview');
-  if (!box) return;
-  if (!cuCustomType) { box.innerHTML = ''; return; }
-  box.innerHTML = '<div class="scn-loading" style="font-size:11px;color:var(--txt2)">' + t('loadingIps') + '</div>';
+async function loadWorker() {
+  var setup = $id('worker-setup');
+  var managed = $id('worker-managed');
+  var badge = $id('worker-badge');
   try {
-    var d = await api('/api/scanner/ips/' + cuCustomType);
-    var ips = (d && d.ips) || [];
-    if (!ips.length) { box.innerHTML = '<span class="scn-empty">' + t('noScannedIps') + '</span>'; return; }
-    box.innerHTML = '<div style="font-size:10px;color:var(--txt2);margin-bottom:6px">' + ips.length + ' ' + t('scannedTo10') + '</div>' +
-      '<div class="scn-saved-tags">' + ips.map(function(x) { return '<span class="scn-tag">' + esc(x) + '</span>'; }).join('') + '</div>';
-  } catch (e) { box.innerHTML = '<span class="scn-empty">' + t('errLoadIps') + '</span>'; }
+    var w = await api('/api/worker');
+    WK_STATE = w;
+    var connected = !!w.connected;
+    if (setup) setup.classList.toggle('hidden', connected);
+    if (managed) managed.classList.toggle('hidden', !connected);
+    if (badge) {
+      badge.textContent = connected ? t('connected') : t('disconnected');
+      badge.className = 'badge ' + (connected ? 'badge-g' : 'badge-r');
+    }
+    if (connected) {
+      var statusEl = $id('worker-status');
+      if (statusEl) { statusEl.textContent = t('connected'); statusEl.className = 'badge badge-g'; }
+      var uEl = $id('worker-url');
+      if (uEl) { uEl.textContent = w.worker_url || ''; uEl.href = w.worker_url || '#'; }
+      var sEl = $id('worker-sync');
+      if (sEl) sEl.textContent = w.last_sync || '—';
+      var eEl = $id('worker-error');
+      if (eEl) eEl.textContent = (w.sync_error || w.last_error) || '';
+      renderWorkerProxies();
+    }
+    var autoEl = $id('wk-auto');
+    if (autoEl) autoEl.classList.toggle('on', !!w.auto_sync);
+    var cntEl = $id('wk-source-count');
+    if (cntEl) cntEl.textContent = (w.proxies ? w.proxies.length : 0) + ' ' + t('countries');
+    var stEl = $id('wk-source-status');
+    if (stEl) stEl.textContent = (w.sync_count ? t('syncsDone') + ': ' + w.sync_count : '');
+  } catch(e) {
+    if (badge) { badge.textContent = t('disconnected'); badge.className = 'badge badge-r'; }
+  }
 }
 
-document.addEventListener('click', function() {
-  document.querySelectorAll('.cu-custom-menu').forEach(function(m) { m.style.display = 'none'; });
-});
+// Compact proxy pool: a single country dropdown (with flags) that lists the
+// current worker locations without making the page huge.
+function renderWorkerProxies() {
+  var el = $id('worker-proxies');
+  if (!el) return;
+  var list = WK_STATE.proxies || [];
+  if (!list.length) { el.innerHTML = '<div class="scn-empty" data-i18n="noProxyYet">هنوز کشوری اضافه نکرده‌اید</div>'; return; }
+  var opts = '';
+  list.forEach(function(p) {
+    var flag = cuCodeToFlag(p.code);
+    var ips = (p.proxies && p.proxies.length) ? p.proxies : [p.proxy];
+    opts += '<option value="' + esc(p.code) + '">' + flag + ' ' + esc(p.country || p.code) + ' — ' + esc(ips[0]) + (ips.length > 1 ? ' +' + (ips.length - 1) : '') + '</option>';
+  });
+  el.innerHTML =
+    '<select id="wk-proxy-select" class="f-g" onchange="wkEditSelectedProxy(this)" style="direction:ltr;text-align:left">' +
+      '<option value="">— ' + esc(t('pickCountry')) + ' —</option>' + opts +
+    '</select>' +
+    '<div style="display:flex;gap:6px;margin-top:8px">' +
+      '<button class="btn btn-sm btn-b" onclick="wkEditSelected()">' + esc(t('edit')) + '</button>' +
+      '<button class="btn btn-sm btn-r" onclick="wkDeleteSelected()">' + esc(t('delete')) + '</button>' +
+    '</div>';
+}
+
+function wkSelectedCode() {
+  var s = $id('wk-proxy-select');
+  return s ? s.value : '';
+}
+
+function wkEditSelectedProxy() { /* keep select state; actions read the value */ }
+
+function wkEditSelected() {
+  var code = wkSelectedCode();
+  if (!code) { toast(t('pickCountry'), 'warn'); return; }
+  workerEditProxy(code);
+}
+
+function wkDeleteSelected() {
+  var code = wkSelectedCode();
+  if (!code) { toast(t('pickCountry'), 'warn'); return; }
+  workerDelProxy(code);
+}
+
+async function workerSetup() {
+  var token = ($id('wk-token').value || '').trim();
+  var account = ($id('wk-account').value || '').trim();
+  var name = ($id('wk-name').value || '').trim();
+  var domain = ($id('wk-domain').value || '').trim();
+  if (!token || !account || !name || !domain) { toast(t('workerFillAll'), 'err'); return; }
+  var btn = null;
+  document.querySelectorAll('#worker-setup .btn-p').forEach(function(b){ btn = b; });
+  if (btn) { btn.disabled = true; btn.textContent = t('connecting'); }
+  try {
+    var w = await api('/api/worker/setup', {method: 'POST', body: {token: token, account_id: account, worker_name: name, worker_domain: domain}});
+    $id('wk-token').value = '';
+    toast(t('workerConnected'), 'ok');
+    await loadWorker();
+  } catch(e) { toast(e.message || t('toast.err'), 'err'); }
+  if (btn) { btn.disabled = false; btn.textContent = t('cfConnect'); }
+}
+
+async function workerSync() {
+  try {
+    toast(t('syncing'), 'warn');
+    await api('/api/worker/sync', {method: 'POST'});
+    toast(t('synced'), 'ok');
+    loadWorker();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+function workerToggleAuto() {
+  var sw = $id('wk-auto');
+  if (!sw) return;
+  sw.classList.toggle('on');
+  api('/api/worker/settings', {method: 'POST', body: {auto_sync: sw.classList.contains('on')}})
+    .then(loadWorker)
+    .catch(function(e){ toast(e.message, 'err'); sw.classList.toggle('on'); });
+}
+
+async function workerSyncSource() {
+  var st = $id('wk-source-status');
+  if (st) st.textContent = t('updatingFromSource') + '...';
+  try {
+    var r = await api('/api/worker/sync-source', {method: 'POST'});
+    if (st) {
+      st.textContent = (r.sync && r.sync.ok)
+        ? t('sourceUpdated') + ': ' + r.sync.countries + ' ' + t('countries') + ' — ' + r.sync.count + ' IP'
+        : t('sourceError');
+      st.style.color = (r.sync && r.sync.ok) ? 'var(--green)' : 'var(--red)';
+    }
+    if (r.sync && r.sync.ok) toast(t('sourceUpdated') + ' ✓', 'ok');
+    else toast(t('sourceError'), 'err');
+    loadWorker();
+  } catch(e) {
+    if (st) { st.textContent = e.message || t('sourceError'); st.style.color = 'var(--red)'; }
+    toast(e.message || t('sourceError'), 'err');
+  }
+}
+
+async function workerDisconnect() {
+  if (!confirm(t('confirmRemoveWorker'))) return;
+  try {
+    await api('/api/worker', {method: 'DELETE'});
+    toast(t('workerRemoved'), 'ok');
+    loadWorker();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+function workerAddProxy() {
+  var code = prompt(t('proxyCodePrompt'));
+  if (code === null || !code.trim()) return;
+  code = code.trim().toLowerCase();
+  var country = prompt(t('proxyCountryPrompt'));
+  if (country === null || !country.trim()) return;
+  var proxy = prompt(t('proxyHostPrompt'));
+  if (proxy === null || !proxy.trim()) return;
+  var port = prompt(t('proxyPortPrompt'), '443');
+  workerSaveProxy(code, country, proxy, port, null);
+}
+
+function workerEditProxy(code) {
+  var p = (WK_STATE.proxies || []).find(function(x){ return x.code === code; });
+  if (!p) return;
+  var country = prompt(t('proxyCountryPrompt'), p.country || p.code);
+  if (country === null) return;
+  var proxy = prompt(t('proxyHostPrompt'), p.proxy);
+  if (proxy === null) return;
+  var port = prompt(t('proxyPortPrompt'), String(p.port || 443));
+  workerSaveProxy(code, country, proxy, port, p);
+}
+
+async function workerSaveProxy(code, country, proxy, port, existing) {
+  try {
+    var w = await api('/api/worker/proxies', {method: 'POST', body: {code: code, country: country, proxy: proxy, port: parseInt(port) || 443}});
+    WK_STATE = w;
+    toast(t('proxySaved'), 'ok');
+    loadWorker();
+  } catch(e) { toast(e.message || t('toast.err'), 'err'); }
+}
+
+async function workerDelProxy(code) {
+  if (!confirm(t('confirmDelProxy'))) return;
+  try {
+    var w = await api('/api/worker/proxies/' + encodeURIComponent(code), {method: 'DELETE'});
+    WK_STATE = w;
+    toast(t('proxyDeleted'), 'ok');
+    loadWorker();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ═══ PER-INBOUND CONFIG OPTIONS (create-user modal) ═══
+// For each selected inbound:
+//   - worker → country multi-select dropdown (from the worker proxy pool)
+//   - tls (ws/xhttp) → small iOS switch: adds 10 Railway scanned-IP configs
+//   - reality → nothing (Reality can't use scanned IPs / proxy)
+//   - worker → the same iOS switch additionally adds 10 Cloudflare scanned-IP configs
+var cuInboundState = { picks: {}, countries: {} };
+var cuWorkerProxyList = (WK_STATE && WK_STATE.proxies) || [];
+function cuWorkerProxies() { return (WK_STATE && WK_STATE.proxies) || cuWorkerProxyList; }
+
+function cuInboundType(ib) {
+  var p = (ib && ib.protocol || '').toLowerCase();
+  if (p === 'worker') return 'worker';
+  if (p === 'reality' || (ib && ib.security || '').toLowerCase() === 'reality') return 'reality';
+  return 'tls';
+}
+
+function cuToggleIbPick(el) {
+  el.classList.toggle('selected');
+  var id = el.getAttribute('data-id');
+  cuInboundState.picks[id] = el.classList.contains('selected');
+  cuRenderInboundOpts();
+}
+
+function cuToggleIpSwitch(ibId, el) {
+  el.classList.toggle('on');
+  var on = el.classList.contains('on');
+  cuInboundState.countries[ibId] = cuInboundState.countries[ibId] || {};
+  var type = el.getAttribute('data-type');
+  if (type === 'cf') cuInboundState.countries[ibId].cf = on;
+  else if (type === 'railway') cuInboundState.countries[ibId].railway = on;
+}
+
+function cuPickWorkerCountries(ibId, el) {
+  var vals = Array.prototype.slice.call(el.selectedOptions || []).map(function(o){ return o.value; });
+  cuInboundState.countries[ibId] = cuInboundState.countries[ibId] || {};
+  cuInboundState.countries[ibId].worker = vals;
+}
+
+function cuCustomStates() {
+  var out = {};
+  Object.keys(cuInboundState.countries || {}).forEach(function(id) {
+    out[id] = out[id] || {};
+    var c = cuInboundState.countries[id] || {};
+    out[id].cf = !!c.cf;
+    out[id].railway = !!c.railway;
+  });
+  return out;
+}
+
+function cuWorkerCountries() {
+  var out = {};
+  Object.keys(cuInboundState.countries || {}).forEach(function(id) {
+    var c = cuInboundState.countries[id] || {};
+    if (c.worker && c.worker.length) out[id] = c.worker;
+  });
+  return out;
+}
+
+function cuRenderInboundOpts() {
+  var wrap = $id('cu-inbound');
+  if (!wrap) return;
+  var html = '';
+  ALL_IB.forEach(function(ib) {
+    var id = ib.inbound_id;
+    var selected = cuInboundState.picks[id] === true;
+    var type = cuInboundType(ib);
+    var proto = (ib.protocol || 'vless').toUpperCase();
+    var meta = proto + ' · ' + (ib.network || 'ws').toUpperCase() + ' · ' + (ib.security || 'tls').toUpperCase();
+    html += '<div class="ib-pick' + (selected ? ' selected' : '') + '" data-id="' + esc(id) + '" onclick="cuToggleIbPick(this)">' +
+      '<div class="ib-pick-ic"><span class="material-symbols-outlined">' + (type === 'worker' ? 'bolt' : type === 'reality' ? 'shield' : 'cloud') + '</span></div>' +
+      '<div class="ib-pick-info">' +
+        '<div class="ib-pick-name">' + esc(ib.name) + '</div>' +
+        '<div class="ib-pick-meta">' + esc(meta) + '</div>' +
+      '</div>' +
+      '<div class="ib-pick-check"><span class="material-symbols-outlined">check</span></div>' +
+    '</div>';
+    if (selected) {
+      html += '<div class="ib-opts" data-for="' + esc(id) + '" style="flex-basis:100%">';
+      if (type === 'worker') {
+        var sel = cuInboundState.countries[id] || {};
+        var opts = '';
+        cuWorkerProxies().forEach(function(p) {
+          var flag = window.cuCodeToFlag ? cuCodeToFlag(p.code) : '';
+          var checked = (sel.worker || []).indexOf(p.code) !== -1 ? ' selected' : '';
+          opts += '<option value="' + esc(p.code) + '"' + checked + '>' + flag + ' ' + esc(p.country || p.code) + ' (' + esc(p.code) + ')</option>';
+        });
+        html += '<div class="set-row" style="padding:0;border:none;flex-wrap:wrap">' +
+          '<span class="set-lbl" style="width:100%">' + t('workerCountries') + '</span>' +
+          '<select multiple size="4" class="f-g" data-ib="' + esc(id) + '" onchange="cuPickWorkerCountries(\'' + esc(id) + '\',this)" style="direction:ltr;text-align:left">' + opts + '</select>' +
+        '</div>' +
+        '<div class="set-row" style="padding:0;border:none">' +
+          '<span class="set-lbl" style="font-size:11px">' + t('addCfIps') + '</span>' +
+          '<button type="button" class="ios-switch' + (sel.cf ? ' on' : '') + '" data-type="cf" onclick="cuToggleIpSwitch(\'' + esc(id) + '\',this)"></button>' +
+        '</div>';
+      } else if (type === 'tls') {
+        var selt = cuInboundState.countries[id] || {};
+        html += '<div class="set-row" style="padding:0;border:none">' +
+          '<span class="set-lbl" style="font-size:11px">' + t('addRailwayIps') + '</span>' +
+          '<button type="button" class="ios-switch' + (selt.railway ? ' on' : '') + '" data-type="railway" onclick="cuToggleIpSwitch(\'' + esc(id) + '\',this)"></button>' +
+        '</div>';
+      } else {
+        html += '<div class="px-hint" style="margin:0">' + t('realityNoExtra') + '</div>';
+      }
+      html += '</div>';
+    }
+  });
+  wrap.innerHTML = html || '<span style="font-size:11px;color:var(--txt2)">' + t('noInboundOpt') + '</span>';
+}
+
+function cuCodeToFlag(code) {
+  var c = (code || '').toUpperCase();
+  if (c.length !== 2 || !/^[A-Z]{2}$/.test(c)) return '';
+  return String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65, 0x1F1E6 + c.charCodeAt(1) - 65);
+}
 
 // Start neon bars when tab opens
 setTimeout(updateNeonBars, 500);

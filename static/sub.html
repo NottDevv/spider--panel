@@ -384,7 +384,7 @@
 
   function fmtBytes(b) {
     if (!b || b < 1) return '0 B';
-    var u = ['B', 'KB', 'MB', 'GB'];
+    var u = ['B', 'KB', 'MB', 'GB', 'TB'];
     var i = 0;
     while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
     return b.toFixed(i ? 2 : 0) + ' ' + u[i];
@@ -577,38 +577,60 @@
     '</div>';
   }
 
-  // One block per main config (multi-inbound). Each copies its own config.
+  function cfgBlock(c, i, dd) {
+    // Read the real network type from the config link itself (&type=...),
+    // which is authoritative — the user-level transport_type can be stale.
+    var tmatch = c.match(/[?&]type=([a-z0-9-]+)/i);
+    var ctype = tmatch ? tmatch[1].toUpperCase() : 'WS';
+    return '<div class="group border border-black/5 dark:border-white/12 bg-black/5 dark:bg-white/5 rounded-2xl p-stack-md flex justify-between items-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer relative overflow-hidden" onclick="copyCfgIndex(' + i + ')">' +
+      '<div class="absolute ltr:left-0 rtl:right-0 top-0 bottom-0 w-1 bg-[#00ffff] opacity-0 group-hover:opacity-100 transition-opacity neon-border"></div>' +
+      '<div class="flex flex-col gap-1 ltr:pl-2 rtl:pr-2 min-w-0">' +
+        '<div class="flex items-center gap-2">' +
+          '<span class="font-code-label text-code-label text-on-surface font-bold ltr:text-left rtl:text-right" dir="ltr">' + esc((dd.protocol || 'vless').toUpperCase()) + ' #' + (i + 1) + '</span>' +
+          '<span class="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-code-label text-[10px] text-on-surface-variant">' + esc(ctype) + '</span>' +
+        '</div>' +
+        '<span class="cfg-text text-on-surface-variant truncate max-w-[130px] md:max-w-[320px] ltr:text-left rtl:text-right" dir="ltr">' + esc(c) + '</span>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // Section divider: [flag] label + count. label is already-safe HTML (en/fa spans).
+  function cfgSection(label, count, color) {
+    return '<div class="flex items-center gap-2 px-3 py-2 my-1 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/12">' +
+      '<span class="material-symbols-outlined text-[15px]" style="color:' + (color || '#00e676') + '">bolt</span>' +
+      '<span class="font-code-label text-[10px] text-on-surface-variant">' + label +
+      (count ? ' — ' + count + ' <span class="en-only">configs</span><span class="fa-only">کانفیگ</span>' : '') +
+      '</span>' +
+    '</div>';
+  }
+
+  // One block per main config (multi-inbound). Main configs always render at the
+  // top (right after the status config); then Railway custom-IP configs; then
+  // Cloudflare custom-IP configs — each under its own labeled divider.
   function buildConfigBlocks() {
     var dd = state.data || {};
     var cfgs = window.__cfgs || [];
+    var customRailway = window.__customRailway || [];
+    var customCf = window.__customCf || [];
+    var mainCount = cfgs.length - customRailway.length - customCf.length;
     var blocks = '';
-    if (dd.custom_ip_type && window.__customCount) {
-      var cname = dd.custom_ip_type === 'railway' ? 'Railway' : 'Cloudflare';
-      blocks += '<div class="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/12 mb-1">' +
-        '<span class="material-symbols-outlined text-[15px]" style="color:#00e676">bolt</span>' +
-        '<span class="font-code-label text-[10px] text-on-surface-variant">' +
-          '<span class="en-only">Custom IP (' + cname + ')</span><span class="fa-only">آی‌پی اختصاصی (' + cname + ')</span> ' +
-          '+ ' + window.__customCount + ' <span class="en-only">configs</span><span class="fa-only">کانفیگ</span>' +
-        '</span>' +
-      '</div>';
+    for (var i = 0; i < mainCount; i++) {
+      if (cfgs[i]) blocks += cfgBlock(cfgs[i], i, dd);
     }
-    for (var i = 0; i < cfgs.length; i++) {
-      var c = cfgs[i];
-      if (!c) continue;
-      // Read the real network type from the config link itself (&type=...),
-      // which is authoritative — the user-level transport_type can be stale.
-      var tmatch = c.match(/[?&]type=([a-z0-9-]+)/i);
-      var ctype = tmatch ? tmatch[1].toUpperCase() : 'WS';
-      blocks += '<div class="group border border-black/5 dark:border-white/12 bg-black/5 dark:bg-white/5 rounded-2xl p-stack-md flex justify-between items-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer relative overflow-hidden" onclick="copyCfgIndex(' + i + ')">' +
-        '<div class="absolute ltr:left-0 rtl:right-0 top-0 bottom-0 w-1 bg-[#00ffff] opacity-0 group-hover:opacity-100 transition-opacity neon-border"></div>' +
-        '<div class="flex flex-col gap-1 ltr:pl-2 rtl:pr-2 min-w-0">' +
-          '<div class="flex items-center gap-2">' +
-            '<span class="font-code-label text-code-label text-on-surface font-bold ltr:text-left rtl:text-right" dir="ltr">' + esc((dd.protocol || 'vless').toUpperCase()) + ' #' + (i + 1) + '</span>' +
-            '<span class="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-code-label text-[10px] text-on-surface-variant">' + esc(ctype) + '</span>' +
-          '</div>' +
-          '<span class="cfg-text text-on-surface-variant truncate max-w-[130px] md:max-w-[320px] ltr:text-left rtl:text-right" dir="ltr">' + esc(c) + '</span>' +
-        '</div>' +
-      '</div>';
+    var idx = mainCount;
+    if (customRailway.length) {
+      blocks += cfgSection('<span class="en-only">Railway IPs</span><span class="fa-only">آی‌پی‌های Railway</span>', customRailway.length, '#ff9800');
+      for (var j = 0; j < customRailway.length; j++) {
+        if (cfgs[idx]) blocks += cfgBlock(cfgs[idx], idx, dd);
+        idx++;
+      }
+    }
+    if (customCf.length) {
+      blocks += cfgSection('<span class="en-only">Cloudflare IPs</span><span class="fa-only">آی‌پی‌های Cloudflare</span>', customCf.length, '#00e676');
+      for (var k = 0; k < customCf.length; k++) {
+        if (cfgs[idx]) blocks += cfgBlock(cfgs[idx], idx, dd);
+        idx++;
+      }
     }
     return blocks;
   }
@@ -635,6 +657,11 @@
       window.__cfg = d.config || d.vless_link || '';
       // Multi-inbound configs (one per selected inbound), fallback to single.
       window.__cfgs = (Array.isArray(d.configs) && d.configs.length) ? d.configs : (window.__cfg ? [window.__cfg] : []);
+      // Custom scanned-IP configs are appended to configs by the backend; keep
+      // them separate so they render BELOW the main configs in the sub page.
+      window.__customCfgs = Array.isArray(d.custom_configs) ? d.custom_configs : [];
+      window.__customRailway = Array.isArray(d.custom_railway_configs) ? d.custom_railway_configs : [];
+      window.__customCf = Array.isArray(d.custom_cf_configs) ? d.custom_cf_configs : [];
       window.__customCount = d.custom_ip_count || 0;
       // Fake/status config: same VLESS format, remark carries the status stats.
       // Clearly marked STATUS so it is never mistaken for the real main config.

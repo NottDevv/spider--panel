@@ -76,6 +76,10 @@ if not SCANNED_DIR.exists():
     SCANNED_DIR = DATA_DIR / "scanned"
 _SCANNED_TYPES = {"cf", "railway"}
 _SCANNED_MAX = 10
+# Monotonic per-type sequence number for /api/scanner/save. Every write carries
+# the seq it last saw; the server rejects stale writes (seq mismatch) so a
+# clear() can never be overwritten by a scan save that was already in flight.
+SCANNED_SEQ: dict = {}
 
 
 def _read_scanned_ips(ctype: str) -> list:
@@ -165,6 +169,8 @@ async def load_state():
             IP_POOL.extend(data.get("ip_pool", []))
             IP_BLACKLIST.clear()
             IP_BLACKLIST.update(data.get("ip_blacklist", []))
+            if isinstance(data.get("worker"), dict):
+                WORKER.update(data["worker"])
             logger.info(f"State loaded: {len(LINKS)} links, {len(SUBS)} subs, {len(USERS)} users, {len(GROUPS)} groups, {len(IP_POOL)} ips, {len(INBOUNDS)} inbounds")
     except Exception as e:
         logger.warning(f"Could not load state: {e}")
@@ -240,6 +246,7 @@ async def save_state():
                 "inbounds": dict(INBOUNDS),
                 "ip_pool": list(IP_POOL),
                 "ip_blacklist": list(IP_BLACKLIST),
+                "worker": dict(WORKER),
                 "password_hash": AUTH["password_hash"],
                 "saved_secret": CONFIG["secret"],
                 "saved_at": datetime.now().isoformat(),
@@ -332,6 +339,35 @@ IP_BLACKLIST_LOCK = asyncio.Lock()
 # ── IP per user tracking ───────────────────────────────────────────────────
 USER_IP_MAP: dict = defaultdict(set)  # user_id → set of IPs used
 USER_IP_MAP_LOCK = asyncio.Lock()
+
+# ── Cloudflare Worker manager ──────────────────────────────────────────────
+# Railway only hosts the panel; user traffic flows Client → Worker → Proxy IP.
+# The API token lives ONLY here (server-side, persisted to /data state), never
+# sent to the frontend. `proxies` maps a country code → {country, proxy, port}.
+WORKER: dict = {
+    "connected": False,
+    "account_id": "",
+    "worker_name": "",
+    "worker_domain": "",
+    "worker_url": "",
+    "token": "",
+    # Control token: a random secret baked into the deployed worker. The panel
+    # uses it to call the worker's admin API (update proxy map, etc.) after
+    # deploy — the worker only accepts calls carrying this Bearer token.
+    "control_token": "",
+    # Panel domain injected into the worker so it can expose panel info.
+    "panel_domain": "",
+    "proxies": {},
+    "last_sync": "",
+    "last_error": "",
+    "source_url": "https://raw.githubusercontent.com/NiREvil/vless/main/sub/ProxyIP-Daily.md",
+    "auto_sync": True,
+    "sync_error": "",
+    "sync_count": 0,
+}
+WORKER_LOCK = asyncio.Lock()
+# Serialize source syncs (hourly loop + manual button can't overlap).
+WORKER_SYNC_LOCK = asyncio.Lock()
 
 # پروتکل‌های پشتیبانی‌شده برای هر کانفیگ
 PROTOCOLS = ("vless-ws", "xhttp-packet-up", "xhttp-stream-up", "xhttp-stream-one")
@@ -541,7 +577,8 @@ async def startup():
                 "port": 443,
                 "network": "ws",
                 "security": "tls",
-                "domain": SETTINGS.get("domain", get_host()),
+                "domain": _safe_host(SETTINGS.get("domain"), get_host()),
+                "external_domain": _safe_host(SETTINGS.get("domain"), get_host()),
                 "sni": "",
                 "external_port": 443,
                 "fingerprint": "chrome",
@@ -564,7 +601,8 @@ async def startup():
                 "port": 8443,
                 "network": "xhttp",
                 "security": "reality",
-                "domain": SETTINGS.get("domain", get_host()),
+                "domain": _safe_host(SETTINGS.get("domain"), get_host()),
+                "external_domain": _safe_host(SETTINGS.get("domain"), get_host()),
                 "sni": "is1-ssl.mzstatic.com",
                 "external_port": 8443,
                 "fingerprint": "chrome",
@@ -579,6 +617,55 @@ async def startup():
             }
             asyncio.create_task(save_state())
             log_activity("inbound", "اینباند پیش‌فرض Reality+XHTTP ساخته شد", "ok")
+        # Auto-create a default Worker inbound. It produces configs addressed to
+        # the deployed Cloudflare Worker domain (address/host/sni auto-filled),
+        # with BPB snispoofing. Only created once a worker is actually connected.
+        has_worker = any((ib.get("protocol") or "").lower() == "worker" for ib in INBOUNDS.values())
+        _wdom_now = _worker_safe_domain(WORKER.get("worker_domain"))
+        if not has_worker and _wdom_now:
+            INBOUNDS["default-worker"] = {
+                "name": "Worker (Multi-Location)",
+                "protocol": "worker",
+                "port": 443,
+                "network": "ws",
+                "security": "tls",
+                "domain": _wdom_now,
+                "external_domain": _wdom_now,
+                "sni": "www.hcaptcha.com",
+                "spoof_ip": "8.6.112.4",
+                "external_port": 443,
+                "fingerprint": "chrome",
+                "reality_settings": {},
+                "xhttp_settings": {},
+                "ws_settings": {"path": "/route/{uuid}"},
+                "grpc_settings": {},
+                "created_at": datetime.now().isoformat(),
+            }
+            asyncio.create_task(save_state())
+            log_activity("inbound", "اینباند پیش‌فرض Worker ساخته شد", "ok")
+
+    # Backfill placeholder domains on any pre-existing inbounds so configs never
+    # carry localhost/SERVER_IP when a real domain is available.
+    _real = _safe_host(SETTINGS.get("domain"), get_host())
+    _changed = False
+    for _ib in INBOUNDS.values():
+        _cur = str(_ib.get("domain") or "")
+        if _cur in ("", "0.0.0.0", "127.0.0.1", "localhost", "SERVER_IP"):
+            _ib["domain"] = _real
+            _changed = True
+        _cext = str(_ib.get("external_domain") or "")
+        if _cext in ("", "0.0.0.0", "127.0.0.1", "localhost", "SERVER_IP"):
+            _ib["external_domain"] = _real
+            _changed = True
+    if _changed:
+        asyncio.create_task(save_state())
+        logger.info("Backfilled placeholder inbound domains with %s", _real)
+
+    # If a worker is connected, make sure the default Worker inbound exists and
+    # points at the worker domain (address/host/sni auto-filled at boot too).
+    if WORKER.get("connected"):
+        await _ensure_worker_inbound()
+
     asyncio.create_task(_ensure_xray())
 
     async def _xray_apply_on_boot():
@@ -588,64 +675,28 @@ async def startup():
     asyncio.create_task(_xray_apply_on_boot())
     log_activity("system", "سرور راه‌اندازی شد", "ok")
     logger.info(f"Spider Gateway v9.2 started on port {CONFIG['port']}")
-    asyncio.create_task(_proxy_refresh_loop())
+    asyncio.create_task(_worker_proxy_sync_loop())
 
-PROXY_REFRESH_INTERVAL = 1800  # seconds (30 min) — free proxies die fast
+# Worker proxy source sync — hourly pull from the daily GitHub list and push to
+# the deployed Cloudflare Worker (Railway is the control plane; the Worker gets
+# a fresh country → proxy map without the user doing anything).
+WORKER_SYNC_INTERVAL = int(os.environ.get("WORKER_SYNC_INTERVAL", 3600))  # seconds
 
 
-async def _proxy_refresh_loop():
-    """Periodically re-run fetch_proxies.py so the country proxy lists stay
-    fresh. Free public proxies churn in minutes; without this the panel
-    keeps showing dead proxies. Failures are swallowed and retried next tick."""
-    import subprocess
-    script = Path(os.path.dirname(os.path.abspath(__file__))) / "fetch_proxies.py"
-    if not script.exists():
-        logger.warning("fetch_proxies.py not found; proxy refresh disabled")
-        return
-    py = sys.executable
+async def _worker_proxy_sync_loop():
+    """Background loop: every hour, if the worker is connected and auto-sync is
+    on, fetch the daily proxy source, parse it into country → proxy and re-deploy
+    the worker. Failures are recorded and retried next tick."""
+    # First tick quickly so the panel starts with fresh proxies.
+    await asyncio.sleep(30)
     while True:
         try:
-            proc = await asyncio.create_subprocess_exec(
-                py, str(script), "--limit", "200",
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.DEVNULL,
-            )
-            await asyncio.wait_for(proc.communicate(), timeout=120)
-            logger.info("proxy list refreshed")
+            if WORKER.get("connected") and WORKER.get("auto_sync"):
+                await _sync_worker_proxies_from_source()
         except Exception as e:
-            logger.warning(f"proxy refresh failed: {e}")
-        await asyncio.sleep(PROXY_REFRESH_INTERVAL)
+            logger.warning(f"worker proxy sync failed: {e}")
+        await asyncio.sleep(WORKER_SYNC_INTERVAL)
 
-
-@app.post("/api/proxy-ips/refresh")
-async def refresh_proxy_ips(_=Depends(require_auth)):
-    """Manually re-run fetch_proxies.py and report how many proxies were found."""
-    import subprocess
-    script = Path(os.path.dirname(os.path.abspath(__file__))) / "fetch_proxies.py"
-    if not script.exists():
-        raise HTTPException(status_code=404, detail="fetch_proxies.py not found")
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            sys.executable, str(script), "--limit", "300",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-        )
-        out, _ = await asyncio.wait_for(proc.communicate(), timeout=180)
-        text = out.decode("utf-8", "ignore")
-        total = found = 0
-        for line in text.splitlines():
-            if "total unique candidates:" in line:
-                total = int(line.split(":", 1)[1].strip())
-            if "working proxies:" in line:
-                found = int(line.split(":", 1)[1].strip().split("/")[0])
-        # Clear ping cache so the new list is re-tested
-        async with _PROXY_PING_CACHE_LOCK:
-            _PROXY_PING_CACHE.clear()
-        return {"ok": True, "candidates": total, "working": found, "log": text[-800:]}
-    except asyncio.TimeoutError:
-        raise HTTPException(status_code=504, detail="refresh timed out")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -656,6 +707,17 @@ async def shutdown():
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def get_host() -> str:
     return os.environ.get("RAILWAY_PUBLIC_DOMAIN", CONFIG["host"])
+
+
+def _safe_host(*candidates: str) -> str:
+    """Return the first non-empty candidate that isn't a placeholder host,
+    falling back to get_host(). Used so configs never carry localhost/SERVER_IP
+    when a real domain is available."""
+    bad = {"", "0.0.0.0", "127.0.0.1", "localhost", "SERVER_IP"}
+    for c in candidates:
+        if c and c.strip() not in bad:
+            return c.strip()
+    return get_host()
 
 def generate_uuid() -> str:
     """Generate a 32-char hex identifier (no dashes) — compatible with Xray/VLESS configs."""
@@ -746,9 +808,10 @@ def is_link_allowed(link: dict | None) -> bool:
 
 def fmt_bytes(b: int) -> str:
     if b < 1024: return f"{b} B"
-    if b < 1024**2: return f"{b/1024:.1f} KB"
+    if b < 1024**2: return f"{b/1024:.2f} KB"
     if b < 1024**3: return f"{b/1024**2:.2f} MB"
-    return f"{b/1024**3:.2f} GB"
+    if b < 1024**4: return f"{b/1024**3:.2f} GB"
+    return f"{b/1024**4:.2f} TB"
 
 def client_ip(request: Request) -> str:
     """آی‌پی واقعی کلاینت رو با احتساب هدرهای پراکسی (Railway/Cloudflare) برمی‌گردونه."""
@@ -857,22 +920,43 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
     # Priority: inbound ws_settings/xhttp_settings > user stored path > generate+store (legacy)
     stored_path = (user.get("path") or "").strip()
     # Inbound override takes priority
+    # Inbound path override: only apply when the inbound path contains a
+    # placeholder ({uuid}) or is a full per-user path. A static inbound path
+    # without a uuid (e.g. the default "/xhttp-siz10/stream-up/") must NOT
+    # overwrite the user's generated /xhttp-siz10/stream-up/<uuid> path.
     if inbound:
         ib_ws = inbound.get("ws_settings", {})
         if ib_ws and ib_ws.get("path"):
-            stored_path = ib_ws["path"]
+            _p = str(ib_ws["path"])
+            if "{uuid}" in _p or "/ws/" not in stored_path or not stored_path:
+                stored_path = _p
         ib_xh = inbound.get("xhttp_settings", {})
         if ib_xh and ib_xh.get("path"):
-            stored_path = ib_xh["path"]
+            _p = str(ib_xh["path"])
+            if "{uuid}" in _p or (not stored_path) or stored_path.endswith("/") or stored_path.count("/") < 3:
+                stored_path = _p
         ib_grpc = inbound.get("grpc_settings", {})
         if ib_grpc and ib_grpc.get("serviceName"):
-            stored_path = ib_grpc["serviceName"]
+            _p = str(ib_grpc["serviceName"])
+            if "{uuid}" in _p or (not stored_path):
+                stored_path = _p
     # Legacy users without path: generate once, store, persist
     if not stored_path:
         stored_path = generate_random_path()
         user["path"] = stored_path
         USERS[user_id] = user
         asyncio.create_task(save_state())
+
+    # ── Worker Protocol (multi-location proxy via Cloudflare Worker) ──
+    # A "worker" inbound produces configs addressed to the deployed worker domain
+    # (address/host/sni = worker_domain). The user picks one or more countries
+    # (proxy_countries) → one config per country, each with /route/{code} path and
+    # the BPB snispoofing params (fake SNI + spoof IP), matching the reference:
+    #   vless://{uuid}@{worker_domain}:443?snispoofing={...}&security=tls&fp=chrome&...&type=ws#{remark}
+    if (inbound and inbound.get("protocol") == "worker") or protocol == "worker":
+        _wcfgs = _worker_configs(user_id, user, inbound, stored_path, remark, addr_ip, addr_port)
+        if _wcfgs:
+            return _wcfgs[0]  # single-country / first selected (multi handled in api loop)
 
     # ── Reality Protocol ──
     if protocol == "reality":
@@ -888,7 +972,14 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
         reality_spx = rs.get("spiderx", "/")
         reality_fp = (inbound.get("fingerprint") if inbound else None) or rs.get("fingerprint", "chrome")
         sni_reality = sni if sni and sni != host else rs.get("sni", "is1-ssl.mzstatic.com")
-        ext_domain = (inbound.get("external_domain") if inbound else None) or (inbound.get("domain") if inbound else None) or rs.get("external_domain") or host
+        # آدرس کانفیگ reality: مثل WS، دامنه واقعی پنل، نه localhost/SERVER_IP.
+        ext_domain = _safe_host(
+            inbound.get("external_domain") if inbound else None,
+            inbound.get("domain") if inbound else None,
+            rs.get("external_domain"),
+            SETTINGS.get("domain"),
+            get_host(),
+        )
         ext_port = (inbound.get("external_port") if inbound else None) or rs.get("external_port", 443) or 443
         if addr_ip:
             ext_domain = addr_ip
@@ -919,7 +1010,13 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
 
     # ── VLESS ──
     if protocol == "vless":
-        vless_host = (inbound.get("external_domain") if inbound else None) or (inbound.get("domain") if inbound else None) or host
+        # آدرس همیشه دامنه واقعی پنل (external_domain اینباند > domain > SETTINGS > Railway).
+        vless_host = _safe_host(
+            inbound.get("external_domain") if inbound else None,
+            inbound.get("domain") if inbound else None,
+            SETTINGS.get("domain"),
+            get_host(),
+        )
         vless_port = (inbound.get("external_port") if inbound else None) or (inbound.get("port") if inbound else None) or 443
         if addr_ip:
             vless_host = addr_ip
@@ -980,9 +1077,22 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
             extra = quote(extra_raw, safe='')
             params = f"encryption=none&security=tls&type=xhttp&host={quote(vless_host)}&path={quote(stored_path, safe='')}&sni={quote(sni)}&fp=chrome&alpn=h2,http/1.1&mode={xmode}&extra={extra}"
             return f"vless://{config_uuid}@{vless_host}:{vless_port}?{params}#{remark}"
-        else:  # ws — config_uuid IS the path (same as reference RVG-main)
-            ws_host = (inbound.get("domain") if inbound else None) or SETTINGS.get("domain") or host
-            ws_sni = sni if sni and sni != host else ws_host
+        else:  # ws — classic VLESS+WS+TLS, same as the original generate_vless_link
+            # آدرس کانفیگ و host/sni همیشه دامنه اصلی پنل هستند (بدون ورود دستی):
+            # اولویت: SETTINGS.domain (در صورت تنظیم) > get_host() = دامنه Railway خود پنل.
+            # host/sni برای handshake TLS باید همان دامنه‌ای باشند که کلاینت به آن وصل
+            # می‌شود. اگر کاربر آی‌پی کاستوم (اسکنر) انتخاب کرده باشد، فقط آدرس به آن
+            # IP می‌رود و host/sni ثابت می‌مانند.
+            panel_domain = _safe_host(SETTINGS.get("domain"), get_host())
+            vless_host = panel_domain
+            vless_port = (inbound.get("external_port") if inbound else None) or (inbound.get("port") if inbound else None) or 443
+            if addr_ip:
+                vless_host = addr_ip
+            if addr_port:
+                vless_port = addr_port
+            # host و sni کلاسیک: همیشه دامنه اصلی پنل، نه localhost و نه ورودی دستی
+            ws_host = panel_domain
+            ws_sni = panel_domain
             # اگر مسیر کاربر حاوی proxyIP باشد (IP انتخابی از نقشه)، همان مسیر در کانفیگ قرار می‌گیرد؛
             # در غیر این صورت مسیر کلاسیک /ws/{uuid} حفظ می‌شود
             ws_path = stored_path if "proxyIP/" in stored_path else f"/ws/{config_uuid}"
@@ -996,12 +1106,6 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
                 "fp=chrome",
                 "alpn=http/1.1",
             ])
-            vless_host = (inbound.get("external_domain") if inbound else None) or (inbound.get("domain") if inbound else None) or ws_host
-            vless_port = (inbound.get("external_port") if inbound else None) or (inbound.get("port") if inbound else None) or 443
-            if addr_ip:
-                vless_host = addr_ip
-            if addr_port:
-                vless_port = addr_port
             return f"vless://{config_uuid}@{vless_host}:{vless_port}?{params}#{remark}"
 
     # ── VMess ──
@@ -1060,29 +1164,106 @@ def generate_custom_ip_configs(user_id: str, user: dict) -> list:
     routes to the real panel domain for TLS/WS. Each IP is randomly assigned to
     one of the user's non-Reality inbounds (Reality inbounds are never used,
     because their address/handshake cannot be swapped for a plain scanned IP).
+
+    Per-inbound rules (from the create-user modal's custom_ip_inbounds):
+    - worker inbound → scanned Cloudflare IPs (host/sni stay on the worker domain)
+    - tls (ws/xhttp) inbound → scanned Railway IPs (host/sni stay on the panel domain)
+    - reality inbound → none (Reality can't have its address swapped)
+
+    Returns {"railway": [...], "cf": [...]} so the sub page can render the
+    Railway group then the Cloudflare group.
     """
-    ctype = user.get("custom_ip_type")
-    if ctype not in _SCANNED_TYPES:
+    cii = user.get("custom_ip_inbounds") or {}
+    cf_ids = [str(x) for x in (cii.get("cf") or [])]
+    rw_ids = [str(x) for x in (cii.get("railway") or [])]
+    out = {"railway": [], "cf": []}
+    # Cloudflare scanned IPs go to the selected worker inbounds.
+    cf_ips = _read_scanned_ips("cf")
+    if cf_ips:
+        for iid_ in cf_ids:
+            ib = INBOUNDS.get(iid_)
+            if not ib:
+                continue
+            for i, ip in enumerate(cf_ips[:10], 1):
+                try:
+                    cfg = generate_user_config(user_id, user, iid_, addr=ip, remark_tag=f"Cloudflare{i}")
+                except Exception as e:
+                    logger.warning(f"cf custom-ip config gen failed for {ip}: {e}")
+                    continue
+                if cfg:
+                    out["cf"].append(cfg)
+    # Railway scanned IPs go to the selected tls inbounds.
+    rw_ips = _read_scanned_ips("railway")
+    if rw_ips:
+        for iid_ in rw_ids:
+            ib = INBOUNDS.get(iid_)
+            if not ib:
+                continue
+            for i, ip in enumerate(rw_ips[:10], 1):
+                try:
+                    cfg = generate_user_config(user_id, user, iid_, addr=ip, remark_tag=f"Railway{i}")
+                except Exception as e:
+                    logger.warning(f"railway custom-ip config gen failed for {ip}: {e}")
+                    continue
+                if cfg:
+                    out["railway"].append(cfg)
+    return out
+
+
+def _worker_configs(user_id: str, user: dict, inbound: dict, stored_path: str, base_remark: str, addr_ip: str = None, addr_port: str = None) -> list:
+    """Build one VLESS config per selected country for a worker inbound.
+
+    address/host/sni = the deployed worker domain. Each selected country gets a
+    /route/{code} path + BPB snispoofing params, and the remark carries the
+    country flag + name so the multi-location configs are easy to tell apart.
+    If an addr override is given (scanned Cloudflare IP), only the address
+    changes; host/sni stay on the worker domain.
+    """
+    wdomain = str(WORKER.get("worker_domain") or "").strip().lower()
+    if not wdomain or wdomain in ("localhost", "0.0.0.0", "127.0.0.1"):
         return []
-    ips = _read_scanned_ips(ctype)
-    if not ips:
-        return []
-    iids = user.get("inbound_ids") or []
-    inbounds = [INBOUNDS.get(i) for i in iids if INBOUNDS.get(i)]
-    non_real = [ib for ib in inbounds if (ib.get("protocol") or "vless") != "reality"]
-    if not non_real:
-        return []
-    tag = "Railway" if ctype == "railway" else "Cloudflare"
+    wport = (inbound.get("external_port") if inbound else None) or (inbound.get("port") if inbound else None) or 443
+    fake_sni = str(inbound.get("sni") or "www.hcaptcha.com")
+    spoof_ip = str(inbound.get("spoof_ip") or "8.6.112.4")
+    spoof = {"active": True, "fakeSni": fake_sni, "spoofIp": spoof_ip, "targetPort": 0}
+    spoof_q = quote(json.dumps(spoof, separators=(",", ":")), safe="")
+    cfg_uuid = user.get("config_uuid", "")
+    uname = user.get("username", user_id)
+    # Selected countries (multi-location); fall back to a single generic route.
+    wcounts = user.get("proxy_countries") or ([user.get("proxy_country")] if user.get("proxy_country") else [])
+    wcounts = [str(c).strip().lower() for c in wcounts if str(c).strip()]
+    chosen = [(c, (WORKER.get("proxies") or {}).get(c)) for c in wcounts if (WORKER.get("proxies") or {}).get(c)]
+    if not chosen:
+        chosen = [("", {"country": ""})]  # generic route-less worker config
+    addr = addr_ip or wdomain
+    port = addr_port or wport
     out = []
-    for i, ip in enumerate(ips, 1):
-        ib = random.choice(non_real)
-        try:
-            cfg = generate_user_config(user_id, user, ib.get("inbound_id"), addr=ip, remark_tag=f"{tag}{i}")
-        except Exception as e:
-            logger.warning(f"custom-ip config gen failed for {ip}: {e}")
-            continue
-        if cfg:
-            out.append(cfg)
+    for code, p in chosen:
+        flag = _code_to_flag(code) if code else ""
+        clabel = str(p.get("country") or (code.upper() if code else "Worker"))
+        rem = quote(f"Spider-{uname} {flag} {clabel}".strip() if flag else f"Spider-{uname} Worker")
+        # The worker routes on /route/{code} alone; the upstream path (uuid) is
+        # appended by the worker itself. Never mix stored_path here (it would
+        # double up to /route/de/route/{uuid} for worker inbounds).
+        # For a scanned-IP (custom CF) config the address is the IP, so a
+        # country route no longer applies — use a generic path.
+        if addr_ip:
+            wpath = "/"
+        else:
+            wpath = f"/route/{code}" if code else (stored_path or "/")
+        params = "&".join([
+            f"snispoofing={spoof_q}",
+            "security=tls",
+            "fp=chrome",
+            "allowInsecure=0",
+            f"host={quote(wdomain)}",
+            f"path={quote(wpath, safe='')}",
+            f"sni={quote(wdomain)}",
+            "insecure=0",
+            "encryption=none",
+            "type=ws",
+        ])
+        out.append(f"vless://{cfg_uuid}@{addr}:{port}?{params}#{rem}")
     return out
 
 
@@ -1712,16 +1893,32 @@ async def create_inbound(request: Request, _=Depends(require_auth)):
     body = await request.json()
     name = (body.get("name") or "اینباند جدید").strip()[:60]
     protocol = str(body.get("protocol") or "vless").lower()
-    if protocol not in ("vless", "vmess", "trojan", "reality"):
+    if protocol not in ("vless", "vmess", "trojan", "reality", "worker"):
         raise HTTPException(status_code=400, detail="Invalid protocol")
     network = str(body.get("network") or "ws").lower()
     security = str(body.get("security") or "tls").lower()
+    # A "worker" inbound is a special type: it produces a config addressed to the
+    # deployed Cloudflare Worker domain (address/host/sni = worker_domain) and
+    # optionally carries the BPB snispoofing params. The worker domain is pulled
+    # automatically from the connected worker — no manual entry needed.
+    if protocol == "worker":
+        wdom = _worker_safe_domain(WORKER.get("worker_domain"))
+        if not wdom:
+            raise HTTPException(status_code=400, detail="Worker هنوز متصل نیست — ابتدا Worker را در تب Worker متصل کنید")
+        network = "ws"
+        security = "tls"
+        domain = wdom
+        external_domain = wdom
+        sni = wdom
+        if not external_port:
+            external_port = 443
     domain = str(body.get("domain") or "").strip()
     external_domain = str(body.get("external_domain") or "").strip()
     sni = str(body.get("sni") or "").strip()
     port = int(body.get("port") or 443)
     external_port = int(body.get("external_port") or 443)
     fingerprint = str(body.get("fingerprint") or "chrome").strip()
+    spoof_ip = str(body.get("spoof_ip") or "").strip()
     reality_settings = body.get("reality_settings", {}) if isinstance(body.get("reality_settings"), dict) else {}
     xhttp_settings = body.get("xhttp_settings", {}) if isinstance(body.get("xhttp_settings"), dict) else {}
     ws_settings = body.get("ws_settings", {}) if isinstance(body.get("ws_settings"), dict) else {}
@@ -1763,6 +1960,7 @@ async def create_inbound(request: Request, _=Depends(require_auth)):
             "domain": domain,
             "external_domain": external_domain,
             "sni": sni,
+            "spoof_ip": spoof_ip,
             "external_port": external_port,
             "fingerprint": fingerprint,
             "reality_settings": reality_settings,
@@ -1794,8 +1992,16 @@ async def update_inbound(inbound_id: str, request: Request, _=Depends(require_au
             ib["name"] = str(body["name"]).strip()[:60]
         if "protocol" in body:
             p = str(body["protocol"]).lower()
-            if p in ("vless", "vmess", "trojan", "reality"):
+            if p in ("vless", "vmess", "trojan", "reality", "worker"):
                 ib["protocol"] = p
+        # A worker inbound always targets the connected worker domain; if the
+        # inbound's domain is stale/empty, refresh it automatically.
+        if ib.get("protocol") == "worker":
+            wdom = _worker_safe_domain(WORKER.get("worker_domain"))
+            if wdom:
+                ib["domain"] = wdom
+                ib["external_domain"] = wdom
+                ib["sni"] = ib.get("sni") or "www.hcaptcha.com"
         if "port" in body:
             ib["port"] = int(body["port"])
         if "network" in body:
@@ -1828,6 +2034,8 @@ async def update_inbound(inbound_id: str, request: Request, _=Depends(require_au
             ib["external_domain"] = str(body["external_domain"]).strip()
         if "sni" in body:
             ib["sni"] = str(body["sni"]).strip()
+        if "spoof_ip" in body:
+            ib["spoof_ip"] = str(body["spoof_ip"]).strip()
         if "external_port" in body:
             ib["external_port"] = int(body["external_port"])
         if "fingerprint" in body:
@@ -1941,6 +2149,8 @@ async def list_users(_=Depends(require_auth)):
             "proxy_ip": u.get("proxy_ip", ""),
             "proxy_country": u.get("proxy_country", ""),
             "proxy_ips": u.get("proxy_ips", []),
+            "proxy_countries": u.get("proxy_countries", []),
+            "proxy_ip_enabled": u.get("proxy_ip_enabled", False),
             "custom_ip_type": u.get("custom_ip_type", ""),
             "traffic_limit_bytes": u.get("traffic_limit_bytes", 0),
             "traffic_limit_fmt": "∞" if u.get("traffic_limit_bytes", 0) == 0 else fmt_bytes(u["traffic_limit_bytes"]),
@@ -1993,11 +2203,31 @@ async def create_user(request: Request, _=Depends(require_auth)):
     proxy_ip = str(body.get("proxy_ip") or "").strip()
     proxy_country = str(body.get("proxy_country") or "").strip()
     proxy_ips = [str(x).strip() for x in (body.get("proxy_ips") or []) if str(x).strip()][:3]
+    # Worker multi-location: the user may pick one or more countries; each gets
+    # its own /route/{code} config. Only set for worker inbounds.
+    proxy_countries = [str(x).strip().lower() for x in (body.get("proxy_countries") or []) if str(x).strip()]
+    if not proxy_countries and proxy_country:
+        proxy_countries = [proxy_country.lower()]
+    # Cloudflare Worker routing: when enabled + worker connected, the user's
+    # configs are addressed to the worker domain with a /route/{code} path.
+    proxy_ip_enabled = bool(body.get("proxy_ip_enabled"))
+    if proxy_ip_enabled and not WORKER.get("connected"):
+        proxy_ip_enabled = False
     # Scanned custom-IP source: cf | railway ("" = off). Adds up to 10 extra
     # configs in the sub, addressed by scanned IPs on non-Reality inbounds.
     custom_ip_type = str(body.get("custom_ip_type") or "").strip().lower()
     if custom_ip_type not in _SCANNED_TYPES:
         custom_ip_type = ""
+    # Per-inbound scanned-IP switches: {cf: [inboundIds], railway: [inboundIds]}
+    # chosen in the create-user modal. Only these inbounds get scanned-IP configs.
+    cii = body.get("custom_ip_inbounds") or {}
+    if isinstance(cii, dict):
+        custom_ip_inbounds = {
+            "cf": [str(x) for x in (cii.get("cf") or [])],
+            "railway": [str(x) for x in (cii.get("railway") or [])],
+        }
+    else:
+        custom_ip_inbounds = {"cf": [], "railway": []}
 
     # If transport_type not given explicitly, derive it from the primary inbound
     # (so an xhttp inbound produces an xhttp user).
@@ -2074,7 +2304,10 @@ async def create_user(request: Request, _=Depends(require_auth)):
             "proxy_ip": proxy_ip,
             "proxy_country": proxy_country,
             "proxy_ips": proxy_ips,
+            "proxy_countries": proxy_countries,
+            "proxy_ip_enabled": proxy_ip_enabled,
             "custom_ip_type": custom_ip_type,
+            "custom_ip_inbounds": custom_ip_inbounds,
             "inbound_id": inbound_id,
             "inbound_ids": inbound_ids,
             "path": path_custom if path_custom else (
@@ -2213,6 +2446,17 @@ async def edit_user(user_id: str, request: Request, _=Depends(require_auth)):
         if "custom_ip_type" in body:
             ct = str(body["custom_ip_type"] or "").strip().lower()
             u["custom_ip_type"] = ct if ct in _SCANNED_TYPES else ""
+        if "proxy_ip_enabled" in body:
+            en = bool(body["proxy_ip_enabled"])
+            u["proxy_ip_enabled"] = en and WORKER.get("connected")
+        if "proxy_countries" in body:
+            pc = [str(x).strip().lower() for x in (body["proxy_countries"] or []) if str(x).strip()]
+            u["proxy_countries"] = pc
+            if pc:
+                u["proxy_country"] = pc[0]
+        elif "proxy_country" in body:
+            u["proxy_country"] = str(body["proxy_country"] or "").strip().lower()
+            u["proxy_countries"] = [u["proxy_country"]] if u["proxy_country"] else []
     asyncio.create_task(save_state())
     return {"ok": True, "user_id": user_id}
 
@@ -2547,29 +2791,43 @@ async def api_user_sub(username: str):
     config = generate_user_config(user.get("user_id"), user, user.get("inbound_id"))
 
     # Multi-inbound: build one config per selected inbound.
+    # A "worker" inbound expands to one config per selected country (multi-location).
     configs = []
     uid_ = user.get("user_id")
     inbound_ids = user.get("inbound_ids") or []
+    stored_path_user = (user.get("path") or "").strip()
     if inbound_ids:
         for iid_ in inbound_ids:
+            ib = INBOUNDS.get(iid_)
             try:
-                configs.append(generate_user_config(uid_, user, iid_))
+                if ib and (ib.get("protocol") or "").lower() == "worker":
+                    configs.extend(_worker_configs(uid_, user, ib, stored_path_user, f"Spider-{user.get('username', uid_)}"))
+                else:
+                    configs.append(generate_user_config(uid_, user, iid_))
             except Exception:
                 continue
     if not configs:
         configs = [config] if config else []
 
-    # Custom scanned-IP configs: up to 10 extra configs addressed by scanned
-    # IPs (cf/railway) distributed randomly over the user's non-Reality inbounds.
+    # Custom scanned-IP configs (the iOS switch): per inbound type.
+    # worker → Cloudflare IPs, tls → Railway IPs, reality → none.
+    # `configs` keeps main+custom (used for "copy all"); `custom_configs` lets
+    # the sub page render main configs on top, then Railway, then Cloudflare.
     custom_cfgs = generate_custom_ip_configs(user.get("user_id"), user)
-    if custom_cfgs:
-        configs = configs + custom_cfgs
+    custom_railway = custom_cfgs.get("railway", [])
+    custom_cf = custom_cfgs.get("cf", [])
+    all_custom = custom_railway + custom_cf
+    if all_custom:
+        configs = configs + all_custom
 
     return {
         "username": user.get("username"),
         "protocol": user.get("protocol", "vless"),
         "custom_ip_type": user.get("custom_ip_type", ""),
-        "custom_ip_count": len(custom_cfgs),
+        "custom_ip_count": len(all_custom),
+        "custom_configs": all_custom,
+        "custom_railway_configs": custom_railway,
+        "custom_cf_configs": custom_cf,
         "traffic_used_bytes": used,
         "traffic_used_fmt": fmt_bytes(used),
         "traffic_limit_bytes": limit,
@@ -2593,6 +2851,8 @@ async def api_user_sub(username: str):
         "server": user.get("server", ""),
         "proxy_ips": user.get("proxy_ips", []),
         "proxy_country": user.get("proxy_country", ""),
+        "proxy_countries": user.get("proxy_countries", []),
+        "proxy_ip_enabled": user.get("proxy_ip_enabled", False),
         "max_ip_per_user": int(user.get("concurrent_connections", SETTINGS.get("max_ip_per_user", 3) or 3)),
         "used_ips": len(USER_IP_MAP.get(user.get("user_id", ""), set())),
     }
@@ -4412,6 +4672,528 @@ async def scan_railway_ips(_=Depends(require_auth)):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# CLOUDFLARE WORKER MANAGER — multi-location proxy via Cloudflare Workers
+# Traffic: Client → Worker Domain → Cloudflare Worker → Selected Proxy IP → Internet
+# Railway only hosts the panel/API; it is NOT in the VPN data path.
+# ══════════════════════════════════════════════════════════════════════════════
+
+CF_API = "https://api.cloudflare.com/client/v4"
+CF_TOKEN_LINK = "https://dash.cloudflare.com/profile/api-tokens"
+
+# Worker script deployed to the user's Cloudflare account lives in the project
+# at worker/_worker.js (NOT under /static, so it is never served to the web).
+# The proxy map is injected at deploy time by replacing __PROXIES_JSON__, so
+# adding/removing a country re-deploys the worker (see /api/worker/sync).
+CF_WORKER_DIR = Path(os.path.dirname(os.path.abspath(__file__))) / "worker"
+CF_WORKER_TEMPLATE = CF_WORKER_DIR / "_worker.js"
+
+
+def _worker_script() -> str:
+    """Return the worker template source, or raise if the file is missing."""
+    if not CF_WORKER_TEMPLATE.is_file():
+        raise FileNotFoundError(
+            f"worker template not found: {CF_WORKER_TEMPLATE} "
+            "(create worker/_worker.js in the project repo)"
+        )
+    return CF_WORKER_TEMPLATE.read_text(encoding="utf-8")
+
+
+async def _cf_api(method: str, path: str, token: str, payload: dict = None):
+    """Call the Cloudflare API v4. Returns (status_code, json)."""
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    async with httpx.AsyncClient(timeout=40) as client:
+        try:
+            r = await client.request(method, f"{CF_API}{path}", headers=headers, json=payload)
+            try:
+                return r.status_code, r.json()
+            except Exception:
+                return r.status_code, {}
+        except Exception as e:
+            return 0, {"errors": [{"message": str(e)}]}
+
+
+def _worker_safe_domain(raw: str) -> str:
+    raw = str(raw or "").strip().lower()
+    raw = re.sub(r"^https?://", "", raw).rstrip("/")
+    if not raw or raw in ("localhost", "0.0.0.0", "127.0.0.1"):
+        return ""
+    return raw
+
+
+def _worker_public() -> dict:
+    """Snapshot of worker state with the API token stripped."""
+    return {
+        "connected": WORKER.get("connected", False),
+        "account_id": WORKER.get("account_id", ""),
+        "worker_name": WORKER.get("worker_name", ""),
+        "worker_domain": WORKER.get("worker_domain", ""),
+        "worker_url": WORKER.get("worker_url", ""),
+        "panel_domain": WORKER.get("panel_domain", ""),
+        "last_sync": WORKER.get("last_sync", ""),
+        "last_error": WORKER.get("last_error", ""),
+        "source_url": WORKER.get("source_url", ""),
+        "auto_sync": bool(WORKER.get("auto_sync", True)),
+        "sync_error": WORKER.get("sync_error", ""),
+        "sync_count": int(WORKER.get("sync_count", 0)),
+        "token_link": CF_TOKEN_LINK,
+        "proxies": [
+            {"code": code, **dict(p)}
+            for code, p in sorted((WORKER.get("proxies") or {}).items())
+        ],
+    }
+
+
+async def _worker_deploy() -> tuple:
+    """Deploy (or re-deploy) the worker script with the current proxy map.
+
+    The template is read from worker/_worker.js inside the project repo (not the
+    state file), so updates to the worker are shipped with a normal git deploy.
+    The panel domain + a control token are injected at deploy time so the panel
+    can later control the worker via its admin API (Bearer token protected).
+    """
+    try:
+        template = _worker_script()
+    except Exception as e:
+        return 0, {"errors": [{"message": str(e)}]}
+    # Ensure a control token exists (generate once, persist).
+    ctrl = str(WORKER.get("control_token") or "")
+    if not ctrl:
+        ctrl = secrets.token_urlsafe(24)
+        async with WORKER_LOCK:
+            WORKER["control_token"] = ctrl
+        asyncio.create_task(save_state())
+    panel_domain = _safe_host(SETTINGS.get("domain"), get_host())
+    async with WORKER_LOCK:
+        WORKER["panel_domain"] = panel_domain
+    proxies = (WORKER.get("proxies") or {}).copy()
+    proxies_json = json.dumps(proxies, ensure_ascii=False, separators=(",", ":"))
+    script = (template
+              .replace("__PROXIES_JSON__", proxies_json)
+              .replace("__PANEL_DOMAIN__", json.dumps(panel_domain))
+              .replace("__PANEL_TOKEN__", json.dumps(ctrl)))
+    cf_token = str(WORKER.get("token") or "")
+    if not cf_token:
+        return 0, {"errors": [{"message": "Cloudflare API token is missing (worker not connected properly)"}]}
+    headers = {"Authorization": f"Bearer {cf_token}", "Content-Type": "application/javascript"}
+    try:
+        async with httpx.AsyncClient(timeout=90) as client:
+            r = await client.put(
+                f"{CF_API}/accounts/{WORKER.get('account_id','')}/workers/scripts/{WORKER.get('worker_name','')}",
+                headers=headers,
+                content=script.encode("utf-8"),
+            )
+        try:
+            return r.status_code, r.json()
+        except Exception:
+            return r.status_code, {}
+    except Exception as e:
+        return 0, {"errors": [{"message": str(e)}]}
+
+
+async def _ensure_worker_inbound() -> bool:
+    """Create or refresh the default Worker inbound to match the connected
+    worker domain. Called after a worker connects/deploys so the worker inbound
+    always points address/host/sni at the current worker domain."""
+    wdom = _worker_safe_domain(WORKER.get("worker_domain"))
+    if not wdom:
+        return False
+    changed = False
+    async with INBOUNDS_LOCK:
+        wid = next((i for i, ib in INBOUNDS.items() if (ib.get("protocol") or "").lower() == "worker"), None)
+        if wid:
+            ib = INBOUNDS[wid]
+            if (ib.get("domain") or "") != wdom or (ib.get("external_domain") or "") != wdom:
+                ib["domain"] = wdom
+                ib["external_domain"] = wdom
+                changed = True
+        else:
+            INBOUNDS["default-worker"] = {
+                "name": "Worker (Multi-Location)",
+                "protocol": "worker",
+                "port": 443,
+                "network": "ws",
+                "security": "tls",
+                "domain": wdom,
+                "external_domain": wdom,
+                "sni": "www.hcaptcha.com",
+                "spoof_ip": "8.6.112.4",
+                "external_port": 443,
+                "fingerprint": "chrome",
+                "reality_settings": {},
+                "xhttp_settings": {},
+                "ws_settings": {"path": "/route/{uuid}"},
+                "grpc_settings": {},
+                "created_at": datetime.now().isoformat(),
+            }
+            changed = True
+    if changed:
+        asyncio.create_task(save_state())
+    return True
+
+
+async def _worker_control_update() -> dict:
+    """Push the current proxy map to the deployed worker via its admin API.
+
+    The worker only accepts calls carrying the control token that was baked in
+    at deploy time (Bearer auth), so the panel can update the map without a full
+    re-deploy. Returns {"ok": bool, "detail": str}.
+    """
+    domain = str(WORKER.get("worker_domain") or "").strip().lower()
+    ctrl = str(WORKER.get("control_token") or "")
+    if not domain or not ctrl or domain in ("localhost", "0.0.0.0", "127.0.0.1"):
+        return {"ok": False, "detail": "worker not connected / no control token"}
+    try:
+        async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
+            r = await client.post(
+                f"https://{domain}/api/admin/update",
+                headers={"Authorization": f"Bearer {ctrl}"},
+                json={"proxies": (WORKER.get("proxies") or {})},
+            )
+        if r.status_code == 200:
+            return {"ok": True, "detail": "worker updated"}
+        return {"ok": False, "detail": f"worker returned HTTP {r.status_code}"}
+    except Exception as e:
+        return {"ok": False, "detail": str(e)}
+
+
+# ── Daily proxy source sync ──────────────────────────────────────────────────
+# Source file format (ProxyIP-Daily.md by NiREvil):
+#   ## 🇩🇪 Germany (517 proxies)      ← flag emoji encodes the ISO code
+#   <details><summary>...</summary>
+#   | IP | ISP | Location | Risk Score |
+#   | <pre><code>94.141.123.243</code></pre> | ISP | Hesse, Frankfurt | badge |
+# ISP-grouped sections (Google/Amazon/…) have no flag → skipped.
+_FLAG_RE = re.compile(r"^##\s*([\U0001F1E6-\U0001F1FF]{2})\s*([^\s(][^()]*?)\s*\(\d+\s*proxies\)")
+_IPCELL_RE = re.compile(r"<pre><code>\s*((?:\d{1,3}\.){3}\d{1,3}|[a-z0-9.-]+\.[a-z]{2,})\s*</code></pre>", re.I)
+# A few sections show only a bare code (e.g. "AD") instead of a full name.
+_CODE_NAME = {
+    "AD": "Andorra", "BA": "Bosnia & Herzegovina", "BD": "Bangladesh",
+    "DO": "Dominican Republic", "IS": "Iceland", "KG": "Kyrgyzstan", "SY": "Syria",
+}
+
+
+def _flag_to_code(flag: str) -> str:
+    """Decode a flag emoji (regional indicators) into an ISO 3166-1 alpha-2 code."""
+    cps = [ord(c) for c in flag]
+    if len(cps) < 2 or not all(0x1F1E6 <= c <= 0x1F1FF for c in cps):
+        return ""
+    return "".join(chr(0x41 + (c - 0x1F1E6)) for c in cps)
+
+
+def _code_to_flag(code: str) -> str:
+    """Encode an ISO 3166-1 alpha-2 code into a flag emoji."""
+    code = str(code or "").strip().upper()
+    if len(code) != 2 or not code.isalpha():
+        return ""
+    return chr(0x1F1E6 + (ord(code[0]) - ord('A'))) + chr(0x1F1E6 + (ord(code[1]) - ord('A')))
+
+
+def _parse_proxy_daily(text: str, limit_per_country: int = 3) -> dict:
+    """Parse the daily markdown into {code: {country, proxy, port}}.
+
+    For each country section the first `limit_per_country` IP cells are kept
+    (rows are sorted best-first by risk score). Only sections with a flag emoji
+    are used; ISP-grouped sections are skipped.
+    """
+    out: dict = {}
+    lines = text.splitlines()
+    i = 0
+    n = len(lines)
+    while i < n:
+        m = _FLAG_RE.match(lines[i].strip())
+        if not m:
+            i += 1
+            continue
+        code = _flag_to_code(m.group(1)).lower()
+        name = (m.group(2) or "").strip()
+        if not code:
+            i += 1
+            continue
+        if len(name) == 2 and name.isupper():
+            name = _CODE_NAME.get(name.upper(), name)
+        # Collect IP cells until the next '## ' section header.
+        picked: list[str] = []
+        j = i + 1
+        while j < n:
+            line = lines[j].strip()
+            if line.startswith("## ") or line.startswith("---"):
+                break
+            if line.startswith("|") and "<pre><code>" in line:
+                cell = _IPCELL_RE.search(line)
+                if cell and cell.group(1) not in picked:
+                    picked.append(cell.group(1))
+                    if len(picked) >= limit_per_country:
+                        break
+            j += 1
+        if picked:
+            out[code] = {
+                "country": name or code.upper(),
+                "proxy": picked[0],
+                "port": 443,
+                "proxies": picked,
+            }
+        i = j
+    return out
+
+
+async def _fetch_proxy_daily(url: str) -> str:
+    """Fetch the daily proxy markdown, preferring the raw GitHub URL."""
+    url = str(url or "").strip()
+    if not url:
+        raise ValueError("منبع پروکسی تنظیم نشده است")
+    # GitHub blob page → raw URL so we get the file, not HTML.
+    m = re.match(r"^https://github\.com/([^/]+)/([^/]+)/blob/(.+)$", url)
+    if m:
+        url = f"https://raw.githubusercontent.com/{m.group(1)}/{m.group(2)}/{m.group(3)}"
+    async with httpx.AsyncClient(timeout=40, follow_redirects=True) as client:
+        r = await client.get(url)
+    if r.status_code != 200:
+        raise ValueError(f"دریافت منبع ناموفق بود (HTTP {r.status_code})")
+    return r.text
+
+
+async def _sync_worker_proxies_from_source() -> dict:
+    """Fetch + parse the daily proxy source and push it to the deployed worker.
+
+    Returns a summary dict. Under WORKER_SYNC_LOCK so the hourly loop and the
+    manual button never run concurrently.
+    """
+    async with WORKER_SYNC_LOCK:
+        source_url = WORKER.get("source_url", "")
+        try:
+            text = await _fetch_proxy_daily(source_url)
+            parsed = _parse_proxy_daily(text)
+            if not parsed:
+                raise ValueError("در منبع، کشوری پیدا نشد (قالب تغییر کرده؟)")
+            async with WORKER_LOCK:
+                # Merge: entries manually added/edited in the panel (manual=True)
+                # survive the source refresh, so admin edits are never wiped out.
+                manual = {
+                    code: p for code, p in (WORKER.get("proxies") or {}).items()
+                    if p.get("manual")
+                }
+                parsed.update(manual)
+                WORKER["proxies"] = parsed
+                WORKER["sync_count"] = int(WORKER.get("sync_count", 0)) + 1
+            deploy_ok = True
+            if WORKER.get("connected"):
+                sc, sd = await _worker_deploy()
+                deploy_ok = sc in (200, 201, 409)
+                if not deploy_ok:
+                    raise ValueError((sd.get("errors") or [{}])[0].get("message", "deploy failed"))
+                # After deploy, tell the worker the new map via its admin API.
+                await _worker_control_update()
+            # Keep the default Worker inbound pointed at the worker domain.
+            await _ensure_worker_inbound()
+            async with WORKER_LOCK:
+                WORKER["last_sync"] = now_ir().isoformat(timespec="seconds")
+                WORKER["sync_error"] = ""
+                WORKER["last_error"] = ""
+            asyncio.create_task(save_state())
+            log_activity("worker", f"پروکسی‌های Worker از منبع بروزرسانی شد ({len(parsed)} کشور)", "ok")
+            return {
+                "ok": True,
+                "countries": len(parsed),
+                "count": sum(len(v.get("proxies") or [v.get("proxy")]) for v in parsed.values()),
+                "deployed": deploy_ok,
+            }
+        except Exception as e:
+            msg = str(e)
+            async with WORKER_LOCK:
+                WORKER["sync_error"] = msg
+                WORKER["last_error"] = msg
+            asyncio.create_task(save_state())
+            logger.warning(f"worker proxy sync failed: {msg}")
+            return {"ok": False, "error": msg}
+
+
+@app.get("/api/worker")
+async def worker_get(_=Depends(require_auth)):
+    """Worker status + proxy map (token is never exposed)."""
+    async with WORKER_LOCK:
+        return {"ok": True, **_worker_public()}
+
+
+@app.post("/api/worker/setup")
+async def worker_setup(request: Request, _=Depends(require_auth)):
+    """Connect to Cloudflare: verify token, check account, deploy the worker."""
+    body = await request.json()
+    token = str(body.get("token") or "").strip()
+    account_id = str(body.get("account_id") or "").strip()
+    worker_name = str(body.get("worker_name") or "").strip()
+    worker_domain = _worker_safe_domain(body.get("worker_domain"))
+    if not token or not account_id or not worker_name or not worker_domain:
+        raise HTTPException(status_code=400, detail="token, account_id, worker_name and worker_domain are required")
+
+    # 1. Verify the API token.
+    code, data = await _cf_api("GET", "/user/tokens/verify", token)
+    if code != 200 or not data.get("success"):
+        msg = (data.get("errors") or [{}])[0].get("message", "invalid token")
+        raise HTTPException(status_code=400, detail=f"Cloudflare token rejected: {msg}")
+
+    # 2. Confirm the account + worker name are reachable.
+    code, data = await _cf_api("GET", f"/accounts/{account_id}/workers/scripts/{worker_name}", token)
+    if code not in (200, 404):
+        msg = (data.get("errors") or [{}])[0].get("message", "account check failed")
+        raise HTTPException(status_code=400, detail=f"Cloudflare account check failed: {msg}")
+
+    # 3. Save connection, then deploy the worker script.
+    async with WORKER_LOCK:
+        WORKER.update({
+            "connected": True,
+            "account_id": account_id,
+            "worker_name": worker_name,
+            "worker_domain": worker_domain,
+            "worker_url": f"https://{worker_domain}",
+            "token": token,
+            "last_error": "",
+        })
+    sc, sd = await _worker_deploy()
+    if sc not in (200, 201, 409):
+        msg = (sd.get("errors") or [{}])[0].get("message", "deploy failed")
+        async with WORKER_LOCK:
+            WORKER["last_error"] = msg
+        asyncio.create_task(save_state())
+        raise HTTPException(status_code=500, detail=f"Worker deploy failed: {msg}")
+    # Deployed with a fresh control token; tell the worker the proxy map now.
+    ctrl_res = await _worker_control_update()
+    # Auto-create/refresh the default Worker inbound to the connected domain.
+    await _ensure_worker_inbound()
+    async with WORKER_LOCK:
+        WORKER["last_sync"] = now_ir().isoformat(timespec="seconds")
+        WORKER["last_error"] = "" if ctrl_res.get("ok") else ctrl_res.get("detail", "")
+    asyncio.create_task(save_state())
+    log_activity("worker", f"Worker متصل شد ({worker_name})", "ok")
+    async with WORKER_LOCK:
+        return {"ok": True, **_worker_public()}
+
+
+@app.post("/api/worker/sync")
+async def worker_sync(_=Depends(require_auth)):
+    """Re-deploy the worker after proxy changes."""
+    if not WORKER.get("connected"):
+        raise HTTPException(status_code=400, detail="worker is not connected")
+    sc, sd = await _worker_deploy()
+    async with WORKER_LOCK:
+        if sc in (200, 201, 409):
+            WORKER["last_sync"] = now_ir().isoformat(timespec="seconds")
+            WORKER["last_error"] = ""
+            out = {"ok": True, **_worker_public()}
+        else:
+            msg = (sd.get("errors") or [{}])[0].get("message", "deploy failed")
+            WORKER["last_error"] = msg
+            out = {"ok": False, "error": msg, **_worker_public()}
+    asyncio.create_task(save_state())
+    return out
+
+
+@app.post("/api/worker/sync-source")
+async def worker_sync_source(_=Depends(require_auth)):
+    """Fetch the daily proxy source now, update the pool and re-deploy."""
+    res = await _sync_worker_proxies_from_source()
+    if not res.get("ok"):
+        return JSONResponse(status_code=400, content={"ok": False, "error": res.get("error")})
+    async with WORKER_LOCK:
+        return {"ok": True, **_worker_public(), "sync": res}
+
+
+@app.post("/api/worker/settings")
+async def worker_settings(request: Request, _=Depends(require_auth)):
+    """Update worker source URL / auto-sync preference."""
+    body = await request.json()
+    async with WORKER_LOCK:
+        if "source_url" in body:
+            src = str(body["source_url"] or "").strip()
+            if src:
+                WORKER["source_url"] = src
+        if "auto_sync" in body:
+            WORKER["auto_sync"] = bool(body["auto_sync"])
+        out = {"ok": True, **_worker_public()}
+    asyncio.create_task(save_state())
+    return out
+
+
+@app.delete("/api/worker")
+async def worker_disconnect(_=Depends(require_auth)):
+    """Remove the worker connection (keeps nothing sensitive)."""
+    async with WORKER_LOCK:
+        WORKER.clear()
+        WORKER.update({
+            "connected": False,
+            "account_id": "",
+            "worker_name": "",
+            "worker_domain": "",
+            "worker_url": "",
+            "token": "",
+            "proxies": {},
+            "last_sync": "",
+            "last_error": "",
+            "source_url": "https://raw.githubusercontent.com/NiREvil/vless/main/sub/ProxyIP-Daily.md",
+            "auto_sync": True,
+            "sync_error": "",
+            "sync_count": 0,
+        })
+    asyncio.create_task(save_state())
+    log_activity("worker", "Worker قطع شد", "warn")
+    return {"ok": True}
+
+
+@app.post("/api/worker/proxies")
+async def worker_add_proxy(request: Request, _=Depends(require_auth)):
+    """Add or update a proxy country entry, then re-deploy the worker."""
+    body = await request.json()
+    code = str(body.get("code") or "").strip().lower()
+    country = str(body.get("country") or "").strip()
+    proxy = str(body.get("proxy") or "").strip()
+    port = int(body.get("port") or 443)
+    if not code or not country or not proxy:
+        raise HTTPException(status_code=400, detail="code, country and proxy are required")
+    if not re.fullmatch(r"[a-z0-9_-]{1,16}", code):
+        raise HTTPException(status_code=400, detail="invalid country code (a-z0-9_-)")
+    async with WORKER_LOCK:
+        (WORKER.setdefault("proxies", {}))[code] = {"country": country, "proxy": proxy, "port": max(1, min(65535, port)), "manual": True}
+    if WORKER.get("connected"):
+        await worker_sync(None)
+    else:
+        asyncio.create_task(save_state())
+    async with WORKER_LOCK:
+        return {"ok": True, **_worker_public()}
+
+
+@app.delete("/api/worker/proxies/{code}")
+async def worker_del_proxy(code: str, _=Depends(require_auth)):
+    """Remove a proxy country entry and re-deploy."""
+    async with WORKER_LOCK:
+        (WORKER.get("proxies") or {}).pop(code.lower(), None)
+    if WORKER.get("connected"):
+        await worker_sync(None)
+    else:
+        asyncio.create_task(save_state())
+    async with WORKER_LOCK:
+        return {"ok": True, **_worker_public()}
+
+
+@app.get("/api/worker/locations")
+async def worker_locations(_=Depends(require_auth)):
+    """Location status list for the Map tab. Prefers live data from the worker."""
+    async with WORKER_LOCK:
+        if WORKER.get("connected") and WORKER.get("worker_url"):
+            try:
+                async with httpx.AsyncClient(timeout=12) as client:
+                    r = await client.get(f"{WORKER['worker_url']}/api/locations")
+                if r.status_code == 200:
+                    return {"ok": True, "locations": r.json()}
+            except Exception:
+                pass
+            return {"ok": True, "locations": [
+                {"country": p.get("country"), "code": c, "proxy": p.get("proxy"),
+                 "port": p.get("port", 443), "status": "online", "ping": 0}
+                for c, p in (WORKER.get("proxies") or {}).items()
+            ]}
+    return {"ok": True, "locations": []}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # IP SCANNER endpoints — live-saved scanned IPs + DNS resolve for the TCP tab
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -4421,18 +5203,29 @@ async def scanner_get_ips(ctype: str, _=Depends(require_auth)):
     ctype = ctype.strip().lower()
     if ctype not in _SCANNED_TYPES:
         raise HTTPException(status_code=400, detail="invalid scanner source")
-    return {"ok": True, "type": ctype, "ips": _read_scanned_ips(ctype)}
+    return {"ok": True, "type": ctype, "ips": _read_scanned_ips(ctype), "seq": SCANNED_SEQ.get(ctype, 0)}
 
 
 @app.post("/api/scanner/save")
 async def scanner_save_ips(request: Request, _=Depends(require_auth)):
-    """Live-save found ip:port entries to the source file (first 10 kept)."""
+    """Live-save found ip:port entries to the source file (first 10 kept).
+
+    Every write is guarded by a per-type sequence number: the client sends the
+    seq of the last write it saw, and any write carrying an older seq is dropped.
+    This guarantees a clear() can never be undone by a scan save that was already
+    in flight when the user clicked "پاک کردن".
+    """
     body = await request.json()
     ctype = str(body.get("type") or "").strip().lower()
     if ctype not in _SCANNED_TYPES:
         raise HTTPException(status_code=400, detail="invalid scanner source")
     raw = body.get("ips") or []
     replace = bool(body.get("replace"))
+    cur_seq = SCANNED_SEQ.get(ctype, 0)
+    sent_seq = int(body.get("seq") or 0)
+    # Stale write (clear landed first, or an older save raced a newer clear).
+    if sent_seq != cur_seq:
+        return {"ok": False, "stale": True, "type": ctype, "seq": cur_seq, "ips": _read_scanned_ips(ctype)}
     entries = []
     for x in raw[:_SCANNED_MAX]:
         x = str(x).strip()
@@ -4448,7 +5241,8 @@ async def scanner_save_ips(request: Request, _=Depends(require_auth)):
         if ip and port:
             entries.append(f"{ip}:{port}")
     merged = _save_scanned_ips(ctype, entries, replace=replace)
-    return {"ok": True, "type": ctype, "ips": merged}
+    SCANNED_SEQ[ctype] = cur_seq + 1
+    return {"ok": True, "type": ctype, "ips": merged, "seq": SCANNED_SEQ[ctype]}
 
 
 @app.get("/api/scanner/resolve")
@@ -4520,247 +5314,10 @@ async def scanner_ping_batch(request: Request, _=Depends(require_auth)):
 # PROXY IP endpoints
 # ══════════════════════════════════════════════════════════════════════════════
 
-_COUNTRY_PROXY_DIR = Path(os.path.dirname(os.path.abspath(__file__))) / "data" / "country_proxies"
-# Fallback to DATA_DIR if project-local doesn't exist
-if not _COUNTRY_PROXY_DIR.exists():
-    _COUNTRY_PROXY_DIR = DATA_DIR / "country_proxies"
-_COUNTRY_PROXY_IGNORE = {"01_last_update.txt", "02_proxies.csv", "03_proxies.txt"}
+# (removed dead proxy-ips endpoints — proxy source is now the daily GitHub list)
 
-@app.get("/api/proxy-ips/clean-repo")
-async def clean_ip_repo(_=Depends(require_auth)):
-    """Return working proxy IPs from the local country-proxy repo.
-
-    This panel runs on Railway, not a Cloudflare Worker, so "clean Cloudflare
-    IPs" can't be used as relays here (they don't speak HTTP CONNECT / VLESS
-    relay). The working equivalent is the verified HTTP/SOCKS5 proxy pool that
-    fetch_proxies.py collects into data/country_proxies/. Return a deduped
-    sample so the frontend can pre-fill the proxy selector.
-    """
-    seen, out = set(), []
-    try:
-        for f in sorted(_COUNTRY_PROXY_DIR.glob("*.txt")):
-            if f.name in _COUNTRY_PROXY_IGNORE:
-                continue
-            for line in f.read_text(errors="ignore").splitlines():
-                line = line.strip()
-                if not line or " " not in line:
-                    continue
-                ip, port = line.split(" ", 1)
-                token = f"{ip}:{port.strip()}"
-                if token not in seen:
-                    seen.add(token)
-                    out.append(token)
-    except Exception:
-        return {"ok": False, "ips": []}
-    return {"ok": True, "source": "country_proxies", "ips": out[:200]}
-
-
-@app.get("/api/proxy-ips/countries")
-async def list_country_proxies(_=Depends(require_auth)):
-    """List all countries with proxy IP counts (XX.txt files under country_proxies)."""
-    try:
-        entries = []
-        for f in _COUNTRY_PROXY_DIR.iterdir():
-            if not f.is_file() or f.suffix != ".txt" or f.name in _COUNTRY_PROXY_IGNORE:
-                continue
-            code = f.stem.strip().upper()
-            if not code:
-                continue
-            count = 0
-            async with aiofiles.open(f, "r", encoding="utf-8", errors="ignore") as fh:
-                async for line in fh:
-                    line = line.strip()
-                    if line and " " in line:
-                        count += 1
-            entries.append({"code": code, "count": count})
-        entries.sort(key=lambda x: x["count"], reverse=True)
-        return {"countries": entries}
-    except FileNotFoundError:
-        return {"countries": []}
-    except Exception as e:
-        logger.warning(f"Could not list country proxies: {e}")
-        return {"countries": []}
-
-
-@app.get("/api/proxy-ips/{country}")
-async def get_country_proxies(country: str, _=Depends(require_auth)):
-    """Return up to 50 random proxy IP:PORT entries for the given country."""
-    import random
-    code = country.strip().upper()
-    fpath = _COUNTRY_PROXY_DIR / f"{code}.txt"
-    if not fpath.is_file():
-        raise HTTPException(status_code=404, detail=f"country proxy list not found: {code}")
-    proxies = []
-    try:
-        async with aiofiles.open(fpath, "r", encoding="utf-8", errors="ignore") as fh:
-            async for line in fh:
-                line = line.strip()
-                if not line or " " not in line:
-                    continue
-                ip, port = line.split(" ", 1)
-                ip = ip.strip()
-                port = port.strip()
-                if not ip or not port:
-                    continue
-                proxies.append({"ip": ip, "port": port})
-    except Exception as e:
-        logger.warning(f"Could not read country proxy list {code}: {e}")
-        raise HTTPException(status_code=500, detail=f"could not read proxy list: {code}")
-    if len(proxies) > 50:
-        proxies = random.sample(proxies, 50)
-    return {"country": code, "proxies": proxies, "total": len(proxies)}
-
-
-# ── Per-IP ping (TCP connect latency) with short cache ──
-_PROXY_PING_CACHE: dict = {}
-_PROXY_PING_CACHE_LOCK = asyncio.Lock()
-_PROXY_PING_TTL = 45  # seconds
-
-
-@app.get("/api/proxy-ips/{country}/ping")
-async def ping_country_proxies(country: str, request: Request, _=Depends(require_auth)):
-    """Measure TCP-connect latency to each ip:port in the country list.
-
-    Uses asyncio.open_connection with a short timeout so dead IPs fail fast.
-    Results are cached for _PROXY_PING_TTL seconds to avoid hammering the pool.
-
-    Optional query param `ips` (comma-separated ip:port) pins the exact list to
-    ping — used by the panel so the pings match the IPs it already loaded.
-    """
-    import random as _random
-    code = country.strip().upper()
-    fpath = _COUNTRY_PROXY_DIR / f"{code}.txt"
-    if not fpath.is_file():
-        raise HTTPException(status_code=404, detail=f"country proxy list not found: {code}")
-
-    requested = (request.query_params.get("ips") or "").strip()
-    if requested:
-        proxies = []
-        for entry in requested.split(","):
-            entry = entry.strip()
-            if not entry:
-                continue
-            if ":" in entry:
-                ip, port = entry.rsplit(":", 1)
-            else:
-                ip, port = entry, ""
-            ip = ip.strip()
-            port = port.strip()
-            if not ip:
-                continue
-            proxies.append({"ip": ip, "port": port or "443"})
-    else:
-        proxies = []
-        try:
-            async with aiofiles.open(fpath, "r", encoding="utf-8", errors="ignore") as fh:
-                async for line in fh:
-                    line = line.strip()
-                    if not line or " " not in line:
-                        continue
-                    ip, port = line.split(" ", 1)
-                    ip = ip.strip()
-                    port = port.strip()
-                    if not ip or not port:
-                        continue
-                    proxies.append({"ip": ip, "port": port})
-        except Exception as e:
-            logger.warning(f"Could not read country proxy list {code}: {e}")
-            raise HTTPException(status_code=500, detail=f"could not read proxy list: {code}")
-        if len(proxies) > 50:
-            proxies = _random.sample(proxies, 50)
-
-    now = time.time()
-    key = code + ":" + requested[:200]
-    async with _PROXY_PING_CACHE_LOCK:
-        cached = _PROXY_PING_CACHE.get(key)
-    if cached and now - cached["at"] < _PROXY_PING_TTL:
-        return {"country": code, "results": cached["results"], "cached": True}
-
-    sem = asyncio.Semaphore(15)
-
-    async def probe(p):
-        host = p["ip"]
-        try:
-            port = int(p["port"])
-        except ValueError:
-            port = 443
-        async with sem:
-            t0 = time.time()
-            try:
-                # Real proxy test (like the BPB worker): CONNECT through the
-                # candidate to cloudflare.com and read /cdn-cgi/trace so we can
-                # report the proxy's actual egress IP. If CONNECT succeeds the
-                # entry is a working HTTP/SOCKS proxy.
-                entry = {"hostname": host, "port": port, "protocol": "http",
-                         "username": None, "password": None}
-                try:
-                    rdr, wtr = await asyncio.wait_for(
-                        _socks5_connect(entry, "cloudflare.com", 443), timeout=2.5
-                    )
-                    proto_used = "socks5"
-                except Exception:
-                    rdr, wtr = await asyncio.wait_for(
-                        _http_connect(entry, "cloudflare.com", 443), timeout=2.5
-                    )
-                    proto_used = "http"
-                # Fetch /cdn-cgi/trace through the tunnel to learn real egress IP
-                req = (b"GET /cdn-cgi/trace HTTP/1.1\r\nHost: cloudflare.com\r\n"
-                       b"User-Agent: Mozilla/5.0\r\nConnection: close\r\n\r\n")
-                wtr.write(req)
-                await wtr.drain()
-                buf = b""
-                try:
-                    while True:
-                        chunk = await asyncio.wait_for(rdr.read(2048), timeout=2.5)
-                        if not chunk:
-                            break
-                        buf += chunk
-                        if b"ip=" in buf:
-                            break
-                except Exception:
-                    pass
-                egress_ip = ""
-                for line in buf.split(b"\n"):
-                    if line.startswith(b"ip="):
-                        egress_ip = line[3:].decode("utf-8", "ignore").strip()
-                        break
-                # 127.0.0.1 means the request did not actually traverse the
-                # proxy — treat as tcp-only (not a working proxy).
-                if egress_ip in ("127.0.0.1", "::1", ""):
-                    egress_ip = ""
-                latency = int((time.time() - t0) * 1000)
-                try:
-                    wtr.close()
-                    await wtr.wait_closed()
-                except Exception:
-                    pass
-                status = "ok" if egress_ip else "tcp-only"
-                return {"ip": host, "port": str(port), "latency_ms": latency,
-                        "status": status, "proxy_proto": proto_used, "egress_ip": egress_ip}
-            except asyncio.TimeoutError:
-                return {"ip": host, "port": str(port), "latency_ms": None, "status": "timeout"}
-            except Exception:
-                return {"ip": host, "port": str(port), "latency_ms": None, "status": "unreachable"}
-
-    results = await asyncio.gather(*(probe(p) for p in proxies))
-    results.sort(key=lambda x: x["latency_ms"] if x["latency_ms"] is not None else 10 ** 9)
-    async with _PROXY_PING_CACHE_LOCK:
-        _PROXY_PING_CACHE[key] = {"at": now, "results": results}
-    return {"country": code, "results": results, "cached": False}
-
-
-app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
-
-# Lazy XHTTP import (after all symbols defined)
-try:
-    from xhttp_siz10 import router as xhttp_router
-    app.include_router(xhttp_router)
-    logger.info("XHTTP module loaded")
-except Exception as e:
-    logger.warning(f"XHTTP module not available: {e}")
 
 if __name__ == "__main__":
-    # When run as `python main.py`, this module is named `__main__`, but
     # xhttp_siz10 does `from main import ...`. Register ourselves as `main`
     # so that import resolves to THIS module (avoids a circular second copy
     # and makes `from xhttp_siz10 import router` succeed below).
