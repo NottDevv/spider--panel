@@ -883,13 +883,19 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
     if host in ("0.0.0.0", "127.0.0.1", "localhost", ""):
         host = CONFIG.get("host", "") or "SERVER_IP"
     # Protocol: for a multi-inbound user each config must reflect its own
-    # inbound, so prefer the inbound protocol when one is selected. Fall back
-    # to the user protocol only when no inbound is given.
+    # inbound, so prefer the inbound protocol when one is selected. Exception:
+    # if the user explicitly wants reality but the inbound is not reality, keep
+    # reality (the config then uses the global reality settings) so a reality
+    # request never silently becomes a plain TLS/WS config without pbk.
     protocol = None
-    if inbound and inbound.get("protocol"):
-        protocol = inbound["protocol"]
+    u_proto = (user.get("protocol") or "vless").lower()
+    ib_proto = (inbound.get("protocol") if inbound else None)
+    if u_proto == "reality" and (not inbound or ib_proto != "reality"):
+        protocol = "reality"
+    elif ib_proto:
+        protocol = ib_proto
     else:
-        protocol = user.get("protocol") or "vless"
+        protocol = u_proto
     config_uuid = user.get("config_uuid", "")
     username = user.get("username", user_id)
     _rem = f"Spider-{username}"
@@ -917,35 +923,31 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
         transport_type = user.get("transport_type") or "ws"
 
     # ── Path: READ-ONLY, from user storage (generated once at creation) ──
-    # Priority: inbound ws_settings/xhttp_settings > user stored path > generate+store (legacy)
+    # The user's stored path (with the real config_uuid) is authoritative so the
+    # panel relay (FastAPI /ws/{uuid}) and Xray inbounds keep working. An
+    # inbound's static path template is only used when the user has no path, and
+    # any {uuid} placeholder is always substituted with the real config_uuid.
     stored_path = (user.get("path") or "").strip()
-    # Inbound override takes priority
-    # Inbound path override: only apply when the inbound path contains a
-    # placeholder ({uuid}) or is a full per-user path. A static inbound path
-    # without a uuid (e.g. the default "/xhttp-siz10/stream-up/") must NOT
-    # overwrite the user's generated /xhttp-siz10/stream-up/<uuid> path.
     if inbound:
         ib_ws = inbound.get("ws_settings", {})
-        if ib_ws and ib_ws.get("path"):
-            _p = str(ib_ws["path"])
-            if "{uuid}" in _p or "/ws/" not in stored_path or not stored_path:
-                stored_path = _p
         ib_xh = inbound.get("xhttp_settings", {})
-        if ib_xh and ib_xh.get("path"):
-            _p = str(ib_xh["path"])
-            if "{uuid}" in _p or (not stored_path) or stored_path.endswith("/") or stored_path.count("/") < 3:
-                stored_path = _p
         ib_grpc = inbound.get("grpc_settings", {})
-        if ib_grpc and ib_grpc.get("serviceName"):
-            _p = str(ib_grpc["serviceName"])
-            if "{uuid}" in _p or (not stored_path):
-                stored_path = _p
+        if (not stored_path) and (ib_ws and ib_ws.get("path")):
+            stored_path = str(ib_ws["path"])
+        elif (not stored_path) and (ib_xh and ib_xh.get("path")):
+            stored_path = str(ib_xh["path"])
+        elif (not stored_path) and (ib_grpc and ib_grpc.get("serviceName")):
+            stored_path = str(ib_grpc["serviceName"])
     # Legacy users without path: generate once, store, persist
     if not stored_path:
         stored_path = generate_random_path()
         user["path"] = stored_path
         USERS[user_id] = user
         asyncio.create_task(save_state())
+    # Substitute the {uuid} placeholder with the real config_uuid so the path is
+    # always unique per user and matches the relay/inbound.
+    if "{uuid}" in stored_path:
+        stored_path = stored_path.replace("{uuid}", config_uuid)
 
     # ── Worker Protocol (multi-location proxy via Cloudflare Worker) ──
     # A "worker" inbound produces configs addressed to the deployed worker domain
@@ -968,10 +970,19 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
         if not xs:
             xs = SETTINGS.get("xhttp", {})
         reality_pbk = rs.get("public_key", "")
-        reality_sid = rs.get("short_id", "5a3ff5a13d")
+        reality_sid = rs.get("short_id", "")
         reality_spx = rs.get("spiderx", "/")
         reality_fp = (inbound.get("fingerprint") if inbound else None) or rs.get("fingerprint", "chrome")
         sni_reality = sni if sni and sni != host else rs.get("sni", "is1-ssl.mzstatic.com")
+        # Fallback each missing reality value to the global settings so the
+        # config ALWAYS carries a working pbk/sid (never MISSING_PBK).
+        gs = SETTINGS.get("reality", {}) or {}
+        if not reality_pbk:
+            reality_pbk = gs.get("public_key", "")
+        if not reality_sid:
+            reality_sid = gs.get("short_id", "5a3ff5a13d")
+        if not reality_spx or reality_spx == "/":
+            reality_spx = gs.get("spiderx", "/")
         # آدرس کانفیگ reality: مثل WS، دامنه واقعی پنل، نه localhost/SERVER_IP.
         ext_domain = _safe_host(
             inbound.get("external_domain") if inbound else None,
@@ -987,7 +998,14 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
             ext_port = addr_port
         if not reality_pbk or not reality_sid:
             return f"vless://{config_uuid}@{ext_domain}:{ext_port}?encryption=none&security=reality&sni={quote(sni_reality)}&fp={reality_fp}&pbk=MISSING_PBK&sid=MISSING_SID&type=tcp#{remark}"
-        rpath = stored_path if stored_path else xs.get("path", "/")
+        # Reality path comes from the inbound's own xhttp settings (Xray serves
+        # that prefix), with the user's uuid appended so each user is unique.
+        rpath = xs.get("path", "/") or "/"
+        rpath = rpath.replace("{uuid}", config_uuid)
+        if rpath != "/" and not rpath.endswith("/"):
+            rpath += "/"
+        if not rpath.endswith(config_uuid):
+            rpath = rpath + config_uuid
         # Prefer the inbound's own network so a reality+xhttp inbound always
         # produces type=xhttp and a reality+tcp inbound produces type=tcp,
         # regardless of the user-level transport_type.
