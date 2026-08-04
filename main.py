@@ -770,6 +770,28 @@ async def startup():
     if WORKER.get("connected"):
         await _ensure_worker_inbound()
 
+    # User path migration: each user's path must match their WS inbound. A user
+    # who has a WS (or worker) inbound must have path /ws/{config_uuid} so the
+    # FastAPI relay (/ws/{uuid}) can tunnel it. Old users created when reality
+    # was the primary inbound may carry /xhttp-siz10/... paths that break WS.
+    _up_changed = False
+    for _uid, _u in USERS.items():
+        _cuuid = _u.get("config_uuid") or _uid
+        _iids = _u.get("inbound_ids") or ([_u.get("inbound_id")] if _u.get("inbound_id") else [])
+        # A user path is /ws/{uuid} if any EXISTING inbound is a WS/TLS inbound.
+        # Missing inbounds (deleted) don't force WS.
+        _has_ws = any(
+            (lambda _ib: bool(_ib) and _ib.get("protocol") == "vless" and _ib.get("network") == "ws")(INBOUNDS.get(i))
+            for i in _iids
+        )
+        _cur = str(_u.get("path") or "").strip()
+        if _has_ws and "/ws/" not in _cur:
+            _u["path"] = f"/ws/{_cuuid}"
+            _up_changed = True
+            logger.info("User «%s» path fixed to /ws/%s", _u.get("username", _uid), _cuuid)
+    if _up_changed:
+        asyncio.create_task(save_state())
+
     asyncio.create_task(_ensure_xray())
 
     async def _xray_apply_on_boot():
