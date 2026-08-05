@@ -357,6 +357,8 @@ WORKER: dict = {
     "control_token": "",
     # Panel domain injected into the worker so it can expose panel info.
     "panel_domain": "",
+    # KV namespace id for the worker's SPIDER_KV binding.
+    "kv_namespace_id": "",
     "proxies": {},
     "last_sync": "",
     "last_error": "",
@@ -992,47 +994,35 @@ def generate_short_id() -> str:
     return secrets.token_hex(6)
 
 def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr: str = None, remark_tag: str = None) -> str:
-    """Generate a connection config string for a user based on their protocol.
+    """Build a VLESS config string for one inbound of a user.
 
-    addr overrides only the @host:port the client connects to (used for scanned
-    custom IPs). host/sni query params still point at the real panel domain so
-    the TLS/WS handshake reaches the service. remark_tag appends an identifier
-    (e.g. "Railway3") to the config remark.
+    Three config families (one per inbound type):
+      - Reality  → served by Xray core (address/host/port/pbk/sid come from the
+                   inbound's reality settings + external domain/port)
+      - TLS WS/XHTTP → served by the FastAPI relay; address/host/sni = the
+                   panel's main domain, port 443. ws is the default transport,
+                   xhttp is selectable per inbound.
+      - Worker   → served by the Cloudflare Worker; address/host/sni = worker
+                   domain, path /route/{country-code} (see _worker_configs).
+
+    addr (scanned custom IP) overrides only the connect address; host/sni stay
+    on the real domain so the TLS handshake reaches the service.
     """
-    # Get settings from inbound if specified
-    inbound = None
-    if inbound_id:
-        inbound = INBOUNDS.get(inbound_id)
-    # Determine proper host for config generation
-    # Priority: inbound external_domain > inbound domain > SETTINGS domain > get_host()
-    host = (inbound.get("external_domain") if inbound else None) or (inbound.get("domain") if inbound else None) or SETTINGS.get("domain") or get_host()
-    # Never use 0.0.0.0 or localhost in public configs
-    if host in ("0.0.0.0", "127.0.0.1", "localhost", ""):
-        host = CONFIG.get("host", "") or "SERVER_IP"
-    # Protocol: for a multi-inbound user each config must reflect its own
-    # inbound, so prefer the inbound protocol when one is selected. Exception:
-    # if the user explicitly wants reality but the inbound is not reality, keep
-    # reality (the config then uses the global reality settings) so a reality
-    # request never silently becomes a plain TLS/WS config without pbk.
-    protocol = None
-    u_proto = (user.get("protocol") or "vless").lower()
-    ib_proto = (inbound.get("protocol") if inbound else None)
-    if u_proto == "reality" and (not inbound or ib_proto != "reality"):
-        protocol = "reality"
-    elif ib_proto:
-        protocol = ib_proto
-    else:
-        protocol = u_proto
-    config_uuid = user.get("config_uuid", "")
+    inbound = INBOUNDS.get(inbound_id) if inbound_id else None
+    proto = (inbound.get("protocol") if inbound else None) or (user.get("protocol") or "vless")
+    proto = proto.lower()
+    sec = (inbound.get("security") if inbound else None) or "tls"
+    sec = sec.lower()
+
+    config_uuid = user.get("config_uuid", "") or user_id
     username = user.get("username", user_id)
-    _rem = f"Spider-{username}"
+    rem = f"Spider-{username}"
     if remark_tag:
-        _rem = f"{_rem} {remark_tag}"
-    remark = quote(_rem)
-    # Optional scanned-IP address override: only the connect address changes,
-    # host/sni stay as the real domain.
-    addr_ip = None
-    addr_port = None
+        rem = f"{rem} {remark_tag}"
+    remark = quote(rem)
+
+    # Optional custom-IP address override (only the connect address changes).
+    addr_ip, addr_port = None, None
     if addr:
         addr = addr.strip()
         if ":" in addr:
@@ -1040,273 +1030,80 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
         else:
             addr_ip, addr_port = addr, "443"
         addr_ip, addr_port = addr_ip.strip(), addr_port.strip()
-    sni = user.get("sni") or (inbound.get("sni") if inbound else None) or host
-    # Transport from user FIRST, then inbound, then default
-    # Transport: prefer the inbound network when one is selected (so each
-    # multi-inbound config uses its own transport), else the user's stored one.
-    if inbound and inbound.get("network"):
-        transport_type = inbound["network"]
-    else:
-        transport_type = user.get("transport_type") or "ws"
 
-    # ── Path: READ-ONLY, from user storage (generated once at creation) ──
-    # The user's stored path (with the real config_uuid) is authoritative so the
-    # panel relay (FastAPI /ws/{uuid}) and Xray inbounds keep working. An
-    # inbound's static path template is only used when the user has no path, and
-    # any {uuid} placeholder is always substituted with the real config_uuid.
-    stored_path = (user.get("path") or "").strip()
-    if inbound:
-        ib_ws = inbound.get("ws_settings", {})
-        ib_xh = inbound.get("xhttp_settings", {})
-        ib_grpc = inbound.get("grpc_settings", {})
-        if (not stored_path) and (ib_ws and ib_ws.get("path")):
-            stored_path = str(ib_ws["path"])
-        elif (not stored_path) and (ib_xh and ib_xh.get("path")):
-            stored_path = str(ib_xh["path"])
-        elif (not stored_path) and (ib_grpc and ib_grpc.get("serviceName")):
-            stored_path = str(ib_grpc["serviceName"])
-    # Legacy users without path: generate once, store, persist
-    if not stored_path:
-        stored_path = generate_random_path()
-        user["path"] = stored_path
-        USERS[user_id] = user
-        asyncio.create_task(save_state())
-    # Substitute the {uuid} placeholder with the real config_uuid so the path is
-    # always unique per user and matches the relay/inbound.
-    if "{uuid}" in stored_path:
-        stored_path = stored_path.replace("{uuid}", config_uuid)
+    # ── WORKER (multi-location via Cloudflare Worker) ──
+    if proto == "worker":
+        wcfgs = _worker_configs(user_id, user, inbound, "", remark, addr_ip, addr_port)
+        if wcfgs:
+            return wcfgs[0]
+        return ""
 
-    # ── Worker Protocol (multi-location proxy via Cloudflare Worker) ──
-    # A "worker" inbound produces configs addressed to the deployed worker domain
-    # (address/host/sni = worker_domain). The user picks one or more countries
-    # (proxy_countries) → one config per country, each with /route/{code} path and
-    # the BPB snispoofing params (fake SNI + spoof IP), matching the reference:
-    #   vless://{uuid}@{worker_domain}:443?snispoofing={...}&security=tls&fp=chrome&...&type=ws#{remark}
-    if (inbound and inbound.get("protocol") == "worker") or protocol == "worker":
-        _wcfgs = _worker_configs(user_id, user, inbound, stored_path, remark, addr_ip, addr_port)
-        if _wcfgs:
-            return _wcfgs[0]  # single-country / first selected (multi handled in api loop)
-
-    # ── Reality Protocol ──
-    if protocol == "reality":
-        rs = inbound.get("reality_settings", {}) if inbound else SETTINGS.get("reality", {})
-        xs = inbound.get("xhttp_settings", {}) if inbound else SETTINGS.get("xhttp", {})
-        # Fallback to global if inbound settings are empty
-        if not rs:
-            rs = SETTINGS.get("reality", {})
-        if not xs:
-            xs = SETTINGS.get("xhttp", {})
-        # If this reality inbound hasn't been configured yet (no domain or no
-        # listen port), don't emit a config that silently points at the panel's
-        # default domain — the admin must fill in their own domain/port.
-        if inbound and (
-            not str(inbound.get("external_domain") or "").strip()
-            or not str(inbound.get("port") or "").strip()
-        ):
+    # ── REALITY (served by Xray core) ──
+    if proto == "reality" or sec == "reality":
+        # Not configured yet (admin must fill domain + port) → no config.
+        if not inbound:
             return ""
-        reality_pbk = rs.get("public_key", "")
-        reality_sid = rs.get("short_id", "")
-        reality_spx = rs.get("spiderx", "/")
-        reality_fp = (inbound.get("fingerprint") if inbound else None) or rs.get("fingerprint", "chrome")
-        sni_reality = sni if sni and sni != host else rs.get("sni", "is1-ssl.mzstatic.com")
-        # Fallback each missing reality value to the global settings so the
-        # config ALWAYS carries a working pbk/sid (never MISSING_PBK).
-        gs = SETTINGS.get("reality", {}) or {}
-        if not reality_pbk:
-            reality_pbk = gs.get("public_key", "")
-        if not reality_sid:
-            reality_sid = gs.get("short_id", "5a3ff5a13d")
-        if not reality_spx or reality_spx == "/":
-            reality_spx = gs.get("spiderx", "/")
-        # آدرس کانفیگ reality: مثل WS، دامنه واقعی پنل، نه localhost/SERVER_IP.
-        ext_domain = _safe_host(
-            inbound.get("external_domain") if inbound else None,
-            inbound.get("domain") if inbound else None,
-            rs.get("external_domain"),
-            SETTINGS.get("domain"),
-            get_host(),
-        )
-        ext_port = (inbound.get("external_port") if inbound else None) or rs.get("external_port", 443) or 443
-        if addr_ip:
-            ext_domain = addr_ip
-        if addr_port:
-            ext_port = addr_port
-        if not reality_pbk or not reality_sid:
-            return f"vless://{config_uuid}@{ext_domain}:{ext_port}?encryption=none&security=reality&sni={quote(sni_reality)}&fp={reality_fp}&pbk=MISSING_PBK&sid=MISSING_SID&type=tcp#{remark}"
-        # Reality path comes from the inbound's own xhttp settings (Xray serves
-        # that prefix), with the user's uuid appended so each user is unique.
-        rpath = xs.get("path", "/") or "/"
-        rpath = rpath.replace("{uuid}", config_uuid)
-        if rpath != "/" and not rpath.endswith("/"):
-            rpath += "/"
-        if not rpath.endswith(config_uuid):
-            rpath = rpath + config_uuid
-        # Prefer the inbound's own network so a reality+xhttp inbound always
-        # produces type=xhttp and a reality+tcp inbound produces type=tcp,
-        # regardless of the user-level transport_type.
-        rt = (inbound.get("network") if inbound else None) or user.get("transport_type") or "xhttp"
-        if rt == "xhttp":
+        ext_domain = str(inbound.get("external_domain") or "").strip()
+        ext_port = str(inbound.get("external_port") or "").strip()
+        if not ext_domain or not ext_port:
+            return ""
+        rs = inbound.get("reality_settings") or SETTINGS.get("reality") or {}
+        gs = SETTINGS.get("reality") or {}
+        pbk = rs.get("public_key") or gs.get("public_key") or ""
+        sid = rs.get("short_id") or gs.get("short_id") or ""
+        spx = rs.get("spiderx") or gs.get("spiderx") or "/"
+        fp = inbound.get("fingerprint") or rs.get("fingerprint") or gs.get("fingerprint") or "chrome"
+        sni = inbound.get("sni") or rs.get("sni") or gs.get("sni") or "is1-ssl.mzstatic.com"
+        xs = inbound.get("xhttp_settings") or {}
+        rpath = str(xs.get("path") or "/").replace("{uuid}", config_uuid)
+        if "{uuid}" not in rpath and rpath != "/" and not rpath.endswith(config_uuid):
+            rpath = rpath.rstrip("/") + "/" + config_uuid
+        host = addr_ip or ext_domain
+        port = addr_port or ext_port
+        # xhttp (default for reality inbound) or tcp
+        if (inbound.get("network") or "xhttp") == "tcp":
+            params = (f"encryption=none&security=reality&type=tcp"
+                      f"&sni={quote(sni)}&fp={fp}&alpn=h2,http/1.1"
+                      f"&pbk={pbk}&sid={sid}&spx={spx}")
+        else:
             xpb = xs.get("xPaddingBytes", "100-1000")
             xmod = xs.get("mode", "auto")
             xsc = xs.get("scMaxEachPostBytes", "1000000")
-            extra_raw = '{{"xPaddingBytes":"{}","mode":"{}","scMaxEachPostBytes":"{}"}}'.format(xpb, xmod, xsc)
-            extra = quote(extra_raw, safe='')
+            extra = quote('{{"xPaddingBytes":"{}","mode":"{}","scMaxEachPostBytes":"{}"}}'.format(xpb, xmod, xsc), safe='')
             params = (f"encryption=none&security=reality"
-                      f"&sni={quote(sni_reality)}&fp={reality_fp}"
-                      f"&pbk={reality_pbk}&sid={reality_sid}&spx={quote(reality_spx, safe='')}"
+                      f"&sni={quote(sni)}&fp={fp}"
+                      f"&pbk={pbk}&sid={sid}&spx={spx}"
                       f"&type=xhttp&path={rpath}&mode={xmod}&extra={extra}")
-        else:
-            params = (f"encryption=none&security=reality&type=tcp"
-                      f"&sni={quote(sni_reality)}&fp={reality_fp}&alpn=h2,http/1.1"
-                      f"&pbk={reality_pbk}&sid={reality_sid}&spx={quote(reality_spx, safe='')}")
-        return f"vless://{config_uuid}@{ext_domain}:{ext_port}?{params}#{remark}"
+        return f"vless://{config_uuid}@{host}:{port}?{params}#{remark}"
 
-    # ── VLESS ──
-    if protocol == "vless":
-        # آدرس همیشه دامنه واقعی پنل (external_domain اینباند > domain > SETTINGS > Railway).
-        vless_host = _safe_host(
-            inbound.get("external_domain") if inbound else None,
-            inbound.get("domain") if inbound else None,
-            SETTINGS.get("domain"),
-            get_host(),
-        )
-        vless_port = (inbound.get("external_port") if inbound else None) or (inbound.get("port") if inbound else None) or 443
-        if addr_ip:
-            vless_host = addr_ip
-        if addr_port:
-            vless_port = addr_port
-        # A VLESS inbound with security="reality" must emit a reality config
-        # (pbk/sid + fixed SNI), not the default TLS one.
-        ib_sec = (inbound.get("security") if inbound else None) or "tls"
-        if ib_sec == "reality":
-            rs = inbound.get("reality_settings", {}) if inbound else {}
-            # If the inbound has no reality settings (e.g. created before the
-            # auto-key fix) or is missing a pbk, fall back to the global
-            # reality settings so the config always carries a working pbk/sid.
-            gs = SETTINGS.get("reality", {}) or {}
-            if not rs:
-                rs = gs
-            reality_pbk = rs.get("public_key", "") or gs.get("public_key", "")
-            reality_sid = rs.get("short_id", "") or gs.get("short_id", "5a3ff5a13d")
-            reality_spx = rs.get("spiderx", "/") or gs.get("spiderx", "/")
-            reality_fp = (inbound.get("fingerprint") if inbound else None) or rs.get("fingerprint", "") or gs.get("fingerprint", "chrome")
-            sni_reality = sni if sni and sni != host else rs.get("sni", "") or gs.get("sni", "is1-ssl.mzstatic.com")
-            if transport_type == "xhttp":
-                xh = {}
-                lk = LINKS.get(config_uuid)
-                if lk:
-                    xh = lk.get("xhttp_settings", {})
-                xpb = xh.get("xPaddingBytes", "100-1000")
-                xmod = xh.get("mode", "auto")
-                xsc = xh.get("scMaxEachPostBytes", "1000000")
-                extra_raw = '{{"xPaddingBytes":"{}","mode":"{}","scMaxEachPostBytes":"{}"}}'.format(xpb, xmod, xsc)
-                extra = quote(extra_raw, safe='')
-                params = (f"encryption=none&security=reality"
-                          f"&sni={quote(sni_reality)}&fp={reality_fp}"
-                          f"&pbk={reality_pbk}&sid={reality_sid}&spx={quote(reality_spx, safe='')}"
-                          f"&type=xhttp&path={quote(stored_path, safe='')}&mode={xmod}&extra={extra}")
-                return f"vless://{config_uuid}@{vless_host}:{vless_port}?{params}#{remark}"
-            # reality over tcp
-            params = (f"encryption=none&security=reality&type=tcp"
-                      f"&sni={quote(sni_reality)}&fp={reality_fp}&alpn=h2,http/1.1"
-                      f"&pbk={reality_pbk}&sid={reality_sid}&spx={quote(reality_spx, safe='')}")
-            return f"vless://{config_uuid}@{vless_host}:{vless_port}?{params}#{remark}"
-        if transport_type == "grpc":
-            params = f"encryption=none&security=tls&type=grpc&serviceName={quote(stored_path, safe='')}&host={quote(vless_host)}&sni={quote(sni)}&fp=chrome&alpn=h2"
-            return f"vless://{config_uuid}@{vless_host}:{vless_port}?{params}#{remark}"
-        elif transport_type == "tcp":
-            params = f"encryption=none&security=tls&type=tcp&host={quote(vless_host)}&sni={quote(sni)}&fp=chrome&alpn=h2,http/1.1"
-            return f"vless://{config_uuid}@{vless_host}:{vless_port}?{params}#{remark}"
-        elif transport_type == "xhttp":
-            # Read xhttp settings from user's link in LINKS (sync access ok — single-thread)
-            xh = {}
-            lk = LINKS.get(config_uuid)
-            if lk:
-                xh = lk.get("xhttp_settings", {})
-            xpad = xh.get("xPaddingBytes", "100-1000")
-            xmode = xh.get("mode", "auto")
-            xsc = xh.get("scMaxEachPostBytes", "1000000")
-            extra_raw = '{{"xPaddingBytes":"{}","mode":"{}","scMaxEachPostBytes":"{}"}}'.format(xpad, xmode, xsc)
-            extra = quote(extra_raw, safe='')
-            params = f"encryption=none&security=tls&type=xhttp&host={quote(vless_host)}&path={quote(stored_path, safe='')}&sni={quote(sni)}&fp=chrome&alpn=h2,http/1.1&mode={xmode}&extra={extra}"
-            return f"vless://{config_uuid}@{vless_host}:{vless_port}?{params}#{remark}"
-        else:  # ws — classic VLESS+WS+TLS, same as the original generate_vless_link
-            # آدرس کانفیگ و host/sni همیشه دامنه اصلی پنل هستند (بدون ورود دستی):
-            # اولویت: SETTINGS.domain (در صورت تنظیم) > get_host() = دامنه Railway خود پنل.
-            # host/sni برای handshake TLS باید همان دامنه‌ای باشند که کلاینت به آن وصل
-            # می‌شود. اگر کاربر آی‌پی کاستوم (اسکنر) انتخاب کرده باشد، فقط آدرس به آن
-            # IP می‌رود و host/sni ثابت می‌مانند.
-            panel_domain = _safe_host(SETTINGS.get("domain"), get_host())
-            vless_host = panel_domain
-            vless_port = (inbound.get("external_port") if inbound else None) or (inbound.get("port") if inbound else None) or 443
-            if addr_ip:
-                vless_host = addr_ip
-            if addr_port:
-                vless_port = addr_port
-            # host و sni کلاسیک: همیشه دامنه اصلی پنل، نه localhost و نه ورودی دستی
-            ws_host = panel_domain
-            ws_sni = panel_domain
-            # مسیر WS همیشه کلاسیک /ws/{uuid} (مانند RVG) — بدون proxyIP/پیشوند اضافه
-            ws_path = f"/ws/{config_uuid}"
-            params = "&".join([
-                "encryption=none",
-                "security=tls",
-                f"type=ws",
-                f"host={quote(ws_host)}",
-                f"path={quote(ws_path, safe='')}",
-                f"sni={quote(ws_sni)}",
-                "fp=chrome",
-                "alpn=http/1.1",
-            ])
-            return f"vless://{config_uuid}@{vless_host}:{vless_port}?{params}#{remark}"
+    # ── TLS (WS default / XHTTP selectable) — served by the FastAPI relay ──
+    # address/host/sni always = the panel main domain; port 443 (Railway TLS).
+    panel_domain = _safe_host(SETTINGS.get("domain"), get_host())
+    host = addr_ip or panel_domain
+    port = addr_port or "443"
+    # Transport: user's choice first, then the inbound's network, default ws.
+    transport = (user.get("transport_type") or "").lower() or (inbound.get("network") if inbound else "") or "ws"
+    transport = transport.lower()
+    if transport not in ("ws", "xhttp"):
+        transport = "ws"
 
-    # ── VMess ──
-    elif protocol == "vmess":
-        vmess_net = transport_type if transport_type != "xhttp" else "ws"
-        vmess_config = {
-            "v": "2",
-            "ps": username,
-            "add": addr_ip if addr_ip else host,
-            "port": addr_port if addr_port else "443",
-            "id": config_uuid,
-            "aid": "0",
-            "scy": "auto",
-            "net": vmess_net,
-            "type": "none",
-            "host": sni,
-            "path": stored_path if transport_type != "grpc" else "",
-            "tls": "tls",
-            "sni": sni,
-        }
-        if transport_type == "grpc":
-            vmess_config["type"] = "gun"
-            vmess_config["path"] = stored_path
-        encoded = base64.b64encode(json.dumps(vmess_config).encode()).decode()
-        return f"vmess://{encoded}"
-
-    # ── Trojan ──
-    elif protocol == "trojan":
-        if transport_type == "grpc":
-            params_t = f"security=tls&type=grpc&serviceName={stored_path}&host={sni}&sni={sni}"
-        elif transport_type == "xhttp":
-            params_t = f"security=tls&type=xhttp&host={sni}&path={stored_path}&sni={sni}"
-        elif transport_type == "tcp":
-            params_t = f"security=tls&type=tcp&host={sni}&sni={sni}"
-        else:
-            params_t = f"security=tls&type=ws&host={sni}&path={stored_path}&sni={sni}"
-        _tr_host = addr_ip if addr_ip else host
-        _tr_port = addr_port if addr_port else "443"
-        return f"trojan://{quote(config_uuid)}@{_tr_host}:{_tr_port}?{params_t}#{remark}"
-
-    # ── Shadowsocks ──
-    elif protocol == "shadowsocks":
-        method = "aes-256-gcm"
-        ss_encoded = base64.b64encode(f"{method}:{config_uuid}".encode()).decode()
-        _ss_host = addr_ip if addr_ip else host
-        _ss_port = addr_port if addr_port else "8443"
-        return f"ss://{ss_encoded}@{_ss_host}:{_ss_port}#{remark}"
-
-    return ""
+    if transport == "xhttp":
+        xs = inbound.get("xhttp_settings") if inbound else {}
+        xpb = xs.get("xPaddingBytes", "100-1000")
+        xmode = xs.get("mode", "auto")
+        xsc = xs.get("scMaxEachPostBytes", "1000000")
+        extra = quote('{{"xPaddingBytes":"{}","mode":"{}","scMaxEachPostBytes":"{}"}}'.format(xpb, xmode, xsc), safe='')
+        # XHTTP path mirrors RVG: /xhttp-siz10/{mode}/{uuid}
+        xpath = f"/xhttp-siz10/{xmode}/{config_uuid}"
+        params = (f"encryption=none&security=tls&type=xhttp"
+                  f"&host={quote(panel_domain)}&path={quote(xpath, safe='')}&sni={quote(panel_domain)}"
+                  f"&fp=chrome&alpn=h2,http/1.1&mode={xmode}&extra={extra}")
+    else:  # ws (default)
+        ws_path = f"/ws/{config_uuid}"
+        params = (f"encryption=none&security=tls&type=ws"
+                  f"&host={quote(panel_domain)}&path={quote(ws_path, safe='')}&sni={quote(panel_domain)}"
+                  f"&fp=chrome&alpn=http/1.1")
+    return f"vless://{config_uuid}@{host}:{port}?{params}#{remark}"
 
 
 def generate_custom_ip_configs(user_id: str, user: dict) -> list:
@@ -2510,6 +2307,12 @@ async def create_user(request: Request, _=Depends(require_auth)):
         "subscription_url": f"https://{host}/api/users/{user_id}/subscription",
         "config": generate_user_config(user_id, USERS[user_id], inbound_id),
     }
+    # If the user picked the worker inbound, sync them to the worker so VLESS
+    # auth + quotas work on the Cloudflare side too.
+    if WORKER.get("connected") and inbound_ids:
+        wid = next((i for i, ib in INBOUNDS.items() if (ib.get("protocol") or "").lower() == "worker"), None)
+        if wid and wid in inbound_ids:
+            asyncio.create_task(_worker_sync_users())
 
 @app.patch("/api/users/{user_id}/toggle")
 async def toggle_user(user_id: str, _=Depends(require_auth)):
@@ -4911,6 +4714,7 @@ def _worker_public() -> dict:
         "worker_domain": WORKER.get("worker_domain", ""),
         "worker_url": WORKER.get("worker_url", ""),
         "panel_domain": WORKER.get("panel_domain", ""),
+        "kv_namespace_id": WORKER.get("kv_namespace_id", ""),
         "last_sync": WORKER.get("last_sync", ""),
         "last_error": WORKER.get("last_error", ""),
         "source_url": WORKER.get("source_url", ""),
@@ -4925,13 +4729,46 @@ def _worker_public() -> dict:
     }
 
 
+async def _ensure_worker_kv() -> str | None:
+    """Find or create the SPIDER_KV namespace for the worker. Returns its id."""
+    acct = str(WORKER.get("account_id") or "")
+    cf_token = str(WORKER.get("token") or "")
+    if not acct or not cf_token:
+        return None
+    existing = str(WORKER.get("kv_namespace_id") or "")
+    if existing:
+        return existing
+    # List existing namespaces, reuse if we already created one.
+    code, data = await _cf_api("GET", f"/accounts/{acct}/storage/kv/namespaces", cf_token)
+    if code == 200:
+        for ns in (data.get("result") or []):
+            if ns.get("title") == "spider-worker-kv":
+                async with WORKER_LOCK:
+                    WORKER["kv_namespace_id"] = ns.get("id")
+                return ns.get("id")
+    # Create a new namespace.
+    code, data = await _cf_api(
+        "POST", f"/accounts/{acct}/storage/kv/namespaces",
+        cf_token, {"title": "spider-worker-kv"},
+    )
+    if code == 200 and data.get("result"):
+        nid = data["result"].get("id")
+        async with WORKER_LOCK:
+            WORKER["kv_namespace_id"] = nid
+        asyncio.create_task(save_state())
+        return nid
+    return None
+
+
 async def _worker_deploy() -> tuple:
-    """Deploy (or re-deploy) the worker script with the current proxy map.
+    """Deploy (or re-deploy) the VLESS worker script.
 
     The template is read from worker/_worker.js inside the project repo (not the
     state file), so updates to the worker are shipped with a normal git deploy.
     The panel domain + a control token are injected at deploy time so the panel
-    can later control the worker via its admin API (Bearer token protected).
+    can control the worker via its admin API (Bearer token protected). Users and
+    the proxy pool live in the worker's KV namespace (SPIDER_KV) — the namespace
+    is created/attached as a binding at deploy time.
     """
     try:
         template = _worker_script()
@@ -4947,29 +4784,99 @@ async def _worker_deploy() -> tuple:
     panel_domain = _safe_host(SETTINGS.get("domain"), get_host())
     async with WORKER_LOCK:
         WORKER["panel_domain"] = panel_domain
-    proxies = (WORKER.get("proxies") or {}).copy()
-    proxies_json = json.dumps(proxies, ensure_ascii=False, separators=(",", ":"))
     script = (template
-              .replace("__PROXIES_JSON__", proxies_json)
               .replace("__PANEL_DOMAIN__", json.dumps(panel_domain))
               .replace("__PANEL_TOKEN__", json.dumps(ctrl)))
     cf_token = str(WORKER.get("token") or "")
     if not cf_token:
         return 0, {"errors": [{"message": "Cloudflare API token is missing (worker not connected properly)"}]}
-    headers = {"Authorization": f"Bearer {cf_token}", "Content-Type": "application/javascript"}
-    try:
-        async with httpx.AsyncClient(timeout=90) as client:
-            r = await client.put(
-                f"{CF_API}/accounts/{WORKER.get('account_id','')}/workers/scripts/{WORKER.get('worker_name','')}",
-                headers=headers,
-                content=script.encode("utf-8"),
-            )
+    kv_id = await _ensure_worker_kv()
+    # Module script: binding must be part of the (script, bindings) upload.
+    # We use the standard Workers API: PUT script then PUT binding.
+    async with httpx.AsyncClient(timeout=90) as client:
+        r = await client.put(
+            f"{CF_API}/accounts/{WORKER.get('account_id','')}/workers/scripts/{WORKER.get('worker_name','')}",
+            headers={"Authorization": f"Bearer {cf_token}", "Content-Type": "application/javascript"},
+            content=script.encode("utf-8"),
+        )
         try:
-            return r.status_code, r.json()
+            deploy_json = r.json()
         except Exception:
-            return r.status_code, {}
-    except Exception as e:
-        return 0, {"errors": [{"message": str(e)}]}
+            deploy_json = {}
+        sc = r.status_code
+        # Attach KV binding (SPIDER_KV) if we have a namespace and the script upload succeeded.
+        if kv_id and sc in (200, 201, 409, 200):
+            bind_payload = {
+                "bindings": [
+                    {"type": "kv_namespace", "name": "SPIDER_KV", "namespace_id": kv_id}
+                ]
+            }
+            r2 = await client.put(
+                f"{CF_API}/accounts/{WORKER.get('account_id','')}/workers/scripts/{WORKER.get('worker_name','')}/subdomain",
+                headers={"Authorization": f"Bearer {cf_token}" },
+                json=bind_payload,
+            )
+            # Binding update may be a separate endpoint; ignore 4xx and log.
+            if r2.status_code not in (200, 201):
+                try:
+                    bj = r2.json()
+                except Exception:
+                    bj = {}
+                logger.warning(f"worker binding attach: HTTP {r2.status_code} {bj}")
+        return sc, deploy_json
+
+
+async def _worker_sync_users() -> dict:
+    """Push all panel users (with volume + expiry) to the worker's KV store.
+
+    Each active panel user who picked the worker inbound is written to the
+    worker via its admin API (POST /api/users) so the VLESS worker can
+    authenticate them and enforce traffic/expiry. Returns {"ok": bool, count": N}.
+    """
+    domain = str(WORKER.get("worker_domain") or "").strip().lower()
+    ctrl = str(WORKER.get("control_token") or "")
+    if not domain or not ctrl or domain in ("localhost", "0.0.0.0", "127.0.0.1"):
+        return {"ok": False, "detail": "worker not connected / no control token"}
+    # Only users that reference the worker inbound are synced.
+    wid = None
+    for iid, ib in INBOUNDS.items():
+        if (ib.get("protocol") or "").lower() == "worker":
+            wid = iid
+            break
+    if not wid:
+        return {"ok": False, "detail": "no worker inbound"}
+    synced = 0
+    async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+        for uid, u in USERS.items():
+            iids = u.get("inbound_ids") or ([u.get("inbound_id")] if u.get("inbound_id") else [])
+            if wid not in iids:
+                continue
+            cuuid = u.get("config_uuid") or uid
+            deadline = 0
+            if u.get("expire_at"):
+                try:
+                    deadline = int(datetime.fromisoformat(u["expire_at"]).timestamp())
+                except Exception:
+                    deadline = 0
+            limit = int(u.get("traffic_limit_bytes") or 0)
+            try:
+                r = await client.post(
+                    f"https://{domain}/api/users",
+                    headers={"Authorization": f"Bearer {ctrl}"},
+                    json={
+                        "uuid": cuuid,
+                        "remark": u.get("username", uid),
+                        "limit_bytes": limit,
+                        "expire": deadline,
+                        "used_bytes": int(u.get("traffic_used_bytes") or 0),
+                        "proxy_ip": "",
+                    },
+                )
+                if r.status_code == 200:
+                    synced += 1
+            except Exception as e:
+                logger.warning(f"worker user sync failed for {uid}: {e}")
+    return {"ok": True, "count": synced}
 
 
 async def _ensure_worker_inbound() -> bool:
@@ -5014,26 +4921,33 @@ async def _ensure_worker_inbound() -> bool:
 
 
 async def _worker_control_update() -> dict:
-    """Push the current proxy map to the deployed worker via its admin API.
+    """Push the proxy pool to the deployed VLESS worker via its admin API.
 
     The worker only accepts calls carrying the control token that was baked in
-    at deploy time (Bearer auth), so the panel can update the map without a full
-    re-deploy. Returns {"ok": bool, "detail": str}.
+    at deploy time (Bearer auth). The proxy pool is stored in the worker's KV
+    namespace (SPIDER_KV) and served from /api/locations.
     """
     domain = str(WORKER.get("worker_domain") or "").strip().lower()
     ctrl = str(WORKER.get("control_token") or "")
     if not domain or not ctrl or domain in ("localhost", "0.0.0.0", "127.0.0.1"):
         return {"ok": False, "detail": "worker not connected / no control token"}
+    # Build the locations list from the country → proxy map.
+    locations = []
+    for code, p in (WORKER.get("proxies") or {}).items():
+        loc = {"code": code, "country": p.get("country", code.upper()),
+               "proxy": p.get("proxy", ""), "port": p.get("port", 443),
+               "proxies": p.get("proxies", [p.get("proxy")])}
+        locations.append(loc)
     try:
         async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
             r = await client.post(
-                f"https://{domain}/api/admin/update",
+                f"https://{domain}/api/proxies",
                 headers={"Authorization": f"Bearer {ctrl}"},
-                json={"proxies": (WORKER.get("proxies") or {})},
+                json={"locations": locations},
             )
         if r.status_code == 200:
             return {"ok": True, "detail": "worker updated"}
-        return {"ok": False, "detail": f"worker returned HTTP {r.status_code}"}
+        return {"ok": False, "detail": f"worker returned HTTP {r.status_code}: {r.text[:120]}"}
     except Exception as e:
         return {"ok": False, "detail": str(e)}
 
@@ -5252,6 +5166,8 @@ async def worker_setup(request: Request, _=Depends(require_auth)):
     ctrl_res = await _worker_control_update()
     # Auto-create/refresh the default Worker inbound to the connected domain.
     await _ensure_worker_inbound()
+    # Push all panel users to the worker's KV so VLESS auth + quotas work.
+    await _worker_sync_users()
     async with WORKER_LOCK:
         WORKER["last_sync"] = now_ir().isoformat(timespec="seconds")
         WORKER["last_error"] = "" if ctrl_res.get("ok") else ctrl_res.get("detail", "")
