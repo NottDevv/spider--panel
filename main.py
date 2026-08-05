@@ -1965,28 +1965,27 @@ async def delete_link(uid: str, _=Depends(require_auth)):
 # VLESS Relay — optional module
 # ══════════════════════════════════════════════════════════════════════════════
 
-try:
-    from relay_vless import (
-        RELAY_BUF,
-        parse_vless_header,
-        check_and_use,
-        relay_ws_to_tcp,
-        relay_tcp_to_ws,
-        websocket_tunnel,
-    )
-    # WebSocket route: /ws/{uuid} — config_uuid IS the path
-    # Uses the same approach as reference RVG-main project
-    @app.websocket("/ws/{uuid}")
-    async def ws_uuid_handler(ws: WebSocket, uuid: str):
-        # /ws/live is registered later — handle it here since param route matches first
-        if uuid == "live":
-            await websocket_live_stats(ws)
-            return
-        await websocket_tunnel(ws, uuid)
+from relay_vless import (
+    RELAY_BUF,
+    parse_vless_header,
+    check_and_use,
+    relay_ws_to_tcp,
+    relay_tcp_to_ws,
+    websocket_tunnel,
+)
 
-    logger.info("VLESS Relay module loaded (WS: /ws/{uuid})")
-except Exception as e:
-    logger.warning(f"VLESS Relay module not available: {e}")
+# WebSocket route: /ws/{uuid} — config_uuid IS the path.
+# Registered directly (like the RVG reference) so it is never swallowed by a
+# try/except — this is the only route serving WS TLS configs.
+@app.websocket("/ws/{uuid}")
+async def ws_uuid_handler(ws: WebSocket, uuid: str):
+    # /ws/live is registered later — handle it here since param route matches first
+    if uuid == "live":
+        await websocket_live_stats(ws)
+        return
+    await websocket_tunnel(ws, uuid)
+
+logger.info("VLESS Relay module loaded (WS: /ws/{uuid})")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ── HTTP Proxy ────────────────────────────────────────────────────────────────
