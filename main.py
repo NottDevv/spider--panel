@@ -1246,9 +1246,8 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
             # host و sni کلاسیک: همیشه دامنه اصلی پنل، نه localhost و نه ورودی دستی
             ws_host = panel_domain
             ws_sni = panel_domain
-            # اگر مسیر کاربر حاوی proxyIP باشد (IP انتخابی از نقشه)، همان مسیر در کانفیگ قرار می‌گیرد؛
-            # در غیر این صورت مسیر کلاسیک /ws/{uuid} حفظ می‌شود
-            ws_path = stored_path if "proxyIP/" in stored_path else f"/ws/{config_uuid}"
+            # مسیر WS همیشه کلاسیک /ws/{uuid} (مانند RVG) — بدون proxyIP/پیشوند اضافه
+            ws_path = f"/ws/{config_uuid}"
             params = "&".join([
                 "encryption=none",
                 "security=tls",
@@ -1985,14 +1984,7 @@ try:
             return
         await websocket_tunnel(ws, uuid)
 
-    # Configs with a selected proxy IP carry path /proxyIP/{ip}/ws/{uuid}.
-    # Accept the route and tunnel on the real uuid so the connection works,
-    # and pass the exact proxy from the path down to the relay.
-    @app.websocket("/proxyIP/{proxy}/ws/{uuid}")
-    async def ws_proxy_uuid_handler(ws: WebSocket, uuid: str, proxy: str):
-        await websocket_tunnel(ws, uuid, proxy_override=proxy)
-
-    logger.info("VLESS Relay module loaded (WS: /ws/{uuid} + /proxyIP/.../ws/{uuid})")
+    logger.info("VLESS Relay module loaded (WS: /ws/{uuid})")
 except Exception as e:
     logger.warning(f"VLESS Relay module not available: {e}")
 
@@ -2466,9 +2458,8 @@ async def create_user(request: Request, _=Depends(require_auth)):
             "inbound_id": inbound_id,
             "inbound_ids": inbound_ids,
             "path": path_custom if path_custom else (
-                f"/proxyIP/{','.join(proxy_ips)}/xhttp-siz10/stream-up/{config_uuid}" if transport_type == "xhttp" and proxy_ips else
                 f"/xhttp-siz10/stream-up/{config_uuid}" if transport_type == "xhttp" else
-                f"/proxyIP/{','.join(proxy_ips)}/ws/{config_uuid}" if proxy_ips else
+                f"/route/{config_uuid}" if any((INBOUNDS.get(i) or {}).get("protocol") == "worker" for i in (inbound_ids or [])) else
                 f"/ws/{config_uuid}"
             ),
             "transport_type": transport_type,
