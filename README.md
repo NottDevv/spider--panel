@@ -68,31 +68,31 @@ FastAPI panel for Railway + Cloudflare Workers. Manage users, inbounds, Reality 
 
 ---
 
-## ⚡ Cloudflare Worker setup (optional, for multi‑location proxy)
+## ⚡ Cloudflare Worker setup (optional, for multi-location proxy)
 
-The **Worker** tab in the sidebar walks you through it, including a **“Get Token” link** to the Cloudflare API‑token page.
+The **Worker** tab in the sidebar walks you through connecting the panel to a Cloudflare Worker. The deployed Worker is a **VLESS WS relay** (edgetunnel-style): it accepts WebSocket connections from VLESS clients, authenticates them via UUID in its KV store, and forwards traffic through a TCP proxy to the target.
+
+**Supported auth:** Global API Key (`cfk_...` + email) or Bearer token.
 
 1. Open **Worker** in the sidebar → Setup form.
-2. **Cloudflare API Token** — create a token with `Workers Scripts: Edit` permission (see the provided link).
-3. **Account ID** — your Cloudflare account UUID (dashboard overview / right sidebar).
-4. **Worker Name** — e.g. `spider-proxy`.
-5. **Worker Domain** — your `*.workers.dev` subdomain, e.g. `spider-proxy.username.workers.dev`.
-6. Click **Connect & Deploy**. The panel verifies the token, checks the account, deploys the worker script and saves the connection.
-   - The API token is stored **only server‑side** (in `/data` state) and is **never** returned to the frontend.
-7. Add proxy countries in **Proxy IP Pool**:
+2. **Cloudflare API Token** — create a Global API Key at <https://dash.cloudflare.com/profile/api-tokens> or a scoped token with `Workers Scripts: Edit` + `KV Storage: Edit` permissions.
+3. **Email** — your Cloudflare account email (required for Global API Key auth).
+4. **Account ID** — your Cloudflare account UUID (dashboard overview / right sidebar).
+5. Click **Connect & Deploy**. The panel:
+   - Verifies the token/email
+   - Auto-discovers your Worker subdomain from the Cloudflare API
+   - Creates a KV namespace (`spider-worker-kv`) and binds it to the Worker
+   - Deploys the VLESS WS relay script (from `worker/_worker.js` in this repo)
+   - Pushes all active panel users (uuid + traffic limit + expiry) to the Worker's KV
+6. In the **Worker tab**, the **Proxy IP Pool** shows all available country proxies (fetched daily from the GitHub source). Use the dropdown to manage them.
 
-   ```
-   code:    de
-   country: Germany
-   proxy:   de.example.com
-   port:    443
-   ```
+> **How it works:** When a user picks a Worker inbound, the panel syncs their `config_uuid` → `limit_bytes` + `expire` to the Worker's KV. The Worker authenticates by checking `user:{uuid}` in KV. Users whose quota is exceeded or whose expiry has passed get a 403.
 
-8. When creating/editing a user, enable **Worker Proxy IP** and pick a country → that user's config becomes `vless://...@spider-proxy.username.workers.dev:443?...&path=/route/de/ws/{uuid}...`. The Worker resolves `/route/de` to `de.example.com` and proxies the traffic.
+> **Traffic flow:** Client → Worker Domain (wss://) → Cloudflare Worker → target IP → Internet. Railway is only the control plane (panel / API / config generation / user management).
 
-> **Traffic flow:** Client → Worker Domain → Cloudflare Worker → Proxy IP → Internet. Railway is only the control plane.
+### Worker source lives in the repo
 
-> **Worker source lives in the repo** at `worker/_worker.js` (not inside `main.py`). At deploy/sync time the panel reads this file and injects the proxy map, so you can edit the Worker with a normal git push — no need to touch the Python code.
+`worker/_worker.js` is the deployed script. The panel reads it at deploy time and injects `__PANEL_DOMAIN__` and `__PANEL_TOKEN__` before uploading. You can edit the Worker logic with a normal git push — no need to touch Python code.
 
 ### Daily proxy auto-sync
 
