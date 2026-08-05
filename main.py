@@ -351,6 +351,8 @@ WORKER: dict = {
     "worker_domain": "",
     "worker_url": "",
     "token": "",
+    # Cloudflare auth email (for Global API Key auth: cfk_... tokens).
+    "cf_email": "",
     # Control token: a random secret baked into the deployed worker. The panel
     # uses it to call the worker's admin API (update proxy map, etc.) after
     # deploy — the worker only accepts calls carrying this Bearer token.
@@ -4683,9 +4685,21 @@ def _worker_script() -> str:
     return CF_WORKER_TEMPLATE.read_text(encoding="utf-8")
 
 
-async def _cf_api(method: str, path: str, token: str, payload: dict = None):
-    """Call the Cloudflare API v4. Returns (status_code, json)."""
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+async def _cf_api(method: str, path: str, token: str, payload: dict = None, email: str = ""):
+    """Call the Cloudflare API v4. Returns (status_code, json).
+
+    token is either a Bearer token (modern) or a Global API Key (cfk_...). When
+    the token looks like a Global API Key, we authenticate with X-Auth-Email +
+    X-Auth-Key instead of Authorization: Bearer.
+    """
+    token = str(token or "").strip()
+    headers = {"Content-Type": "application/json", "User-Agent": "Spider-Panel"}
+    if token.startswith("cfk_") or token.startswith("cf_") or email:
+        # Global API Key auth.
+        headers["X-Auth-Key"] = token
+        headers["X-Auth-Email"] = email or os.environ.get("CF_EMAIL", "")
+    else:
+        headers["Authorization"] = f"Bearer {token}"
     async with httpx.AsyncClient(timeout=40) as client:
         try:
             r = await client.request(method, f"{CF_API}{path}", headers=headers, json=payload)
@@ -4739,7 +4753,7 @@ async def _ensure_worker_kv() -> str | None:
     if existing:
         return existing
     # List existing namespaces, reuse if we already created one.
-    code, data = await _cf_api("GET", f"/accounts/{acct}/storage/kv/namespaces", cf_token)
+    code, data = await _cf_api("GET", f"/accounts/{acct}/storage/kv/namespaces", cf_token, email=WORKER.get("cf_email"))
     if code == 200:
         for ns in (data.get("result") or []):
             if ns.get("title") == "spider-worker-kv":
@@ -4749,7 +4763,7 @@ async def _ensure_worker_kv() -> str | None:
     # Create a new namespace.
     code, data = await _cf_api(
         "POST", f"/accounts/{acct}/storage/kv/namespaces",
-        cf_token, {"title": "spider-worker-kv"},
+        cf_token, {"title": "spider-worker-kv"}, email=WORKER.get("cf_email"),
     )
     if code == 200 and data.get("result"):
         nid = data["result"].get("id")
@@ -4791,31 +4805,38 @@ async def _worker_deploy() -> tuple:
     if not cf_token:
         return 0, {"errors": [{"message": "Cloudflare API token is missing (worker not connected properly)"}]}
     kv_id = await _ensure_worker_kv()
-    # Module script: binding must be part of the (script, bindings) upload.
-    # We use the standard Workers API: PUT script then PUT binding.
-    async with httpx.AsyncClient(timeout=90) as client:
-        r = await client.put(
-            f"{CF_API}/accounts/{WORKER.get('account_id','')}/workers/scripts/{WORKER.get('worker_name','')}",
-            headers={"Authorization": f"Bearer {cf_token}", "Content-Type": "application/javascript"},
-            content=script.encode("utf-8"),
-        )
+    email = str(WORKER.get("cf_email") or "")
+    # Use Global Key auth (X-Auth-Email + X-Auth-Key) for cfk_ tokens, Bearer otherwise.
+    if cf_token.startswith("cfk_") or cf_token.startswith("cf_") or email:
+        headers = {"X-Auth-Email": email, "X-Auth-Key": cf_token, "Content-Type": "application/javascript", "User-Agent": "Spider-Panel"}
+    else:
+        headers = {"Authorization": f"Bearer {cf_token}", "Content-Type": "application/javascript"}
+    try:
+        async with httpx.AsyncClient(timeout=90) as client:
+            r = await client.put(
+                f"{CF_API}/accounts/{WORKER.get('account_id','')}/workers/scripts/{WORKER.get('worker_name','')}",
+                headers=headers,
+                content=script.encode("utf-8"),
+            )
         try:
             deploy_json = r.json()
         except Exception:
             deploy_json = {}
         sc = r.status_code
         # Attach KV binding (SPIDER_KV) if we have a namespace and the script upload succeeded.
-        if kv_id and sc in (200, 201, 409, 200):
+        if kv_id and sc in (200, 201, 409):
+            bind_headers = {"X-Auth-Email": email, "X-Auth-Key": cf_token, "Content-Type": "application/json"} if (cf_token.startswith("cfk_") or email) else {"Authorization": f"Bearer {cf_token}", "Content-Type": "application/json"}
             bind_payload = {
                 "bindings": [
                     {"type": "kv_namespace", "name": "SPIDER_KV", "namespace_id": kv_id}
                 ]
             }
-            r2 = await client.put(
-                f"{CF_API}/accounts/{WORKER.get('account_id','')}/workers/scripts/{WORKER.get('worker_name','')}/subdomain",
-                headers={"Authorization": f"Bearer {cf_token}" },
-                json=bind_payload,
-            )
+            async with httpx.AsyncClient(timeout=90) as client2:
+                r2 = await client2.put(
+                    f"{CF_API}/accounts/{WORKER.get('account_id','')}/workers/scripts/{WORKER.get('worker_name','')}/subdomain",
+                    headers=bind_headers,
+                    json=bind_payload,
+                )
             # Binding update may be a separate endpoint; ignore 4xx and log.
             if r2.status_code not in (200, 201):
                 try:
@@ -4824,6 +4845,8 @@ async def _worker_deploy() -> tuple:
                     bj = {}
                 logger.warning(f"worker binding attach: HTTP {r2.status_code} {bj}")
         return sc, deploy_json
+    except Exception as e:
+        return 0, {"errors": [{"message": str(e)}]}
 
 
 async def _worker_sync_users() -> dict:
@@ -5118,11 +5141,13 @@ async def worker_setup(request: Request, _=Depends(require_auth)):
     body = await request.json()
     token = str(body.get("token") or "").strip()
     account_id = str(body.get("account_id") or "").strip()
+    email = str(body.get("email") or "").strip()
     if not token or not account_id:
         raise HTTPException(status_code=400, detail="token and account_id are required")
 
-    # 1. Verify the API token.
-    code, data = await _cf_api("GET", "/user/tokens/verify", token)
+    # 1. Verify the API token. Global API Key (cfk_...) needs the email too.
+    verify_path = "/user/tokens/verify" if not (token.startswith("cfk_") or token.startswith("cf_")) else "/user"
+    code, data = await _cf_api("GET", verify_path, token, email=email)
     if code != 200 or not data.get("success"):
         msg = (data.get("errors") or [{}])[0].get("message", "invalid token")
         raise HTTPException(status_code=400, detail=f"Cloudflare token rejected: {msg}")
@@ -5131,14 +5156,14 @@ async def worker_setup(request: Request, _=Depends(require_auth)):
     #    unique name automatically). If the script already exists, reuse it.
     worker_name = str(body.get("worker_name") or "spider-proxy").strip()
     worker_domain = ""
-    code, data = await _cf_api("GET", f"/accounts/{account_id}/workers/subdomain", token)
+    code, data = await _cf_api("GET", f"/accounts/{account_id}/workers/subdomain", token, email=email)
     if code == 200 and data.get("result"):
         subdom = str(data["result"].get("subdomain") or "").strip()
         if subdom:
             worker_domain = _worker_safe_domain(f"{worker_name}.{subdom}.workers.dev")
     if not worker_domain:
         # Fallback: try to read the existing script's domain (if it was deployed before).
-        code2, data2 = await _cf_api("GET", f"/accounts/{account_id}/workers/scripts/{worker_name}", token)
+        code2, data2 = await _cf_api("GET", f"/accounts/{account_id}/workers/scripts/{worker_name}", token, email=email)
         if code2 in (200, 404):
             pass  # script check only; domain comes from subdomain above
     if not worker_domain:
@@ -5153,6 +5178,7 @@ async def worker_setup(request: Request, _=Depends(require_auth)):
             "worker_domain": worker_domain,
             "worker_url": f"https://{worker_domain}",
             "token": token,
+            "cf_email": email or "",
             "last_error": "",
         })
     sc, sd = await _worker_deploy()
