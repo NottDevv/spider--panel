@@ -571,6 +571,10 @@ a{color:inherit;text-decoration:none}
           <div class="form-field"><label><i class="ti ti-calendar"></i> روزهای انقضا</label><input class="form-input" id="cu-expire" type="number" min="0" placeholder="0 = نامحدود"></div>
           <div class="form-field"><label><i class="ti ti-users"></i> اتصال همزمان</label><input class="form-input" id="cu-concurrent" type="number" min="1" value="1"></div>
         </div>
+        <div class="form-row">
+          <div class="form-field"><label><i class="ti ti-route"></i> اینباند</label><select class="form-select" id="cu-inbound"><option value="">انتخاب اینباند...</option></select></div>
+          <div class="form-field" id="cu-worker-country-wrap" style="display:none"><label><i class="ti ti-map-pin"></i> کشور ورکر</label><select class="form-select" id="cu-worker-country"><option value="">انتخاب کشور...</option></select></div>
+        </div>
         <div class="form-field"><label><i class="ti ti-notes"></i> یادداشت</label><textarea class="form-textarea" id="cu-notes" placeholder="یادداشت اختیاری..."></textarea></div>
         <div class="toggle-wrap">
           <button type="button" class="toggle-switch on" id="cu-active-toggle" onclick="this.classList.toggle('on')"></button>
@@ -633,6 +637,7 @@ a{color:inherit;text-decoration:none}
     <div class="nav-item" data-page="traffic"><i class="ti ti-chart-area"></i> ترافیک</div>
     <div class="nav-item" data-page="logs"><i class="ti ti-history"></i> لاگ‌ها</div>
     <div class="nav-section">سیستم</div>
+    <div class="nav-item" data-page="worker"><i class="ti ti-cloud"></i> Cloudflare Worker</div>
     <div class="nav-item" data-page="api"><i class="ti ti-api"></i> API</div>
     <div class="nav-item" data-page="tools"><i class="ti ti-tools"></i> ابزارها</div>
     <div class="nav-item" data-page="settings"><i class="ti ti-settings"></i> تنظیمات</div>
@@ -877,6 +882,99 @@ a{color:inherit;text-decoration:none}
       </div>
     </div>
   </section>
+
+  <!-- WORKER PAGE -->
+  <section class="page" id="page-worker">
+    <div class="topbar">
+      <div><div class="topbar-title"><i class="ti ti-cloud"></i> Cloudflare Worker</div><div class="topbar-sub">تنظیم و مدیریت Worker برای پروکسی‌های توزیع‌شده</div></div>
+      <div class="topbar-right"><button class="btn btn-primary" id="worker-sync-btn" onclick="syncWorkerProxies()"><i class="ti ti-refresh-cw"></i> همگام‌سازی پروکسی‌ها</button></div>
+    </div>
+    <div class="table-wrap" style="margin-bottom:18px">
+      <div style="padding:18px 22px;border-bottom:1px solid var(--border)">
+        <div class="server-title" style="margin-bottom:0"><i class="ti ti-link"></i> اتصال Cloudflare</div>
+      </div>
+      <div style="padding:18px 22px" id="worker-connect-form">
+        <div class="form-row">
+          <div class="form-field">
+            <label><i class="ti ti-key"></i> توکن API Cloudflare</label>
+            <input class="form-input" id="worker-token" type="password" placeholder="توکن API (Bearer یا Global Key)" dir="ltr">
+          </div>
+          <div class="form-field">
+            <label><i class="ti ti-at"></i> ایمیل (برای Global Key)</label>
+            <input class="form-input" id="worker-email" type="email" placeholder="email@example.com" dir="ltr">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label><i class="ti ti-database"></i> Account ID</label>
+            <input class="form-input" id="worker-account-id" placeholder="Account ID از داشبورد Cloudflare" dir="ltr">
+          </div>
+          <div class="form-field">
+            <label><i class="ti ti-brand-cloudflare"></i> نام Worker (اختیاری)</label>
+            <input class="form-input" id="worker-name" value="spider-proxy" placeholder="spider-proxy" dir="ltr">
+          </div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="connectWorker()"><i class="ti ti-cloud-plus"></i> اتصال و دیپلوی</button>
+          <button class="btn btn-ghost" id="worker-disconnect-btn" onclick="disconnectWorker()" style="display:none"><i class="ti ti-cloud-minus"></i> قطع اتصال</button>
+        </div>
+      </div>
+      <div style="padding:18px 22px;display:none" id="worker-connected-info">
+        <div class="form-row">
+          <div class="form-field"><label><i class="ti ti-link"></i> دامنه Worker</label><input class="form-input" id="worker-domain-display" readonly dir="ltr"></div>
+          <div class="form-field"><label><i class="ti ti-database"></i> Account ID</label><input class="form-input" id="worker-account-display" readonly dir="ltr"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-field"><label><i class="ti ti-tag"></i> نام Worker</label><input class="form-input" id="worker-name-display" readonly dir="ltr"></div>
+          <div class="form-field"><label><i class="ti ti-key"></i> توکن کنترل</label><input class="form-input" id="worker-control-token-display" readonly dir="ltr" style="font-family:monospace;font-size:12px"></div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="syncWorkerProxies()"><i class="ti ti-refresh-cw"></i> همگام‌سازی پروکسی‌ها</button>
+          <button class="btn btn-ghost" onclick="deployWorker()"><i class="ti ti-upload"></i> دیپلوی مجدد</button>
+          <button class="btn btn-danger" onclick="disconnectWorker()"><i class="ti ti-cloud-minus"></i> قطع اتصال</button>
+        </div>
+        <div class="form-row" style="margin-top:12px">
+          <div class="form-field">
+            <label><i class="ti ti-globe"></i> منبع پروکسی روزانه (ProxyIP-Daily.md)</label>
+            <input class="form-input" id="worker-source-url" placeholder="https://raw.githubusercontent.com/NiREvil/vless/main/sub/ProxyIP-Daily.md" dir="ltr">
+          </div>
+          <div class="form-field">
+            <label>
+              <button type="button" class="toggle-switch on" id="worker-auto-sync" onclick="this.classList.toggle('on')"></button>
+              <span class="toggle-label">همگام‌سازی خودکار هر ساعت</span>
+            </label>
+          </div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="saveWorkerSettings()"><i class="ti ti-device-floppy"></i> ذخیره تنظیمات</button>
+        </div>
+      </div>
+    </div>
+    <div class="table-wrap" style="margin-bottom:18px" id="worker-proxies-section" style="display:none">
+      <div style="padding:18px 22px;border-bottom:1px solid var(--border)">
+        <div class="server-title" style="margin-bottom:0"><i class="ti ti-map-pin"></i> موقعیت‌های پروکسی (کشورها)</div>
+      </div>
+      <div style="padding:18px 22px">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>پرچم</th><th>کشور</th><th>کد</th><th>پروکسی اصلی</th><th>پورت</th><th>تعداد پروکسی‌ها</th><th>عملیات</th></tr></thead>
+            <tbody id="worker-proxies-table"><tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-secondary)">در حال بارگذاری...</td></tr></tbody>
+          </table>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="openAddProxyModal()"><i class="ti ti-plus"></i> افزودن کشور/پروکسی</button>
+        </div>
+      </div>
+    </div>
+    <div class="table-wrap" id="worker-last-sync" style="display:none">
+      <div style="padding:18px 22px;border-bottom:1px solid var(--border)">
+        <div class="server-title" style="margin-bottom:0"><i class="ti ti-clock"></i> آخرین همگام‌سازی</div>
+      </div>
+      <div style="padding:18px 22px">
+        <div id="worker-last-sync-info"></div>
+      </div>
+    </div>
+  </section>
 </main>
 
 <script>
@@ -934,15 +1032,72 @@ function switchPage(name){
   document.querySelectorAll('.nav-item').forEach(function(el){el.classList.toggle('active',el.dataset.page===name)});
   document.querySelectorAll('.page').forEach(function(el){el.classList.toggle('active',el.id==='page-'+name)});
   toggleSidebar();window.scrollTo({top:0,behavior:'smooth'});
-  var loaders={users:loadUsers,configs:loadConfigs,traffic:loadTraffic,logs:loadLogs,dash:loadDashboard,settings:loadSettings};
+  var loaders={users:loadUsers,configs:loadConfigs,traffic:loadTraffic,logs:loadLogs,dash:loadDashboard,settings:loadSettings,worker:loadWorker};
   if(loaders[name])loaders[name]();
 }
 document.querySelectorAll('.nav-item').forEach(function(el){el.onclick=function(){switchPage(el.dataset.page)}});
 
 /* ============ MODALS ============ */
-function openModal(id){document.getElementById(id).classList.add('open')}
+function openModal(id){
+  document.getElementById(id).classList.add('open');
+  if(id === 'modal-create-user'){
+    loadInbounds();
+  }
+}
 function closeModal(id){document.getElementById(id).classList.remove('open')}
 document.querySelectorAll('.modal-overlay').forEach(function(m){m.addEventListener('click',function(e){if(e.target===m)m.classList.remove('open')})});
+
+/* ============ LOAD INBOUNDS FOR CREATE USER ============ */
+async function loadInbounds(){
+  try{
+    var r=await authFetch('/api/inbounds'),d=await r.json();
+    var inbounds=d.inbounds||[];
+    var inboundSelect=document.getElementById('cu-inbound');
+    var workerCountryWrap=document.getElementById('cu-worker-country-wrap');
+    var workerCountrySelect=document.getElementById('cu-worker-country');
+    if(!inboundSelect)return;
+
+    // Populate inbounds dropdown
+    inboundSelect.innerHTML = '<option value="">انتخاب اینباند...</option>' +
+      inbounds.map(function(ib){
+        return '<option value="'+esc(ib.inbound_id)+'">'+esc(ib.name)+' ('+esc(ib.protocol)+' '+esc(ib.network)+')</option>';
+      }).join('');
+
+    // Handle inbound change
+    inboundSelect.onchange = function(){
+      var selectedId = this.value;
+      var selectedInbound = inbounds.find(function(ib){ return ib.inbound_id === selectedId; });
+      if(selectedInbound && selectedInbound.protocol === 'worker'){
+        // Fetch worker inbounds with countries
+        loadWorkerCountries(selectedId);
+        workerCountryWrap.style.display = 'block';
+      }else{
+        workerCountryWrap.style.display = 'none';
+      }
+    };
+  }catch(e){console.error(e)}
+}
+
+async function loadWorkerCountries(inboundId){
+  try{
+    var r=await authFetch('/api/worker/inbounds'),d=await r.json();
+    var workerInbounds=d.inbounds||[];
+    var workerCountryWrap=document.getElementById('cu-worker-country-wrap');
+    var workerCountrySelect=document.getElementById('cu-worker-country');
+    if(!workerCountrySelect)return;
+
+    var selectedInbound = workerInbounds.find(function(ib){ return ib.inbound_id === inboundId; });
+    if(selectedInbound && selectedInbound.countries && selectedInbound.countries.length > 0){
+      workerCountrySelect.innerHTML = '<option value="">انتخاب کشور...</option>' +
+        selectedInbound.countries.map(function(c){
+          return '<option value="'+esc(c.code)+'">'+esc(c.country)+' ('+esc(c.code)+')</option>';
+        }).join('');
+      workerCountryWrap.style.display = 'block';
+    }else{
+      workerCountryWrap.style.display = 'none';
+    }
+  }catch(e){console.error(e)}
+}
 
 /* ============ CREATE USER ============ */
 async function createUser(){
@@ -950,6 +1105,8 @@ async function createUser(){
   var traffic=document.getElementById('cu-traffic').value;
   var unit=document.getElementById('cu-traffic-unit').value;
   var active=document.getElementById('cu-active-toggle').classList.contains('on');
+  var inboundId=document.getElementById('cu-inbound').value;
+  var inboundIds = inboundId ? [inboundId] : [];
   var body={
     label:document.getElementById('cu-username').value.trim(),
     password:document.getElementById('cu-password').value,
@@ -960,11 +1117,21 @@ async function createUser(){
     concurrent:document.getElementById('cu-concurrent').value||'1',
     server_id:document.getElementById('cu-server').value||null,
     note:document.getElementById('cu-notes').value.trim(),
-    active:active
+    active:active,
+    inbound_id: inboundId,
+    inbound_ids: inboundIds,
   };
+  // If worker inbound is selected, add proxy_countries
+  var workerCountryWrap = document.getElementById('cu-worker-country-wrap');
+  if(workerCountryWrap && workerCountryWrap.style.display !== 'none'){
+    var proxyCountry = document.getElementById('cu-worker-country').value;
+    if(proxyCountry){
+      body.proxy_countries = [proxyCountry.toLowerCase()];
+    }
+  }
   if(!body.label){toast('نام کاربری الزامی است','err');return}
   try{
-    var r=await authFetch('/api/links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var r=await authFetch('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!r.ok){var d=await r.json().catch(function(){return{}});throw new Error(d.detail||'خطا')}
     toast('کاربر با موفقیت ایجاد شد ✓','ok');
     closeModal('modal-create-user');
@@ -1236,9 +1403,171 @@ async function generateRealityKeys(){
 
 function updateProtoCheckboxes(){/* no-op hook for UI */}
 
+/* ============ WORKER PAGE ============ */
+async function loadWorker(){
+  try{
+    var r=await authFetch('/api/worker'),d=await r.json();
+    var connectForm=document.getElementById('worker-connect-form');
+    var connectedInfo=document.getElementById('worker-connected-info');
+    var proxiesSection=document.getElementById('worker-proxies-section');
+    var lastSync=document.getElementById('worker-last-sync');
+    var syncBtn=document.getElementById('worker-sync-btn');
+    var disconnectBtn=document.getElementById('worker-disconnect-btn');
+
+    if(d.connected){
+      connectForm.style.display = 'none';
+      connectedInfo.style.display = 'block';
+      proxiesSection.style.display = 'block';
+      lastSync.style.display = 'block';
+      if(syncBtn)syncBtn.style.display = 'inline-flex';
+      if(disconnectBtn)disconnectBtn.style.display = 'inline-flex';
+
+      document.getElementById('worker-domain-display').value = d.worker_domain || '';
+      document.getElementById('worker-account-display').value = d.account_id || '';
+      document.getElementById('worker-name-display').value = d.worker_name || '';
+      document.getElementById('worker-control-token-display').value = d.control_token || '';
+      document.getElementById('worker-source-url').value = d.source_url || 'https://raw.githubusercontent.com/NiREvil/vless/main/sub/ProxyIP-Daily.md';
+      document.getElementById('worker-auto-sync').classList.toggle('on', d.auto_sync);
+
+      // Render proxies table
+      renderWorkerProxies(d.proxies || []);
+
+      // Last sync info
+      if(d.last_sync){
+        var ls=document.getElementById('worker-last-sync-info');
+        var syncTime = new Date(d.last_sync).toLocaleString('fa-IR');
+        var syncCount = d.sync_count || 0;
+        var syncError = d.sync_error || '';
+        ls.innerHTML = '<div style="font-size:13px;color:var(--text-secondary)">زمان: '+syncTime+'</div>' +
+          '<div style="font-size:13px;color:var(--text-secondary);margin-top:4px">تعداد همگام‌سازی‌ها: '+syncCount+'</div>' +
+          (syncError ? '<div style="font-size:13px;color:var(--spider-red);margin-top:4px">خطا: '+esc(syncError)+'</div>' : '');
+      }
+    }else{
+      connectForm.style.display = 'block';
+      connectedInfo.style.display = 'none';
+      proxiesSection.style.display = 'none';
+      lastSync.style.display = 'none';
+      if(syncBtn)syncBtn.style.display = 'none';
+      if(disconnectBtn)disconnectBtn.style.display = 'none';
+    }
+  }catch(e){console.error(e)}
+}
+
+function renderWorkerProxies(proxies){
+  var tbody=document.getElementById('worker-proxies-table');
+  if(!proxies || !proxies.length){
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-secondary)">کشوری اضافه نشده است</td></tr>';
+    return;
+  }
+  tbody.innerHTML = proxies.map(function(p){
+    var flag = p.flag || '';
+    var country = p.country || p.code.toUpperCase();
+    var code = p.code || '';
+    var proxy = p.proxy || '';
+    var port = p.port || 443;
+    var count = (p.proxies && p.proxies.length) || 1;
+    return '<tr>'+
+      '<td style="font-size:18px;text-align:center">'+esc(flag)+'</td>'+
+      '<td style="font-weight:500">'+esc(country)+'</td>'+
+      '<td style="font-family:monospace;font-size:12px">'+esc(code)+'</td>'+
+      '<td style="font-family:monospace;font-size:12px">'+esc(proxy)+'</td>'+
+      '<td style="text-align:center">'+esc(port)+'</td>'+
+      '<td style="text-align:center">'+esc(count)+'</td>'+
+      '<td><button class="btn btn-sm btn-ghost btn-icon" onclick="deleteWorkerProxy(\''+esc(code)+'\')" title="حذف"><i class="ti ti-trash"></i></button></td>'+
+      '</tr>';
+  }).join('');
+}
+
+async function connectWorker(){
+  var token=document.getElementById('worker-token').value.trim();
+  var email=document.getElementById('worker-email').value.trim();
+  var account_id=document.getElementById('worker-account-id').value.trim();
+  var worker_name=document.getElementById('worker-name').value.trim()||'spider-proxy';
+  if(!token||!account_id){toast('توکن و Account ID الزامی هستند','err');return}
+  try{
+    var r=await authFetch('/api/worker/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:token,account_id:account_id,email:email,worker_name:worker_name})});
+    var d=await r.json();
+    if(!d.ok)throw new Error(d.detail||'خطا');
+    toast('Worker با موفقیت متصل و دیپلوی شد ✓','ok');
+    loadWorker();
+  }catch(e){toast(e.message,'err')}
+}
+
+async function disconnectWorker(){
+  if(!confirm('آیا از قطع اتصال Worker اطمینان دارید؟'))return;
+  try{
+    var r=await authFetch('/api/worker',{method:'DELETE'});
+    var d=await r.json();
+    if(!d.ok)throw new Error();
+    toast('Worker قطع شد ✓','ok');
+    loadWorker();
+  }catch(e){toast('خطا در قطع اتصال','err')}
+}
+
+async function deployWorker(){
+  try{
+    var r=await authFetch('/api/worker/sync',{method:'POST'});
+    var d=await r.json();
+    if(!d.ok)throw new Error(d.error||'deploy failed');
+    toast('Worker دیپلوی شد ✓','ok');
+    loadWorker();
+  }catch(e){toast(e.message,'err')}
+}
+
+async function syncWorkerProxies(){
+  try{
+    var r=await authFetch('/api/worker/sync-source',{method:'POST'});
+    var d=await r.json();
+    if(!d.ok)throw new Error(d.error||'sync failed');
+    toast('پروکسی‌ها همگام‌سازی شدند ✓ ('+d.sync.countries+' کشور)','ok');
+    loadWorker();
+  }catch(e){toast(e.message,'err')}
+}
+
+async function saveWorkerSettings(){
+  var source_url=document.getElementById('worker-source-url').value.trim();
+  var auto_sync=document.getElementById('worker-auto-sync').classList.contains('on');
+  try{
+    var r=await authFetch('/api/worker/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source_url:source_url,auto_sync:auto_sync})});
+    var d=await r.json();
+    if(!d.ok)throw new Error();
+    toast('تنظیمات ذخیره شد ✓','ok');
+    loadWorker();
+  }catch(e){toast(e.message,'err')}
+}
+
+async function deleteWorkerProxy(code){
+  if(!confirm('آیا از حذف این کشور اطمینان دارید؟'))return;
+  try{
+    var r=await authFetch('/api/worker/proxies/'+code,{method:'DELETE'});
+    var d=await r.json();
+    if(!d.ok)throw new Error();
+    toast('کشور حذف شد ✓','ok');
+    loadWorker();
+  }catch(e){toast(e.message,'err')}
+}
+
+async function openAddProxyModal(){
+  var code=prompt('کد کشور (مثلاً: de, us, nl):');
+  if(!code)return;
+  var country=prompt('نام کشور (مثلاً: Germany):');
+  if(!country)return;
+  var proxy=prompt('آدرس پروکسی (IP یا دامنه):');
+  if(!proxy)return;
+  var port=prompt('پورت:', '443');
+  if(!port)port='443';
+  try{
+    var r=await authFetch('/api/worker/proxies',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:code.trim().toLowerCase(),country:country.trim(),proxy:proxy.trim(),port:parseInt(port)})});
+    var d=await r.json();
+    if(!d.ok)throw new Error(d.detail||'خطا');
+    toast('کشور اضافه شد ✓','ok');
+    loadWorker();
+  }catch(e){toast(e.message,'err')}
+}
+
 /* ============ REFRESH ============ */
 function refreshAll(){
-  loadDashboard();loadUsers();loadConfigs();loadTraffic();loadLogs();
+  loadDashboard();loadUsers();loadConfigs();loadTraffic();loadLogs();loadWorker();
   toast('بروزرسانی شد ✓','ok');
 }
 
@@ -1253,6 +1582,7 @@ document.addEventListener('DOMContentLoaded',async function(){
     if(currentPage==='traffic')loadTraffic();
     if(currentPage==='logs')loadLogs();
     if(currentPage==='settings')loadSettings();
+    if(currentPage==='worker')loadWorker();
   },5000);
 });
 </script>

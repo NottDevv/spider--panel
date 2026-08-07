@@ -40,6 +40,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import httpx
 
+# Import xhttp_siz10 router (must come after app is created)
 # xhttp_siz10 does `from main import ...`. When run as `python main.py` this
 # module is named `__main__`; alias ourselves as `main` so submodule imports
 # resolve to THIS module (prevents a second, circular copy of main).
@@ -49,6 +50,9 @@ _sys.modules.setdefault("main", _sys.modules[__name__])
 IRAN_TZ = ZoneInfo("Asia/Tehran")
 
 app = FastAPI(title="Spider Gateway", docs_url=None, redoc_url=None)
+
+# Import and include xhttp_siz10 router - deferred until globals are defined
+xhttp_router = None
 
 CONFIG = {
     "port": int(os.environ.get("PORT", 8080)),
@@ -494,21 +498,10 @@ def _gen_reality_settings() -> dict:
     # still produces a working config shape.
     mldsa_seed = secrets.token_bytes(64)
     try:
-        from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
-        from cryptography.hazmat.primitives import serialization
-        p = X25519PrivateKey.generate()
-        priv_b = p.private_bytes(
-            encoding=serialization.Encoding.Raw,
-            format=serialization.PrivateFormat.Raw,
-            encryption_algorithm=serialization.NoEncryption(),
-        )
-        pub_b = p.public_key().public_bytes(
-            encoding=serialization.Encoding.Raw,
-            format=serialization.PublicFormat.Raw,
-        )
+        priv_key, pub_key = _xray_x25519_keypair()
         return {
-            "private_key": b64.b64encode(priv_b).decode(),
-            "public_key": b64.b64encode(pub_b).decode(),
+            "private_key": priv_key,
+            "public_key": pub_key,
             "short_id": secrets.token_hex(5)[:10],
             "spiderx": "/",
             "dest": "is1-ssl.mzstatic.com:443",
@@ -522,6 +515,61 @@ def _gen_reality_settings() -> dict:
             "mldsa65_seed": b64.b64encode(mldsa_seed).decode(),
             "mldsa65_verify": _gen_ml_dsa65(mldsa_seed),
         }
+
+
+def _xray_x25519_public_key(private_key_b64: str) -> str:
+    """Derive the X25519 public key from a base64-encoded private key.
+
+    This ensures the public key in config matches what Xray derives from the
+    private key, so Reality handshake works."""
+    try:
+        from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+        import base64 as b64
+        key = private_key_b64.strip()
+        # Xray emits unpadded URL-safe base64 (e.g. "uMbq3TC3..."). Padding is
+        # required by the decoder, and "-"/"_" are the URL-safe alphabet.
+        priv_bytes = b64.urlsafe_b64decode(key + "=" * (-len(key) % 4))
+        if len(priv_bytes) != 32:
+            return ""
+        p = X25519PrivateKey.from_private_bytes(priv_bytes)
+        pub_bytes = p.public_key().public_bytes_raw()
+        return b64.urlsafe_b64encode(pub_bytes).decode().rstrip("=")
+    except Exception:
+        return ""
+
+
+def _xray_x25519_keypair() -> tuple:
+    """Generate a fresh X25519 keypair as urlsafe base64 WITHOUT padding — the
+    exact format Xray's `x25519` emits and the only format Xray-core accepts for
+    Reality privateKey (standard padded base64 is rejected: 'invalid privateKey')."""
+    try:
+        from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+        import base64 as b64
+        priv = X25519PrivateKey.generate()
+        priv_bytes = priv.private_bytes_raw()
+        pub_bytes = priv.public_key().public_bytes_raw()
+        return (
+            b64.urlsafe_b64encode(priv_bytes).decode().rstrip("="),
+            b64.urlsafe_b64encode(pub_bytes).decode().rstrip("="),
+        )
+    except ImportError:
+        return "", ""
+
+
+def _xray_x25519_privkey_norm(private_key: str) -> str:
+    """Re-encode a private key as urlsafe base64 without padding (same raw bytes).
+    Fixes keys that were stored as standard padded base64, which Xray rejects."""
+    try:
+        import base64 as b64
+        key = (private_key or "").strip()
+        if not key:
+            return ""
+        decoded = b64.urlsafe_b64decode(key + "=" * (-len(key) % 4))
+        if len(decoded) != 32:
+            return ""
+        return b64.urlsafe_b64encode(decoded).decode().rstrip("=")
+    except Exception:
+        return ""
 
 
 XRAY_URL = "https://github.com/XTLS/Xray-core/releases/download/v26.3.27/Xray-linux-64.zip"
@@ -615,7 +663,7 @@ async def startup():
                 "fingerprint": "chrome",
                 "reality_settings": rs,
                 "xhttp_settings": {
-                    "path": "/xhttp-siz10/stream-up/",
+                    "path": "/",
                     "xPaddingBytes": "100-1000",
                     "mode": "auto",
                     "scMaxEachPostBytes": "1000000",
@@ -624,7 +672,6 @@ async def startup():
             }
             asyncio.create_task(save_state())
             log_activity("inbound", "اینباند پیش‌فرض Reality+XHTTP ساخته شد", "ok")
-        # Auto-create a default Worker inbound. It produces configs addressed to
         # the deployed Cloudflare Worker domain (address/host/sni auto-filled),
         # with BPB snispoofing. Only created once a worker is actually connected.
         has_worker = any((ib.get("protocol") or "").lower() == "worker" for ib in INBOUNDS.values())
@@ -708,22 +755,36 @@ async def startup():
     # Old inbounds created before the key-gen fix have empty or mismatched keys;
     # backfill by deriving pbk from the private key, or generate a fresh pair.
     _gs_rs = SETTINGS.get("reality", {}) or {}
+    # Normalize the global Reality keys too (they backfill into inbounds).
+    for _fld in ("private_key", "public_key"):
+        if _fld == "private_key":
+            _nv = _xray_x25519_privkey_norm(str(_gs_rs.get("private_key") or ""))
+            if _nv and _nv != _gs_rs.get("private_key"):
+                _gs_rs["private_key"] = _nv
+                _changed = True
+    if _gs_rs.get("private_key"):
+        _gp = _xray_x25519_public_key(str(_gs_rs.get("private_key")))
+        if _gp and _gp != _gs_rs.get("public_key"):
+            _gs_rs["public_key"] = _gp
+            _changed = True
     for _ib in INBOUNDS.values():
         if (_ib.get("protocol") or "").lower() != "reality" and (_ib.get("security") or "").lower() != "reality":
             continue
         _rs = _ib.setdefault("reality_settings", {})
         _priv = str(_rs.get("private_key") or "")
         _pub = str(_rs.get("public_key") or "")
+        # Keys must be urlsafe base64 without padding (what Xray emits and accepts).
+        # Standard padded base64 makes Xray fail with 'invalid "privateKey"' — re-encode
+        # the same raw bytes so existing clients keep working.
+        _norm = _xray_x25519_privkey_norm(_priv) if _priv else ""
+        if _norm and _norm != _priv:
+            _rs["private_key"] = _norm
+            _changed = True
+            logger.info("Reality inbound «%s» private key re-encoded to urlsafe base64", _ib.get("name"))
+            _priv = _norm
         # If we have a private key, derive its public key — that is the ONLY
         # pbk that works with Xray (which uses the same private key).
-        _derived = ""
-        if _priv:
-            try:
-                from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
-                _p = X25519PrivateKey.from_private_bytes(base64.b64decode(_priv))
-                _derived = base64.b64encode(_p.public_key().public_bytes_raw()).decode()
-            except Exception:
-                _derived = ""
+        _derived = _xray_x25519_public_key(_priv) if _priv else ""
         if _derived and _derived != _pub:
             _rs["public_key"] = _derived
             _changed = True
@@ -806,6 +867,10 @@ async def startup():
             logger.warning(f"Xray apply on boot failed: {e}")
     log_activity("system", "سرور راه‌اندازی شد", "ok")
     logger.info(f"Spider Gateway v9.2 (commit 24d7594) started on port {CONFIG['port']}")
+    # Include XHTTP router for xhttp-siz10 endpoints (globals are now defined)
+    global xhttp_router
+    from xhttp_siz10 import router as xhttp_router
+    app.include_router(xhttp_router)
     asyncio.create_task(_worker_proxy_sync_loop())
 
 # Worker proxy source sync — hourly pull from the daily GitHub list and push to
@@ -1051,15 +1116,19 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
             return ""
         rs = inbound.get("reality_settings") or SETTINGS.get("reality") or {}
         gs = SETTINGS.get("reality") or {}
-        pbk = rs.get("public_key") or gs.get("public_key") or ""
+        # Use the private key from inbound, derive public key from it (this is the ONLY
+        # public key that works with Xray — Xray derives it from the same private key).
+        priv_key = rs.get("private_key") or gs.get("private_key") or ""
+        pbk = _xray_x25519_public_key(priv_key) if priv_key else (rs.get("public_key") or gs.get("public_key") or "")
         sid = rs.get("short_id") or gs.get("short_id") or ""
         spx = rs.get("spiderx") or gs.get("spiderx") or "/"
         fp = inbound.get("fingerprint") or rs.get("fingerprint") or gs.get("fingerprint") or "chrome"
         sni = inbound.get("sni") or rs.get("sni") or gs.get("sni") or "is1-ssl.mzstatic.com"
         xs = inbound.get("xhttp_settings") or {}
-        rpath = str(xs.get("path") or "/").replace("{uuid}", config_uuid)
-        if "{uuid}" not in rpath and rpath != "/" and not rpath.endswith(config_uuid):
-            rpath = rpath.rstrip("/") + "/" + config_uuid
+        # For Reality XHTTP, path should be "/" (as per requirement)
+        rpath = str(xs.get("path") or "/")
+        if rpath != "/":
+            rpath = "/"
         host = addr_ip or ext_domain
         port = addr_port or ext_port
         # xhttp (default for reality inbound) or tcp
@@ -1092,7 +1161,12 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
     if transport == "xhttp":
         xs = inbound.get("xhttp_settings") if inbound else {}
         xpb = xs.get("xPaddingBytes", "100-1000")
-        xmode = xs.get("mode", "auto")
+        # The FastAPI relay (Siz10a) only routes concrete modes in the URL path
+        # (/xhttp-siz10/{mode}/...); mode=auto would 404. Resolve "auto"/unknown
+        # to stream-up (the adaptive default) and use it everywhere.
+        xmode = str(xs.get("mode", "auto")).strip().lower()
+        if xmode not in ("packet-up", "stream-up"):
+            xmode = "stream-up"
         xsc = xs.get("scMaxEachPostBytes", "1000000")
         extra = quote('{{"xPaddingBytes":"{}","mode":"{}","scMaxEachPostBytes":"{}"}}'.format(xpb, xmode, xsc), safe='')
         # XHTTP path mirrors RVG: /xhttp-siz10/{mode}/{uuid}
@@ -2007,22 +2081,8 @@ async def generate_inbound_reality_keys(inbound_id: str, _=Depends(require_auth)
         if not ib:
             raise HTTPException(status_code=404, detail="inbound not found")
         try:
-            from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
-            from cryptography.hazmat.primitives import serialization
-            priv = X25519PrivateKey.generate()
-            priv_bytes = priv.private_bytes(
-                encoding=serialization.Encoding.Raw,
-                format=serialization.PrivateFormat.Raw,
-                encryption_algorithm=serialization.NoEncryption(),
-            )
-            pub_bytes = priv.public_key().public_bytes(
-                encoding=serialization.Encoding.Raw,
-                format=serialization.PublicFormat.Raw,
-            )
-            import base64 as b64
             rs = ib.setdefault("reality_settings", {})
-            rs["private_key"] = b64.b64encode(priv_bytes).decode()
-            rs["public_key"] = b64.b64encode(pub_bytes).decode()
+            rs["private_key"], rs["public_key"] = _xray_x25519_keypair()
             rs["short_id"] = secrets.token_hex(5)[:10]
             rs.setdefault("spiderx", "/")
             rs.setdefault("dest", "is1-ssl.mzstatic.com:443")
@@ -2179,7 +2239,11 @@ async def create_user(request: Request, _=Depends(require_auth)):
     if not transport_type and inbound_id:
         async with INBOUNDS_LOCK:
             ib = INBOUNDS.get(inbound_id) or {}
-        transport_type = str(ib.get("network") or "").strip().lower()
+        # For Reality inbounds, transport_type should be "reality" regardless of network
+        if (ib.get("protocol") or "").lower() == "reality" or (ib.get("security") or "").lower() == "reality":
+            transport_type = "reality"
+        else:
+            transport_type = str(ib.get("network") or "").strip().lower()
     if not transport_type:
         transport_type = "ws"
 
@@ -2207,13 +2271,7 @@ async def create_user(request: Request, _=Depends(require_auth)):
             reality = SETTINGS.get("reality", {})
             if not reality.get("public_key"):
                 try:
-                    from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
-                    priv = X25519PrivateKey.generate()
-                    priv_bytes = priv.private_bytes_raw()
-                    pub_bytes = priv.public_key().public_bytes_raw()
-                    import base64 as b64
-                    reality["private_key"] = b64.b64encode(priv_bytes).decode()
-                    reality["public_key"] = b64.b64encode(pub_bytes).decode()
+                    reality["private_key"], reality["public_key"] = _xray_x25519_keypair()
                     reality.setdefault("short_id", secrets.token_hex(4)[:10])
                     reality.setdefault("dest", "is1-ssl.mzstatic.com:443")
                     reality.setdefault("sni", "is1-ssl.mzstatic.com")
@@ -2231,6 +2289,25 @@ async def create_user(request: Request, _=Depends(require_auth)):
         for existing in USERS.values():
             if existing.get("username") == username:
                 raise HTTPException(status_code=409, detail="Username already exists")
+
+        # Determine the path based on the inbound type, not just transport_type
+        # WS inbound -> /ws/{config_uuid}, XHTTP inbound -> /xhttp-siz10/..., Worker inbound -> /route/...
+        primary_inbound = INBOUNDS.get(inbound_id) if inbound_id else None
+        primary_inbound_proto = (primary_inbound.get("protocol") if primary_inbound else "").lower()
+        primary_inbound_network = (primary_inbound.get("network") if primary_inbound else "").lower()
+
+        if primary_inbound_proto == "worker":
+            # Worker inbound uses /route/{code} path
+            # For worker, we use a placeholder; actual path is /route/{country} per country
+            path = f"/route/{config_uuid}"
+        elif primary_inbound_proto == "reality" or primary_inbound_network == "xhttp":
+            # XHTTP or Reality inbound uses XHTTP path
+            path = f"/xhttp-siz10/stream-up/{config_uuid}"
+        else:
+            # Default WS TLS inbound uses /ws/{config_uuid}
+            path = f"/ws/{config_uuid}"
+
+        path = path_custom if path_custom else path
 
         USERS[user_id] = {
             "username": username,
@@ -2255,19 +2332,26 @@ async def create_user(request: Request, _=Depends(require_auth)):
             "custom_ip_inbounds": custom_ip_inbounds,
             "inbound_id": inbound_id,
             "inbound_ids": inbound_ids,
-            "path": path_custom if path_custom else (
-                f"/xhttp-siz10/stream-up/{config_uuid}" if transport_type == "xhttp" else
-                f"/route/{config_uuid}" if any((INBOUNDS.get(i) or {}).get("protocol") == "worker" for i in (inbound_ids or [])) else
-                f"/ws/{config_uuid}"
-            ),
+            "path": path,
             "transport_type": transport_type,
-            "inbound_id": inbound_id,
         }
         _path = USERS[user_id].get("path", "").strip().lstrip("/")
 
     # Auto-create matching link so relay can find it
     async with LINKS_LOCK:
         link_xhttp = {}
+        # Determine the link protocol based on transport_type for correct config generation
+        # vless-ws for WS, xhttp-{mode} for XHTTP
+        link_protocol = protocol
+        if transport_type == "ws" or transport_type == "vless-ws":
+            link_protocol = "vless-ws"
+        elif transport_type == "xhttp":
+            link_protocol = "xhttp-stream-up"  # default mode
+        elif transport_type == "reality":
+            link_protocol = "reality"
+        elif transport_type == "worker":
+            link_protocol = "worker"
+
         if transport_type == "xhttp":
             link_xhttp = {
                 "xPaddingBytes": "100-1000",
@@ -2284,7 +2368,7 @@ async def create_user(request: Request, _=Depends(require_auth)):
             "note": f"لینک کاربر {username}",
             "is_default": False,
             "sub_id": None,
-            "protocol": protocol,
+            "protocol": link_protocol,  # Use transport-specific protocol for correct config
             "transport_type": transport_type,
             "xhttp_settings": link_xhttp,
             "path": _path,
@@ -2828,12 +2912,8 @@ async def api_user_sub(username: str):
 async def generate_reality_keys(_=Depends(require_auth)):
     """Generate a Reality key pair (x25519)."""
     try:
-        from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
-        priv = X25519PrivateKey.generate()
-        priv_bytes = priv.private_bytes_raw()
-        pub_bytes = priv.public_key().public_bytes_raw()
-        import base64 as b64
-        return {"private_key": b64.b64encode(priv_bytes).decode(), "public_key": b64.b64encode(pub_bytes).decode()}
+        priv_key, pub_key = _xray_x25519_keypair()
+        return {"private_key": priv_key, "public_key": pub_key}
     except ImportError:
         # cryptography not installed - return error
         return {"error": True, "private_key": "", "public_key": "", "note": "cryptography not installed: pip install cryptography"}
@@ -4158,11 +4238,13 @@ def _add_inbound_to_xray(cfg: dict, ib: dict, iid: str, host: str):
     inbound_obj = {
         "tag": f"inbound-{iid}",
         "port": port,
-        "protocol": protocol,
+        # Xray has no "reality" protocol id — Reality is a security layer on top
+        # of VLESS, so reality inbounds must declare protocol "vless".
+        "protocol": "vless" if protocol == "reality" else protocol,
         "settings": {"clients": [], "decryption": "none"},
         "streamSettings": {}
     }
-    
+
     # Protocol-specific client settings — use REAL user UUIDs that picked this
     # inbound so they can actually connect through Xray. (Reality is a VLESS
     # client too, so it also carries uuid clients.)
@@ -4735,6 +4817,7 @@ def _worker_public() -> dict:
         "auto_sync": bool(WORKER.get("auto_sync", True)),
         "sync_error": WORKER.get("sync_error", ""),
         "sync_count": int(WORKER.get("sync_count", 0)),
+        "control_token": WORKER.get("control_token", ""),
         "token_link": CF_TOKEN_LINK,
         "proxies": [
             {"code": code, **dict(p)}
@@ -5328,6 +5411,25 @@ async def worker_locations(_=Depends(require_auth)):
     return {"ok": True, "locations": []}
 
 
+@app.get("/api/worker/inbounds")
+async def worker_inbounds(_=Depends(require_auth)):
+    """Return worker inbounds with their country options for user creation modal."""
+    async with INBOUNDS_LOCK:
+        worker_inbounds = []
+        for iid, ib in INBOUNDS.items():
+            if (ib.get("protocol") or "").lower() == "worker":
+                worker_inbounds.append({
+                    "inbound_id": iid,
+                    "name": ib.get("name", "Worker"),
+                    "domain": ib.get("domain", ""),
+                    "countries": [
+                        {"code": c, "country": p.get("country", c.upper())}
+                        for c, p in (WORKER.get("proxies") or {}).items()
+                    ]
+                })
+    return {"ok": True, "inbounds": worker_inbounds}
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # IP SCANNER endpoints — live-saved scanned IPs + DNS resolve for the TCP tab
 # ══════════════════════════════════════════════════════════════════════════════
@@ -5453,9 +5555,4 @@ async def scanner_ping_batch(request: Request, _=Depends(require_auth)):
 
 
 if __name__ == "__main__":
-    # xhttp_siz10 does `from main import ...`. Register ourselves as `main`
-    # so that import resolves to THIS module (avoids a circular second copy
-    # and makes `from xhttp_siz10 import router` succeed below).
-    import sys as _sys
-    _sys.modules.setdefault("main", _sys.modules[__name__])
     uvicorn.run("main:app", host="0.0.0.0", port=CONFIG["port"], log_level="info", workers=1)
