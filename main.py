@@ -4776,8 +4776,11 @@ async def _cf_api(method: str, path: str, token: str, payload: dict = None, emai
     """
     token = str(token or "").strip()
     headers = {"Content-Type": "application/json", "User-Agent": "Spider-Panel"}
-    if token.startswith("cfk_") or token.startswith("cf_") or email:
-        # Global API Key auth.
+    # Cloudflare Global API Key is a 37-char hex string; modern tokens are
+    # "Bearer"-style (e.g. gho_/cf..._). A real GAK token OR an email on file
+    # both imply Global Key auth (X-Auth-Email + X-Auth-Key).
+    _is_gak = bool(token) and bool(re.fullmatch(r"[a-f0-9]{37}", token))
+    if _is_gak or email:
         headers["X-Auth-Key"] = token
         headers["X-Auth-Email"] = email or os.environ.get("CF_EMAIL", "")
     else:
@@ -4889,8 +4892,10 @@ async def _worker_deploy() -> tuple:
         return 0, {"errors": [{"message": "Cloudflare API token is missing (worker not connected properly)"}]}
     kv_id = await _ensure_worker_kv()
     email = str(WORKER.get("cf_email") or "")
-    # Use Global Key auth (X-Auth-Email + X-Auth-Key) for cfk_ tokens, Bearer otherwise.
-    if cf_token.startswith("cfk_") or cf_token.startswith("cf_") or email:
+    # Use Global API Key auth (X-Auth-Email + X-Auth-Key) when the token is a
+    # real 37-char hex Global Key or when an email is on file; Bearer otherwise.
+    _is_gak = bool(cf_token) and bool(re.fullmatch(r"[a-f0-9]{37}", cf_token))
+    if _is_gak or email:
         headers = {"X-Auth-Email": email, "X-Auth-Key": cf_token, "Content-Type": "application/javascript", "User-Agent": "Spider-Panel"}
     else:
         headers = {"Authorization": f"Bearer {cf_token}", "Content-Type": "application/javascript"}
@@ -4907,17 +4912,16 @@ async def _worker_deploy() -> tuple:
             deploy_json = {}
         sc = r.status_code
         # Attach KV binding (SPIDER_KV) if we have a namespace and the script upload succeeded.
-        if kv_id and sc in (200, 201, 409):
-            bind_headers = {"X-Auth-Email": email, "X-Auth-Key": cf_token, "Content-Type": "application/json"} if (cf_token.startswith("cfk_") or email) else {"Authorization": f"Bearer {cf_token}", "Content-Type": "application/json"}
-            bind_payload = {
-                "bindings": [
-                    {"type": "kv_namespace", "name": "SPIDER_KV", "namespace_id": kv_id}
-                ]
-            }
-            async with httpx.AsyncClient(timeout=90) as client2:
-                r2 = await client2.put(
-                    f"{CF_API}/accounts/{WORKER.get('account_id','')}/workers/scripts/{WORKER.get('worker_name','')}/subdomain",
-                    headers=bind_headers,
+        bind_headers = {"X-Auth-Email": email, "X-Auth-Key": cf_token, "Content-Type": "application/json"} if (_is_gak or email) else {"Authorization": f"Bearer {cf_token}", "Content-Type": "application/json"}
+        bind_payload = {
+            "bindings": [
+                {"type": "kv_namespace", "name": "SPIDER_KV", "namespace_id": kv_id}
+            ]
+        }
+        async with httpx.AsyncClient(timeout=90) as client2:
+            r2 = await client2.put(
+                f"{CF_API}/accounts/{WORKER.get('account_id','')}/workers/scripts/{WORKER.get('worker_name','')}/subdomain",
+                headers=bind_headers,
                     json=bind_payload,
                 )
             # Binding update may be a separate endpoint; ignore 4xx and log.
@@ -5228,8 +5232,10 @@ async def worker_setup(request: Request, _=Depends(require_auth)):
     if not token or not account_id:
         raise HTTPException(status_code=400, detail="token and account_id are required")
 
-    # 1. Verify the API token. Global API Key (cfk_...) needs the email too.
-    verify_path = "/user/tokens/verify" if not (token.startswith("cfk_") or token.startswith("cf_")) else "/user"
+    # 1. Verify the API token. Global API Key (37-char hex) is verified at /user
+    #    and needs the email too; modern Bearer tokens use /user/tokens/verify.
+    _is_gak = bool(re.fullmatch(r"[a-f0-9]{37}", token))
+    verify_path = "/user/tokens/verify" if not (email or _is_gak) else "/user"
     code, data = await _cf_api("GET", verify_path, token, email=email)
     if code != 200 or not data.get("success"):
         msg = (data.get("errors") or [{}])[0].get("message", "invalid token")
