@@ -2903,6 +2903,33 @@ async def api_user_sub(username: str):
     }
 
 
+@app.get("/api/sub/{username}/qr")
+async def sub_qr(username: str):
+    """Public QR code PNG for the subscription page (no auth required)."""
+    if not QR_AVAILABLE:
+        raise HTTPException(status_code=501, detail="qr code generation not available")
+    user = None
+    uid = None
+    async with USERS_LOCK:
+        for u_id, u in USERS.items():
+            if u.get("username") == username:
+                user = u
+                uid = u_id
+                break
+    if not user:
+        raise HTTPException(status_code=404, detail="user not found")
+    config = generate_user_config(uid, user, user.get("inbound_id"))
+    qr = qrcode.QRCode(version=1, box_size=8, border=3,
+                       error_correction=qrcode.constants.ERROR_CORRECT_M)
+    qr.add_data(config)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return Response(content=buf.getvalue(), media_type="image/png")
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # TOOLS - Reality Settings
 # ══════════════════════════════════════════════════════════════════════════════

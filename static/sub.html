@@ -510,7 +510,7 @@
           '</h2>' +
           '<div class="flex gap-3">' +
             (cfg ?
-              '<button onclick="window.open(\'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=\'+encodeURIComponent(unescape(window.__cfg)),\'_blank\')" class="flex items-center gap-2 px-4 py-2 border border-black/10 dark:border-white/12 rounded-lg text-code-label text-code-label text-on-surface hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-300 hover:scale-[1.02]">' +
+              '<button onclick="showQr()" class="qr-btn flex items-center gap-2 px-4 py-2 border border-black/10 dark:border-white/12 rounded-lg text-code-label text-code-label text-on-surface hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-300 hover:scale-[1.02]">' +
                 '<span class="material-symbols-outlined text-[18px]">qr_code_2</span>' +
                 '<span class="en-only">QR Code</span><span class="fa-only">کد QR</span>' +
               '</button>' : '') +
@@ -706,6 +706,17 @@
   window.importSub = function() {
     window.open('v2rayng://install-sub?url=' + encodeURIComponent(subUrl), '_blank');
   };
+  window.showQr = function() {
+    var modal = document.getElementById('qrModal');
+    var img = document.getElementById('qrImg');
+    if (!modal || !img) return;
+    img.src = '/api/sub/' + encodeURIComponent(uname) + '/qr?t=' + Date.now();
+    modal.classList.add('show');
+  };
+  window.closeQr = function() {
+    var modal = document.getElementById('qrModal');
+    if (modal) modal.classList.remove('show');
+  };
 
   // Ping
   async function ping() {
@@ -733,8 +744,24 @@
   load();
 })();
 </script>
+<div id="qrModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-200">
+  <div class="glass-panel rounded-2xl p-6 max-w-sm w-full mx-4 text-center relative">
+    <button onclick="closeQr()" class="absolute top-2 right-2 text-on-surface-variant hover:text-on-surface transition-colors">
+      <span class="material-symbols-outlined text-20">close</span>
+    </button>
+    <h3 class="font-headline-md text-headline-md text-on-surface mb-4">
+      <span class="en-only">QR Code</span><span class="fa-only">کد QR</span>
+    </h3>
+    <img id="qrImg" class="mx-auto rounded-lg border border-black/10 dark:border-white/12 bg-white" alt="QR Code" style="max-width: 200px;" />
+    <p class="mt-3 font-body-sm text-on-surface-variant en-only">Scan to import config</p>
+    <p class="mt-1 font-body-sm text-on-surface-variant fa-only">برای وارد کردن کانفیگ اسکن کنید</p>
+  </div>
+</div>
 <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-2.5 rounded-full bg-on-surface text-background text-sm z-50 opacity-0 transition-opacity pointer-events-none"></div>
 <style>
   #toast.show { opacity: 1; }
+  #qrModal.show { opacity: 1; pointer-events-auto; }
+  #qrModal.show img { animation: popIn 0.2s ease-out; }
+  @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 </style>
 </body></html>
