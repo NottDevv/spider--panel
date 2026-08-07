@@ -3966,22 +3966,34 @@ async def _try_proxy_order(proxy, address, port):
     return None
 
 
+async def _link_max_ip(uuid: str) -> int:
+    """Per-user concurrent_connections, falling back to global max_ip_per_user."""
+    user_id = await _resolve_user_id_for_link(uuid)
+    if user_id:
+        async with USERS_LOCK:
+            u = USERS.get(user_id)
+        if u:
+            return int(u.get("concurrent_connections", 3) or 3)
+    # No registered user → use global setting (covers raw links / group links)
+    async with SETTINGS_LOCK:
+        return int(SETTINGS.get("max_ip_per_user", 3) or 3)
+
 async def enforce_ip_limit_for_link(uuid: str, ip: str) -> bool:
-    """Real per-user IP limit enforcement.
+    """Real per-user concurrent-IP limit enforcement.
 
     Called from the WS/XHTTP entrypoints with the actual client IP. Tracks the
     IP in USER_IP_MAP (the same store the dashboard's ip-check endpoint reads),
     so the panel shows real connected IPs instead of fake/manual assignments.
     Rejects the connection (returns False) when the user's IP count already
-    reached the configured max_ip_per_user limit.
+    reached the configured concurrent_connections / max_ip_per_user limit.
 
     NOTE: the relay modules import main lazily (avoiding circular imports), so
     they can call this function at connection time.
     """
     if not ip or ip in ("نامشخص", "unknown", "127.0.0.1"):
         return True
-    async with SETTINGS_LOCK:
-        max_ip = int(SETTINGS.get("max_ip_per_user", 3) or 3)
+
+    max_ip = await _link_max_ip(uuid)
     if max_ip < 1:
         return True
 
@@ -3999,7 +4011,25 @@ async def enforce_ip_limit_for_link(uuid: str, ip: str) -> bool:
         if len(ips) >= max_ip:
             return False
         ips.add(ip)
-        return True
+    asyncio.create_task(save_state())
+    return True
+
+async def release_ip_for_link(uuid: str, ip: str) -> None:
+    """Remove a formerly-connected IP for a user/link.
+
+    Called when a WS/XHTTP relay tears down so USER_IP_MAP reflects the *real*
+    set of currently-connected IPs rather than stale historical assignments.
+    """
+    if not ip or ip in ("نامشخص", "unknown", "127.0.0.1"):
+        return
+    user_id = await _resolve_user_id_for_link(uuid)
+    if not user_id:
+        user_id = f"link:{uuid}"
+    async with USER_IP_MAP_LOCK:
+        s = USER_IP_MAP.get(user_id)
+        if s:
+            s.discard(ip)
+    asyncio.create_task(save_state())
 
 
 # ══════════════════════════════════════════════════════════════════════════════

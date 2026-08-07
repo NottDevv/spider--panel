@@ -230,4 +230,9 @@ async def websocket_tunnel(ws: WebSocket, uuid: str, proxy_override: str = None)
             except Exception:
                 pass
         connections.pop(conn_id, None)
+        # Release the IP so USER_IP_MAP reflects live concurrent connections
+        try:
+            asyncio.create_task(m.release_ip_for_link(uuid, ip))
+        except Exception:
+            pass
         logger.info(f"WS closed [{conn_id}] total={len(connections)}")

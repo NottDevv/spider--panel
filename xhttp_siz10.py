@@ -232,6 +232,7 @@ async def _get_or_create_session(uuid: str, mode: str, session_id: str, ip: str 
             "seq_buf": {}, "next_seq": 0,
             "gate": None,  # لازی ساخته می‌شه: _QuotaGate تطبیقی مخصوص stream-up
             "flow": None,  # لازی ساخته می‌شه: _AdaptiveFlow مخصوص stream-up
+            "ip": ip,
         }
         xhttp_sessions[session_id] = sess
         logger.info(f"new XHTTP[{mode}] session [{session_id[:8]}] uuid={uuid[:8]} ip={ip}")
@@ -260,6 +261,11 @@ async def _teardown(session_id: str):
         except Exception:
             pass
     connections.pop(sess.get("conn_id"), None)
+    # Release the IP so USER_IP_MAP reflects live concurrent connections
+    try:
+        asyncio.create_task(m.release_ip_for_link(sess.get("uuid", ""), sess.get("ip", "")))
+    except Exception:
+        pass
     dq = sess.get("down_q")
     if dq:
         try:
