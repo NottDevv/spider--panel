@@ -30,6 +30,7 @@
   --tab-bg:#00e1c1;--tab-color:#000;--tab-glow:none;
   --nav-bg:rgba(0,225,193,.14);--nav-color:#00e1c1;
   --border-glow:rgba(0,225,193,.4);--input-glow:rgba(0,225,193,.14);
+  --line:rgba(255,255,255,.16);--input-bg:#121216;
   --orb1:rgba(255,255,255,.05);--orb2:rgba(255,255,255,.03);
   --surface:#FFFFFF;--text-primary:#ffffff;--text-secondary:#c9c9ce;
   --shadow-sm:0 8px 32px rgba(0,0,0,.55);--shadow-md:0 8px 32px rgba(0,0,0,.6);
@@ -52,6 +53,7 @@
   --tab-bg:#000000;--tab-color:#fff;--tab-glow:none;
   --nav-bg:rgba(0,0,0,.08);--nav-color:#000000;
   --border-glow:rgba(0,0,0,.25);--input-glow:rgba(0,0,0,.08);
+  --line:rgba(0,0,0,.16);--input-bg:#ffffff;
   --orb1:rgba(0,0,0,.05);--orb2:rgba(0,0,0,.03);
   --surface:#FFFFFF;--text-primary:#000000;--text-secondary:#3a3a3e;
   --shadow-sm:0 8px 30px rgba(0,0,0,.08);--shadow-md:0 10px 32px rgba(0,0,0,.1);
@@ -67,8 +69,13 @@
 [data-theme="light"] .modal-c,
 [data-theme="light"] .contact-bubble,
 [data-theme="light"] .login-card{background:#ffffff}
-[data-theme="light"] .f-g input,.f-g select,.f-g textarea,
-[data-theme="light"] .input-glass{background:#ffffff}
+[data-theme="light"] .f-g input,[data-theme="light"] .f-g select,[data-theme="light"] .f-g textarea,
+[data-theme="light"] .input-glass{background:#ffffff;color:#000000;border-color:rgba(0,0,0,.16)}
+[data-theme="light"] .f-g select option{background:#ffffff;color:#000000}
+[data-theme="light"] .f-g input:focus,[data-theme="light"] .f-g select:focus,[data-theme="light"] .f-g textarea:focus,
+[data-theme="light"] .input-glass:focus{background:#ffffff;color:#000000;border-color:#000000;box-shadow:0 0 0 4px rgba(0,0,0,.08)}
+[data-theme="light"] .f-g input::placeholder,[data-theme="light"] .f-g textarea::placeholder,
+[data-theme="light"] .input-glass::placeholder{color:#3a3a3e;opacity:.6}
 [data-theme="light"] .btn-g{background:rgba(0,0,0,.05)}
 /* Light: no colored/white glow on the background */
 [data-theme="light"] .bg-fx{background:none}
@@ -277,7 +284,7 @@ input,select,button,textarea{font-family:inherit}
         .input-glass {
             width: 100%;
             padding: 12px 16px 12px 48px;
-            background: #121216;
+            background: var(--input-bg);
             border: 1.5px solid var(--border);
             border-radius: var(--radius);
             color: var(--txt);
@@ -289,7 +296,7 @@ input,select,button,textarea{font-family:inherit}
         .input-glass:focus {
             border-color: var(--neon);
             box-shadow: 0 0 0 4px var(--input-glow);
-            background: #121216;
+            background: var(--input-bg);
         }
         .input-glass::placeholder {
             color: var(--txt2);
@@ -420,7 +427,7 @@ input,select,button,textarea{font-family:inherit}
   flex: 1;
   min-width: 0;
   padding: 11px 16px;
-  background: #121216;
+  background: var(--input-bg);
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--txt);
@@ -429,12 +436,62 @@ input,select,button,textarea{font-family:inherit}
   transition: all .2s;
 }
 [data-theme="light"] .scn-dom-add input { background: #ffffff; }
-.scn-dom-add input:focus { border-color: var(--neon); background: #121216; box-shadow: 0 0 0 4px var(--input-glow); }
+.scn-dom-add input:focus { border-color: var(--neon); background: var(--input-bg); box-shadow: 0 0 0 4px var(--input-glow); }
 [data-theme="light"] .scn-dom-add input:focus { background: #ffffff; }
 .scn-dom-add .btn { border-radius: 999px; }
 .scn-result { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(0,0,0,.25); border: 1px solid var(--border); border-radius: 10px; font-size: 11px; }
 .scn-result .scn-ip { font-family: monospace; direction: ltr; }
 .scn-result .scn-dom-name { color: var(--txt2); font-size: 10px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ═══ SPOOF SCANNER ═══ */
+.scn-adv-dropdown { position: relative; }
+.scn-adv-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  max-height: 250px;
+  overflow-y: auto;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.scn-adv-dd-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .2s;
+}
+.scn-adv-dd-item:last-child { border-bottom: none; }
+.scn-adv-dd-item:hover { background: rgba(43,127,255,.1); }
+.scn-adv-dd-domain { flex: 1; font-family: monospace; font-size: 12px; direction: ltr; }
+.scn-adv-dd-edit, .scn-adv-dd-del {
+  background: none;
+  border: none;
+  color: var(--txt2);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all .2s;
+}
+.scn-adv-dd-edit:hover { color: var(--neon); background: rgba(43,127,255,.1); }
+.scn-adv-dd-del:hover { color: var(--red); background: rgba(255,107,107,.1); }
+.scn-adv-dd-empty { padding: 12px; text-align: center; color: var(--txt2); font-size: 11px; }
+
+/* Spoof tab styles */
+#scn-pane-spoof .scn-tabs { margin-top: 14px; }
+#scn-pane-spoof .scn-tab { font-size: 11px; padding: 8px 4px; }
+#scn-pane-spoof .scn-cfg { margin-top: 10px; }
+#scn-pane-spoof .scn-hint { margin-top: 8px; margin-bottom: 8px; }
 
 /* ═══ CUSTOM-IP PICKER (create-user modal) ═══ */
 .cu-custom-wrap { position: relative; }
@@ -523,7 +580,7 @@ html[lang="en"] body, html[lang="en"] .sidebar, html[lang="en"] .panel, html[lan
 }
 .btn-p{background:var(--neon);color:var(--tab-color);box-shadow:0 4px 16px var(--neon)}
 .btn-p:hover{transform:translateY(-2px);filter:brightness(1.1);box-shadow:0 8px 24px var(--neon)}
-.btn-g{background:#121216;color:var(--txt);border:1px solid rgba(255,255,255,.08)}.btn-g:hover{background:var(--nav-bg);color:var(--neon);border-color:var(--border-glow)}
+.btn-g{background:var(--input-bg);color:var(--txt);border:1px solid rgba(255,255,255,.08)}.btn-g:hover{background:var(--nav-bg);color:var(--neon);border-color:var(--border-glow)}
 .btn-r{background:rgba(255,35,82,.1);color:var(--spider-red);border:1px solid rgba(255,35,82,.2)}.btn-r:hover{background:rgba(255,35,82,.2)}
 .btn-gr{background:rgba(22,163,74,.1);color:var(--green);border:1px solid rgba(22,163,74,.2)}.btn-b{background:rgba(68,138,255,.1);color:var(--blue);border:1px solid rgba(68,138,255,.2)}
 .btn-sm{padding:5px 12px;font-size:11px;border-radius:10px}
@@ -582,21 +639,27 @@ tr{animation:fadeIn .3s ease}
 .modal-t .glow{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .modal-btns{display:flex;gap:8px;margin-top:18px;position:relative}
 .modal-btns .btn{flex:1;justify-content:center;padding:11px}
+/* Modal X close button (top-right corner of every modal) */
+.modal-x{position:absolute;top:-14px;right:-14px;width:34px;height:34px;border-radius:50%;
+  background:var(--bg3);border:1px solid var(--border);color:var(--txt);
+  font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;z-index:5;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.modal-x:hover{background:var(--red);color:#fff;border-color:var(--red);transform:rotate(90deg)}
 
 /* Form fields */
 .f-g{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;flex:1}
 .f-g label{font-size:11px;font-weight:600;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px}
 .f-g input,.f-g select,.f-g textarea{
-  width:100%;padding:11px 14px;background:#121216;
+  width:100%;padding:11px 14px;background:var(--input-bg);
   border:1px solid var(--border);border-radius:12px;
   color:var(--txt);font-size:13px;outline:none;transition:all .2s;
 }
 .f-g input:hover,.f-g select:hover,.f-g textarea:hover{border-color:var(--border-glow)}
 .f-g input:focus,.f-g select:focus,.f-g textarea:focus{
-  border-color:var(--neon);background:#121216;
+  border-color:var(--neon);background:var(--input-bg);
 }
 .f-g select{cursor:pointer;appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--neon) 50%),linear-gradient(135deg,var(--neon) 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat}
-.f-g select option{background:#121216;color:var(--txt)}
+.f-g select option{background:var(--input-bg);color:var(--txt)}
 .f-r{display:flex;gap:10px;flex-wrap:wrap}
 
 /* Tabs */
@@ -926,6 +989,7 @@ tr{animation:fadeIn .3s ease}
             <button class="scn-tab active" id="scn-tab-cf" onclick="scnSwitch('cf',this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg> Cloudflare</button>
             <button class="scn-tab" id="scn-tab-railway" onclick="scnSwitch('railway',this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 19h10M4 19H3v-3l2-5h11l3 5v3h-1M5 11l1-7h9l1 7"/></svg> Railway</button>
             <button class="scn-tab" id="scn-tab-tcp" onclick="scnSwitch('tcp',this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 7a3 3 0 0 1-3 3 3 3 0 0 1 0 6 3 3 0 0 1-3-3"/><path d="M14 17a3 3 0 0 1 3-3 3 3 0 0 1 0-6 3 3 0 0 1 3 3"/></svg> TCP</button>
+            <button class="scn-tab" id="scn-tab-spoof" onclick="scnSwitch('spoof',this)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 6v6M12 14v2"/></svg> Spoof</button>
           </div>
 
           <!-- CLOUDFLARE PANE -->
@@ -984,6 +1048,103 @@ tr{animation:fadeIn .3s ease}
             <div class="scn-dom-list" id="scn-tcp-list"></div>
             <button class="btn btn-p" style="width:100%" onclick="scnRunTCP()"><span data-i18n="checkDomains">شروع بررسی دامنه‌ها</span></button>
             <div class="scn-result-list scn-list" id="scn-tcp-results" style="margin-top:12px"></div>
+          </div>
+
+          <!-- SPOOF PANE -->
+          <div class="scn-pane" id="scn-pane-spoof">
+            <!-- Advanced Section: Domain input that populates all inbound domains -->
+            <div class="panel" style="margin-bottom:14px">
+              <div class="panel-h"><span class="glow">⚙️ پیشرفته</span></div>
+              <div class="scn-hint px-hint" style="margin-bottom:10px">دامنه پنل را اینجا وارد کنید تا به صورت خودکار در تمام اینباندها (دامنه/سنی/دامنه خارجی) اعمال شود. دامنه‌های قبلی در منوی شیشه‌ای قابل انتخاب/حذف هستند.</div>
+              <div class="scn-dom-add" style="position:relative">
+                <input type="text" id="scn-adv-domain" placeholder="مثال: mypanel.example.com" dir="ltr" autocomplete="off">
+                <button class="btn btn-p" onclick="scnSaveAdvDomain()"><span>ذخیره و اعمال</span></button>
+                <svg class="scn-adv-dropdown" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);cursor:pointer;opacity:.6" onclick="scnToggleAdvDropdown()"><path d="M6 9l6 6 6-6"/></svg>
+                <div class="scn-adv-dropdown-menu hidden" id="scn-adv-dropdown-menu"></div>
+              </div>
+            </div>
+
+            <!-- Spoof Sub-tabs: IP Scan / SNI Scan -->
+            <div class="scn-tabs" role="tablist" style="margin-top:14px">
+              <button class="scn-tab active" id="spf-tab-ip" onclick="spfSwitchTab('ip',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M12 22V12"/></svg> IP Scan</button>
+              <button class="scn-tab" id="spf-tab-sni" onclick="spfSwitchTab('sni',this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> SNI Scan</button>
+            </div>
+
+            <!-- IP Scan Pane -->
+            <div class="scn-pane active" id="spf-pane-ip">
+              <div class="scn-cfg">
+                <div class="f-g"><label>تعداد IP برای اسکن</label><input type="number" id="spf-ip-count" value="30" min="1" max="200"></div>
+                <div class="f-g"><label>پورت هدف</label><select id="spf-ip-port"><option value="443">443</option><option value="8443">8443</option><option value="2053">2053</option><option value="2083">2083</option><option value="2087">2087</option></select></div>
+                <button class="btn btn-p" onclick="spfRunIpScan()"><span>شروع اسکن IP</span></button>
+                <button class="btn btn-g" onclick="spfStopScan()"><span>توقف</span></button>
+              </div>
+              <div class="scn-hint px-hint">اسکن از رنج‌های Cloudflare (cf_subnets.txt). تا ۱۰ IP موفق یافت می‌شود. نتایج موفق و ناموفق به صورت زنده نمایش داده می‌شوند.</div>
+              <div class="scn-stats">
+                <div class="scn-chip"><b id="spf-ip-found">۰</b><span>IP موفق</span></div>
+                <div class="scn-chip"><b id="spf-ip-tried">۰</b><span>تست شده</span></div>
+                <div class="scn-chip"><b id="spf-ip-best">--</b><span>بهترین پینگ</span></div>
+                <div class="scn-chip"><b id="spf-ip-saved">۰/۱۰</b><span>ذخیره شده</span></div>
+              </div>
+              <div class="scn-progress"><div class="scn-bar" id="spf-ip-bar"></div></div>
+              <div class="scn-list" id="spf-ip-list"><div class="scn-empty">برای شروع اسکن، دکمه «شروع اسکن IP» را بزنید</div></div>
+              <div class="scn-saved">
+                <div class="scn-saved-t"><span>ذخیره شده (اولین ۱۰ آی‌پی موفق)</span> — <button class="btn btn-sm btn-g" onclick="spfClearSaved('ip')"><span>پاک کردن</span></button></div>
+                <div class="scn-saved-tags" id="spf-ip-saved-tags"><span class="scn-empty">هنوز ذخیره‌ای نیست</span></div>
+              </div>
+            </div>
+
+            <!-- SNI Scan Pane -->
+            <div class="scn-pane" id="spf-pane-sni">
+              <div class="scn-cfg">
+                <div class="f-g"><label>تعداد SNI برای اسکن</label><input type="number" id="spf-sni-count" value="30" min="1" max="200"></div>
+                <div class="f-g"><label>پورت هدف</label><select id="spf-sni-port"><option value="443">443</option><option value="8443">8443</option></select></div>
+                <button class="btn btn-p" onclick="spfRunSniScan()"><span>شروع اسکن SNI</span></button>
+                <button class="btn btn-g" onclick="spfStopScan()"><span>توقف</span></button>
+              </div>
+              <div class="scn-hint px-hint">اسکن از لیست SNI (sni-list.txt). تا ۱۰ SNI موفق یافت می‌شود. هر SNI در IPهای Cloudflare تست می‌شود.</div>
+              <div class="scn-stats">
+                <div class="scn-chip"><b id="spf-sni-found">۰</b><span>SNI موفق</span></div>
+                <div class="scn-chip"><b id="spf-sni-tried">۰</b><span>تست شده</span></div>
+                <div class="scn-chip"><b id="spf-sni-best">--</b><span>بهترین پینگ</span></div>
+                <div class="scn-chip"><b id="spf-sni-saved">۰/۱۰</b><span>ذخیره شده</span></div>
+              </div>
+              <div class="scn-progress"><div class="scn-bar" id="spf-sni-bar"></div></div>
+              <div class="scn-list" id="spf-sni-list"><div class="scn-empty">برای شروع اسکن، دکمه «شروع اسکن SNI» را بزنید</div></div>
+              <div class="scn-saved">
+                <div class="scn-saved-t"><span>ذخیره شده (اولین ۱۰ SNI موفق)</span> — <button class="btn btn-sm btn-g" onclick="spfClearSaved('sni')"><span>پاک کردن</span></button></div>
+                <div class="scn-saved-tags" id="spf-sni-saved-tags"><span class="scn-empty">هنوز ذخیره‌ای نیست</span></div>
+              </div>
+            </div>
+
+            <!-- Fake SNI & Spoof IP Fields with Lightning Bolt -->
+            <div class="divider"></div>
+            <div class="panel" style="margin-top:14px">
+              <div class="panel-h"><span class="glow">⚡ Spoof Settings</span></div>
+              <div class="f-r" style="gap:10px;flex-wrap:wrap">
+                <div class="f-g" style="flex:1;min-width:280px">
+                  <label>Fake SNI</label>
+                  <div style="display:flex;gap:6px;align-items:flex-end">
+                    <input type="text" id="spf-fake-sni" placeholder="مثال: www.cloudflare.com" dir="ltr" style="flex:1">
+                    <button class="btn btn-b" style="border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center" onclick="spfPickBestFakeSni()" title="انتخاب بهترین SNI از نتایج اسکن">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="f-g" style="flex:1;min-width:280px">
+                  <label>Spoof IP</label>
+                  <div style="display:flex;gap:6px;align-items:flex-end">
+                    <input type="text" id="spf-spoof-ip" placeholder="مثال: 104.16.0.1" dir="ltr" style="flex:1">
+                    <button class="btn btn-b" style="border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center" onclick="spfPickBestSpoofIp()" title="انتخاب بهترین IP از نتایج اسکن">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="f-r" style="margin-top:8px;gap:10px">
+                <button class="btn btn-p" onclick="spfSaveSpoofSettings()"><span>ذخیره تنظیمات Spoof</span></button>
+                <button class="btn btn-g" onclick="spfLoadSpoofSettings()"><span>بارگذاری ذخیره‌شده</span></button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1165,6 +1326,13 @@ tr{animation:fadeIn .3s ease}
       <div class="px-hint" data-i18n="inboundPickHint">برای هر اینباند، گزینه‌های مخصوصش نمایش داده می‌شود: Worker → انتخاب کشور، TLS → سوییچ IP اسکنر، Reality → بدون گزینه.</div>
       <div id="cu-inbound" class="f-r" style="gap:8px;margin-top:6px"></div>
     </div>
+    <div class="f-g" style="display:flex;align-items:center;gap:8px;margin-top:8px">
+      <div class="set-row" style="padding:8px 0;border-top:1px solid var(--border)">
+        <span class="set-lbl" data-i18n="sniSpoofV2box">Sni Spoof برای v2box</span>
+        <button type="button" class="ios-switch" id="cu-sni-spoof" onclick="cuToggleSniSpoof(this)" data-i18n-title="sniSpoofV2box" title="Sni Spoof"></button>
+      </div>
+      <div class="px-hint" data-i18n="sniSpoofV2boxHint" style="margin-top:-6px;margin-bottom:6px">وقتی فعال باشد، یک کپی از کانفیگ‌های اصلی TLS WS و Worker ساخته و snispoofing روی آن اعمال می‌شود. روی Reality/XHTTP Reality اعمال نمی‌شود.</div>
+    </div>
     <div class="modal-btns">
       <button type="button" class="btn btn-g" onclick="closeModal('mod-user')"><span data-i18n="cancel">انصراف</span></button>
       <button type="submit" class="btn btn-p" id="cu-submit"><span data-i18n="submitUser">ایجاد کاربر</span></button>
@@ -1185,6 +1353,11 @@ tr{animation:fadeIn .3s ease}
     <div class="f-g" style="display:flex;align-items:center;gap:8px">
       <input type="checkbox" id="eu-reset" style="width:auto">
       <label style="margin:0" data-i18n="resetTraffic">بازنشانی ترافیک</label>
+    </div>
+    <div class="f-g">
+      <label data-i18n="inboundsMulti">اینباندها (چندتایی)</label>
+      <div class="px-hint" data-i18n="inboundPickHint">برای هر اینباند، گزینه‌های مخصوصش نمایش داده می‌شود: Worker → انتخاب کشور، TLS → سوییچ IP اسکنر، Reality → بدون گزینه.</div>
+      <div id="eu-inbound" class="f-r" style="gap:8px;margin-top:6px"></div>
     </div>
     <div class="modal-btns">
       <button type="button" class="btn btn-g" onclick="closeModal('mod-edit-user')"><span data-i18n="cancel">انصراف</span></button>
@@ -1320,6 +1493,7 @@ var I18N = {
     'addRailwayIps': 'افزودن ۱۰ کانفیگ با IPهای Railway اسکن‌شده',
     'realityNoExtra': 'Reality گزینه اضافه‌ای ندارد — فقط کانفیگ اصلی Reality.',
     'customIp': 'آی‌پی اختصاصی (اسکنر)', 'noCustomIp': '— بدون آی‌پی اختصاصی —', 'noCustomOpt': 'بدون آی‌پی اختصاصی',
+      'sniSpoofV2box': 'Sni Spoof برای v2box', 'sniSpoofV2boxHint': 'وقتی فعال باشد، کانفیگ‌های TLS WS و Worker شامل پارامتر snispoofing برای کلاینت v2box می‌شوند. روی Reality/XHTTP Reality اعمال نمی‌شود.',
     'customIpHint': 'از فایل ذخیره‌شده اسکنر، ۱۰ کانفیگ اضافه در ساب ساخته می‌شود. در بخش Address، فقط روی اینباندهای غیر-Reality قرار می‌گیرند.',
     'loadingIps': 'در حال بارگذاری...', 'noScannedIps': 'هنوز آی‌پی‌ای در فایل اسکنر ذخیره نشده. اول از صفحه اسکنر، اسکن کنید.', 'scannedTo10': 'آی‌پی ذخیره‌شده → ۱۰ کانفیگ:', 'errLoadIps': 'خطا در دریافت آی‌پی‌ها',
     'proxyCountry': 'کشور پروکسی', 'noProxy': '-- بدون پروکسی --', 'pxHint': 'کشور را روی نقشه کلیک کنید یا از فهرست بالا انتخاب کنید. سپس IP موردنظر را تیک بزنید — حداکثر ۳ IP.',
@@ -1367,6 +1541,7 @@ var I18N = {
     'addRailwayIps': 'Add 10 configs with scanned Railway IPs',
     'realityNoExtra': 'Reality needs no extras — only the main Reality config.',
     'customIp': 'Custom IP (Scanner)', 'noCustomIp': '— No custom IP —', 'noCustomOpt': 'No custom IP',
+      'sniSpoofV2box': 'Sni Spoof for v2box', 'sniSpoofV2boxHint': 'When enabled, TLS WS and Worker configs include snispoofing JSON parameter for v2box client. Does not apply to Reality/XHTTP Reality.',
     'customIpHint': 'Adds 10 extra configs in the sub from the scanner file. In the Address field they are only placed on non-Reality inbounds.',
     'loadingIps': 'Loading...', 'noScannedIps': 'No IPs saved in the scanner file yet. Run a scan from the Scanner page first.', 'scannedTo10': 'saved IPs → 10 configs:', 'errLoadIps': 'Error loading IPs',
     'proxyCountry': 'Proxy Country', 'noProxy': '-- No Proxy --', 'pxHint': 'Click a country on the map or pick from the list above, then check the IPs — up to 3 IPs.',
@@ -1808,7 +1983,12 @@ async function openCreateUser() {
   $id('cu-exp').value = '30';
   $id('cu-exp-u').value = 'days';
   $id('cu-conn').value = '2';
+  var sniSw = $id('cu-sni-spoof'); if (sniSw) sniSw.classList.remove('on');
   openModal('mod-user');
+}
+
+function cuToggleSniSpoof(el) {
+  el.classList.toggle('on');
 }
 
 async function submitCreateUser(e) {
@@ -1822,6 +2002,28 @@ async function submitCreateUser(e) {
   var cuCountries = cuWorkerCountries();  // { inboundId: [codes] }
   var cfIds = inbound_ids.filter(function(i){ return cuSw[i] && cuSw[i].cf; });
   var rwIds = inbound_ids.filter(function(i){ return cuSw[i] && cuSw[i].railway; });
+  var sniSpoof = $id('cu-sni-spoof') ? $id('cu-sni-spoof').classList.contains('on') : false;
+  // Get spoof settings from localStorage
+  var fakeSni = '', spoofIp = '';
+  try {
+    var saved = localStorage.getItem('spider-spoof-settings');
+    if (saved) { var s = JSON.parse(saved); fakeSni = s.fakeSni || ''; spoofIp = s.spoofIp || ''; }
+  } catch(e) {}
+  // Aggregate selected countries across ALL worker inbounds so every country
+  // picked in any worker inbound's dropdown produces its own /route/{code} config.
+  var allCountries = [];
+  Object.keys(cuCountries).forEach(function(ibId) {
+    (cuCountries[ibId] || []).forEach(function(c) {
+      if (allCountries.indexOf(c) === -1) allCountries.push(c);
+    });
+  });
+  // The first picked worker inbound becomes the primary (for worker routing).
+  var workerInboundIds = inbound_ids.filter(function(i) {
+    var ib = ALL_IB.find(function(x) { return x.inbound_id === i; });
+    return ib && (ib.protocol || '').toLowerCase() === 'worker';
+  });
+  var primaryWorkerIb = workerInboundIds[0] || Object.keys(cuCountries)[0] || null;
+  var firstCountry = allCountries[0] || '';
   try {
     var r = await api('/api/users', {method: 'POST', body: {
       username: $id('cu-name').value,
@@ -1829,16 +2031,52 @@ async function submitCreateUser(e) {
       expire_days: eu === 'months' ? ex * 30 : ex,
       concurrent_connections: parseInt($id('cu-conn').value) || 2,
       inbound_ids: inbound_ids,
-      proxy_countries: cuCountries[Object.keys(cuCountries)[0]] || [],
-      proxy_ip_enabled: !!Object.keys(cuCountries).length,
+      proxy_countries: allCountries,
+      proxy_country: firstCountry,
+      proxy_ip_enabled: !!allCountries.length,
       // Mark which inbounds want scanned custom-IP configs (worker→cf, tls→railway).
-      custom_ip_inbounds: { cf: cfIds, railway: rwIds }
+      custom_ip_inbounds: { cf: cfIds, railway: rwIds },
+      sni_spoof_v2box: sniSpoof,
+      fake_sni: fakeSni,
+      spoof_ip: spoofIp
     }});
     toast(r.username + ' ' + t('userCreated'), 'ok');
     closeModal('mod-user');
     loadAll();
   } catch(e) { toast(e.message || t('toast.err'), 'err'); }
   btn.disabled = false; btn.textContent = t('submitUser');
+}
+
+var EU_INBOUND_PICKS = {};
+function renderEditInboundPicker(u) {
+  var wrap = $id('eu-inbound');
+  if (!wrap) return;
+  var cur = u.inbound_ids || (u.inbound_id ? [u.inbound_id] : []);
+  EU_INBOUND_PICKS = {};
+  cur.forEach(function(i) { EU_INBOUND_PICKS[i] = true; });
+  var html = '';
+  ALL_IB.forEach(function(ib) {
+    var id = ib.inbound_id;
+    var selected = EU_INBOUND_PICKS[id] === true;
+    var proto = (ib.protocol || 'vless').toUpperCase();
+    html += '<div class="ib-pick' + (selected ? ' selected' : '') + '" data-id="' + esc(id) + '" onclick="euToggleIbPick(this)">' +
+      '<div class="ib-pick-ic"><span class="material-symbols-outlined">' + ((ib.protocol || '').toLowerCase() === 'worker' ? 'bolt' : 'cloud') + '</span></div>' +
+      '<div class="ib-pick-info">' +
+        '<div class="ib-pick-name">' + esc(ib.name) + '</div>' +
+        '<div class="ib-pick-meta">' + esc(proto + ' · ' + (ib.network || 'ws') + ' · ' + (ib.security || 'tls')) + '</div>' +
+      '</div>' +
+      '<div class="ib-pick-check"><span class="material-symbols-outlined">check</span></div>' +
+    '</div>';
+  });
+  wrap.innerHTML = html || '<span style="font-size:11px;color:var(--txt2)">' + t('noInboundOpt') + '</span>';
+}
+function euToggleIbPick(el) {
+  var id = el.getAttribute('data-id');
+  if (EU_INBOUND_PICKS[id]) delete EU_INBOUND_PICKS[id]; else EU_INBOUND_PICKS[id] = true;
+  renderEditInboundPicker(ALL_USERS.find(function(x) { return x.user_id === $id('eu-id').value; }) || {});
+}
+function selectedEditInboundIds() {
+  return Object.keys(EU_INBOUND_PICKS).filter(function(k) { return EU_INBOUND_PICKS[k]; });
 }
 
 function editUser(uid) {
@@ -1850,12 +2088,20 @@ function editUser(uid) {
   $id('eu-exp').value = u.expire_at ? Math.ceil((new Date(u.expire_at) - new Date()) / 86400000) : 0;
   $id('eu-status').value = u.status || 'active';
   $id('eu-conn').value = u.concurrent_connections || 2;
+  renderEditInboundPicker(u);
   openModal('mod-edit-user');
 }
 
 async function submitEditUser(e) {
   e.preventDefault();
   var uid = $id('eu-id').value;
+  // Get spoof settings from localStorage (kept for reference; sni_spoof_v2box is
+  // set only at creation time in the add-users modal).
+  var fakeSni = '', spoofIp = '';
+  try {
+    var saved = localStorage.getItem('spider-spoof-settings');
+    if (saved) { var s = JSON.parse(saved); fakeSni = s.fakeSni || ''; spoofIp = s.spoofIp || ''; }
+  } catch(e) {}
   try {
     await api('/api/users/' + uid, {method: 'PATCH', body: {
       username: $id('eu-name').value,
@@ -1863,7 +2109,10 @@ async function submitEditUser(e) {
       expire_days: parseInt($id('eu-exp').value) || 0,
       concurrent_connections: parseInt($id('eu-conn').value) || 2,
       status: $id('eu-status').value,
-      reset_traffic: $id('eu-reset') ? $id('eu-reset').checked : false
+      reset_traffic: $id('eu-reset') ? $id('eu-reset').checked : false,
+      fake_sni: fakeSni,
+      spoof_ip: spoofIp,
+      inbound_ids: selectedEditInboundIds()
     }});
     toast(t('toast.userUpdated'), 'ok');
     closeModal('mod-edit-user');
@@ -2140,6 +2389,27 @@ async function changePassword(e) {
 // ─── Modal ───
 function openModal(id) { $id(id).classList.add('show'); }
 function closeModal(id) { $id(id).classList.remove('show'); }
+// Inject an X close button into every modal header and wire backdrop-click +
+// Escape-key close so modals can be dismissed easily (QR modal included).
+function wireModalCloseButtons() {
+  document.querySelectorAll('.modal').forEach(function(m) {
+    if (m.querySelector('.modal-x')) return;
+    var x = document.createElement('button');
+    x.className = 'modal-x';
+    x.setAttribute('aria-label', 'close');
+    x.innerHTML = '&#10005;';
+    x.onclick = function(ev) { ev.stopPropagation(); closeModal(m.id); };
+    m.appendChild(x);
+    m.addEventListener('click', function(ev) { if (ev.target === m) closeModal(m.id); });
+  });
+}
+document.addEventListener('keydown', function(ev) {
+  if (ev.key === 'Escape') {
+    document.querySelectorAll('.modal.show').forEach(function(m) { closeModal(m.id); });
+  }
+});
+document.addEventListener('DOMContentLoaded', wireModalCloseButtons);
+wireModalCloseButtons();
 
 // ─── Helpers ───
 function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -2234,6 +2504,39 @@ var SCN_DOM_DEFAULTS = [
 ];
 var SCN_STOP = false;
 var scnCtx = { cf: {found: [], tried: 0, gen: 0, seq: 0}, railway: {found: [], tried: 0, gen: 0, seq: 0} };
+
+// ═══ SPOOF SCANNER ═══
+// Cloudflare IP ranges from cf_subnets.txt
+var SPF_IP_RANGES = [
+  [104, 16, 0, 0, 12], [104, 17, 0, 0, 12], [104, 18, 0, 0, 12], [104, 19, 0, 0, 12],
+  [104, 20, 0, 0, 12], [104, 21, 0, 0, 12], [104, 22, 0, 0, 12], [104, 23, 0, 0, 12],
+  [104, 24, 0, 0, 12], [104, 25, 0, 0, 12], [104, 26, 0, 0, 12], [104, 27, 0, 0, 12],
+  [104, 28, 0, 0, 12], [104, 29, 0, 0, 12], [104, 30, 0, 0, 12], [104, 31, 0, 0, 12],
+  [172, 64, 0, 0, 13], [172, 65, 0, 0, 13], [172, 66, 0, 0, 13], [172, 67, 0, 0, 13],
+  [162, 159, 0, 0, 16], [108, 162, 192, 0, 18], [141, 101, 64, 0, 18],
+  [188, 114, 96, 0, 19], [190, 93, 240, 0, 20], [197, 234, 240, 0, 20],
+  [198, 41, 128, 0, 18], [199, 27, 128, 0, 17], [162, 158, 0, 0, 15]
+];
+// SNI list from sni-list.txt (truncated for performance - full list loaded on demand)
+var SPF_SNI_LIST = [
+  "www.cloudflare.com", "www.hcaptcha.com", "api.cloudflare.com", "dash.cloudflare.com",
+  "workers.cloudflare.com", "pages.cloudflare.com", "developers.cloudflare.com",
+  "cloudflare-dns.com", "one.one.one.one", "1.1.1.1", "cloudflare.com",
+  "www.google.com", "www.youtube.com", "www.facebook.com", "www.microsoft.com",
+  "www.apple.com", "www.amazon.com", "www.github.com", "www.twitter.com",
+  "api.openai.com", "chatgpt.com", "www.anthropic.com", "www.deepseek.com",
+  "www.cloudflare-dns.com", "cdnjs.cloudflare.com", "assets.hcaptcha.com",
+  "analytics.hcaptcha.com", "challenges.cloudflare.com", "radar.cloudflare.com",
+  "speed.cloudflare.com", "speedtest.cloudflare.com", "cdn.cloudflare.com"
+];
+var SPF_STOP = false;
+var spfCtx = {
+  ip: {found: [], tried: 0, gen: 0, seq: 0},
+  sni: {found: [], tried: 0, gen: 0, seq: 0}
+};
+
+// Advanced domain storage
+var scnAdvDomains = [];
 
 function scnRandIp(range) {
   var seg = [range[0], range[1], range[2], range[3]];
@@ -2459,6 +2762,12 @@ function scnSwitch(which, btn) {
   if (which === 'cf') scnLoadSaved('cf');
   if (which === 'railway') scnLoadSaved('railway');
   if (which === 'tcp') scnRenderDomains();
+  if (which === 'spoof') {
+    spfLoadSaved('ip');
+    spfLoadSaved('sni');
+    spfRenderAdvDropdown();
+    spfLoadSpoofSettings();
+  }
 }
 
 function scnStop() { SCN_STOP = true; toast(t('scanStopped'), 'warn'); }
@@ -2521,7 +2830,392 @@ function scnInit() {
   scnRenderDomains();
   scnLoadSaved('cf');
   scnLoadSaved('railway');
+  spfInit(); // Initialize spoof scanner
 }
+
+// ═══ SPOOF SCANNER FUNCTIONS ═══
+
+function spfInit() {
+  spfLoadSaved('ip');
+  spfLoadSaved('sni');
+  spfLoadAdvDomains();
+  spfRenderAdvDropdown();
+  spfLoadSpoofSettings();
+}
+
+function spfSwitchTab(which, btn) {
+  document.querySelectorAll('#scn-pane-spoof .scn-tab').forEach(function(t) { t.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  document.querySelectorAll('#scn-pane-spoof .scn-pane').forEach(function(p) { p.classList.remove('active'); });
+  var pane = $id('spf-pane-' + which);
+  if (pane) pane.classList.add('active');
+  if (which === 'ip') spfLoadSaved('ip');
+  if (which === 'sni') spfLoadSaved('sni');
+}
+
+function spfRandIp(range) {
+  var seg = [range[0], range[1], range[2], range[3]];
+  if (range[4] === 12) { seg[1] += Math.floor(Math.random() * 16); seg[2] = Math.floor(Math.random() * 256); }
+  else if (range[4] === 13) { seg[1] += Math.floor(Math.random() * 8); seg[2] = Math.floor(Math.random() * 256); }
+  else if (range[4] === 14) { seg[2] += Math.floor(Math.random() * 4); }
+  else if (range[4] === 15) { seg[2] += Math.floor(Math.random() * 2); }
+  else if (range[4] === 16) { seg[2] = Math.floor(Math.random() * 256); }
+  else if (range[4] === 17) { seg[2] = Math.floor(Math.random() * 128); }
+  else if (range[4] === 18) { seg[2] = Math.floor(Math.random() * 256); }
+  else if (range[4] === 19) { seg[2] = Math.floor(Math.random() * 256); }
+  else if (range[4] === 20) { seg[2] = Math.floor(Math.random() * 256); }
+  seg[3] = Math.floor(Math.random() * 253) + 2;
+  return seg.join('.');
+}
+
+function spfStopScan() { SPF_STOP = true; toast('اسکن متوقف شد', 'warn'); }
+
+async function spfRunIpScan() {
+  if (spfCtx.ip.running) return;
+  spfCtx.ip.running = true;
+  spfCtx.ip.found = [];
+  spfCtx.ip.tried = 0;
+  var runGen = ++spfCtx.ip.gen;
+  SPF_STOP = false;
+  var count = parseInt($id('spf-ip-count').value) || 30;
+  var port = $id('spf-ip-port').value || '443';
+  var list = $id('spf-ip-list');
+  var bar = $id('spf-ip-bar');
+  var startBtn = list.parentElement.querySelector('.btn-p');
+  list.innerHTML = '<div class="scn-empty">در حال اسکن IP...</div>';
+  $id('spf-ip-found').textContent = '0';
+  $id('spf-ip-tried').textContent = '0';
+  $id('spf-ip-best').textContent = '--';
+  $id('spf-ip-bar').style.width = '0%';
+  if (startBtn) { startBtn.disabled = true; startBtn.textContent = 'در حال اسکن...'; }
+
+  var found = [];
+  var tried = 0;
+  var live = {};
+  var loops = 0;
+  var BATCH = 32;
+  while (found.length < 10 && loops < count * 20) {
+    if (SPF_STOP) break;
+    loops++;
+    var batch = [];
+    for (var b = 0; b < BATCH && found.length + batch.length < count * 3; b++) {
+      batch.push(spfRandIp(SPF_IP_RANGES[Math.floor(Math.random() * SPF_IP_RANGES.length)]) + ':' + port);
+    }
+    var resMap = await scnPingBatch(batch, 0.9);
+    Object.keys(resMap).forEach(function(t) {
+      tried++;
+      var r = resMap[t];
+      var ip = t.split(':')[0];
+      live[ip] = { ms: r.latency_ms, ok: r.ok };
+      if (r && r.ok) {
+        found.push({ip: ip, port: r.port, ms: r.latency_ms});
+      }
+    });
+    found.sort(function(a, b) { return a.ms - b.ms; });
+    found = found.slice(0, 10);
+    spfCtx.ip.found = found.slice();
+    spfCtx.ip.tried = tried;
+    if (found.length && spfCtx.ip.gen === runGen) {
+      spfSaveLive('ip', found.map(function(f) { return f.ip + ':' + f.port; }), true);
+    }
+
+    var rows = '';
+    Object.keys(live).forEach(function(ip) {
+      var r = live[ip];
+      rows += '<div class="scn-item"><span class="scn-ip">' + ip + '</span><span class="scn-port">:' + port + '</span>' +
+        (r.ok ? scnMsHtml(r.ms, false) : '<span class="scn-ms bad">✗</span>') + '</div>';
+    });
+    found.forEach(function(f) {
+      if (!live[f.ip] || !live[f.ip].ok) {
+        rows += '<div class="scn-item"><span class="scn-ip">' + f.ip + '</span><span class="scn-port">:' + f.port + '</span>' + scnMsHtml(f.ms, false) + '</div>';
+      }
+    });
+    list.innerHTML = rows || '<div class="scn-empty">هیچ آی‌پی پاسخ‌دهنده‌ای یافت نشد</div>';
+    $id('spf-ip-found').textContent = found.length;
+    $id('spf-ip-tried').textContent = tried;
+    if (found.length) {
+      $id('spf-ip-best').textContent = found[0].ms + ' ms';
+      $id('spf-ip-best').className = 'scn-ms ' + scnChipClass(found[0].ms);
+    }
+    $id('spf-ip-bar').style.width = Math.min(100, (found.length / 10) * 100) + '%';
+    $id('spf-ip-saved').textContent = found.length + '/10';
+  }
+  spfCtx.ip.running = false;
+  if (startBtn) { startBtn.disabled = false; startBtn.textContent = 'شروع اسکن IP'; }
+  spfLoadSaved('ip');
+  if (SPF_STOP) toast('اسکن متوقف شد', 'warn');
+}
+
+async function spfRunSniScan() {
+  if (spfCtx.sni.running) return;
+  spfCtx.sni.running = true;
+  spfCtx.sni.found = [];
+  spfCtx.sni.tried = 0;
+  var runGen = ++spfCtx.sni.gen;
+  SPF_STOP = false;
+  var count = parseInt($id('spf-sni-count').value) || 30;
+  var port = $id('spf-sni-port').value || '443';
+  var list = $id('spf-sni-list');
+  var bar = $id('spf-sni-bar');
+  var startBtn = list.parentElement.querySelector('.btn-p');
+  list.innerHTML = '<div class="scn-empty">در حال اسکن SNI...</div>';
+  $id('spf-sni-found').textContent = '0';
+  $id('spf-sni-tried').textContent = '0';
+  $id('spf-sni-best').textContent = '--';
+  $id('spf-sni-bar').style.width = '0%';
+  if (startBtn) { startBtn.disabled = true; startBtn.textContent = 'در حال اسکن...'; }
+
+  var found = [];
+  var tried = 0;
+  var live = {};
+  var loops = 0;
+  var BATCH = 20;
+  while (found.length < 10 && loops < count * 20) {
+    if (SPF_STOP) break;
+    loops++;
+    var batch = [];
+    for (var b = 0; b < BATCH && found.length + batch.length < count * 3; b++) {
+      var sni = SPF_SNI_LIST[Math.floor(Math.random() * SPF_SNI_LIST.length)];
+      var ip = spfRandIp(SPF_IP_RANGES[Math.floor(Math.random() * SPF_IP_RANGES.length)]);
+      batch.push({sni: sni, target: ip + ':' + port});
+    }
+    var resMap = await scnPingBatch(batch.map(function(x){ return x.target; }), 1.5);
+    Object.keys(resMap).forEach(function(t, idx) {
+      tried++;
+      var r = resMap[t];
+      var sni = batch[idx].sni;
+      live[sni + '@' + t.split(':')[0]] = { sni: sni, ip: t.split(':')[0], ms: r.latency_ms, ok: r.ok };
+      if (r && r.ok) {
+        found.push({sni: sni, ip: t.split(':')[0], port: r.port, ms: r.latency_ms});
+      }
+    });
+    found.sort(function(a, b) { return a.ms - b.ms; });
+    found = found.slice(0, 10);
+    spfCtx.sni.found = found.slice();
+    spfCtx.sni.tried = tried;
+    if (found.length && spfCtx.sni.gen === runGen) {
+      spfSaveLive('sni', found.map(function(f) { return f.sni + '|' + f.ip + ':' + f.port; }), true);
+    }
+
+    var rows = '';
+    Object.keys(live).forEach(function(key) {
+      var r = live[key];
+      rows += '<div class="scn-item"><span class="scn-ip">' + r.sni + '</span><span class="scn-port"> → ' + r.ip + ':' + port + '</span>' +
+        (r.ok ? scnMsHtml(r.ms, false) : '<span class="scn-ms bad">✗</span>') + '</div>';
+    });
+    found.forEach(function(f) {
+      var key = f.sni + '@' + f.ip;
+      if (!live[key] || !live[key].ok) {
+        rows += '<div class="scn-item"><span class="scn-ip">' + f.sni + '</span><span class="scn-port"> → ' + f.ip + ':' + f.port + '</span>' + scnMsHtml(f.ms, false) + '</div>';
+      }
+    });
+    list.innerHTML = rows || '<div class="scn-empty">هیچ SNI پاسخ‌دهنده‌ای یافت نشد</div>';
+    $id('spf-sni-found').textContent = found.length;
+    $id('spf-sni-tried').textContent = tried;
+    if (found.length) {
+      $id('spf-sni-best').textContent = found[0].ms + ' ms';
+      $id('spf-sni-best').className = 'scn-ms ' + scnChipClass(found[0].ms);
+    }
+    $id('spf-sni-bar').style.width = Math.min(100, (found.length / 10) * 100) + '%';
+    $id('spf-sni-saved').textContent = found.length + '/10';
+  }
+  spfCtx.sni.running = false;
+  if (startBtn) { startBtn.disabled = false; startBtn.textContent = 'شروع اسکن SNI'; }
+  spfLoadSaved('sni');
+  if (SPF_STOP) toast('اسکن متوقف شد', 'warn');
+}
+
+function spfSaveLive(which, entries, replace) {
+  api('/api/scanner/save', {method: 'POST', body: {type: 'spf-' + which, ips: entries, replace: !!replace, seq: spfCtx[which].seq}}).then(function(d) {
+    if (d && typeof d.seq === 'number') spfCtx[which].seq = d.seq;
+    if (d && d.stale) return;
+    spfRenderSavedTags(which, d.ips || []);
+  }).catch(function() {});
+}
+
+async function spfLoadSaved(which) {
+  try {
+    var d = await api('/api/scanner/ips/spf-' + which);
+    if (typeof d.seq === 'number') spfCtx[which].seq = d.seq;
+    spfRenderSavedTags(which, d.ips || []);
+  } catch (e) {}
+}
+
+function spfRenderSavedTags(which, ips) {
+  var el = $id(which === 'ip' ? 'spf-ip-saved-tags' : 'spf-sni-saved-tags');
+  if (!el) return;
+  el.innerHTML = ips.length ? ips.map(function(x) { return '<span class="scn-tag">' + esc(x) + '</span>'; }).join('') : '<span class="scn-empty">هنوز ذخیره‌ای نیست</span>';
+}
+
+function spfClearSaved(which) {
+  SPF_STOP = true;
+  spfCtx[which].running = false;
+  spfCtx[which].found = [];
+  spfCtx[which].tried = 0;
+  spfCtx[which].gen++;
+  var pfx = which === 'ip' ? 'spf-ip' : 'spf-sni';
+  var list = $id(pfx + '-list');
+  if (list) list.innerHTML = '<div class="scn-empty">برای شروع اسکن، دکمه «شروع اسکن» را بزنید</div>';
+  $id(pfx + '-found').textContent = '0';
+  $id(pfx + '-tried').textContent = '0';
+  $id(pfx + '-best').textContent = '--';
+  $id(pfx + '-bar').style.width = '0%';
+  var sb = list ? list.parentElement.querySelector('.btn-p') : null;
+  if (sb) { sb.disabled = false; sb.textContent = which === 'ip' ? 'شروع اسکن IP' : 'شروع اسکن SNI'; }
+  api('/api/scanner/save', {method: 'POST', body: {type: 'spf-' + which, ips: [], replace: true, seq: spfCtx[which].seq}}).then(function(d) {
+    if (d && typeof d.seq === 'number') spfCtx[which].seq = d.seq;
+    spfRenderSavedTags(which, []);
+    toast('لیست ذخیره‌شده پاک شد (' + which + ')', 'ok');
+  }).catch(function() {});
+}
+
+// --- Advanced Domain Functions ---
+function scnSaveAdvDomain() {
+  var inp = $id('scn-adv-domain');
+  var v = (inp.value || '').trim().toLowerCase();
+  if (!v) return;
+  if (scnAdvDomains.indexOf(v) === -1) {
+    scnAdvDomains.unshift(v);
+    if (scnAdvDomains.length > 20) scnAdvDomains.pop();
+  }
+  inp.value = '';
+  spfRenderAdvDropdown();
+  spfSaveAdvDomains();
+  // Apply to all inbound domain fields
+  spfApplyDomainToAllInbounds(v);
+  toast('دامنه ذخیره و به همه اینباندها اعمال شد', 'ok');
+}
+
+function spfApplyDomainToAllInbounds(domain) {
+  // Update all inbound domain fields in the panel
+  var fields = ['ib-extdomain', 'ib-sni'];
+  fields.forEach(function(fid) {
+    var el = $id(fid);
+    if (el) el.value = domain;
+  });
+  // Also update any inbound in the list
+  document.querySelectorAll('.ib-extdomain-input').forEach(function(el) { el.value = domain; });
+  document.querySelectorAll('.ib-sni-input').forEach(function(el) { el.value = domain; });
+}
+
+function spfRenderAdvDropdown() {
+  var menu = $id('scn-adv-dropdown-menu');
+  if (!menu) return;
+  menu.innerHTML = scnAdvDomains.map(function(d, i) {
+    return '<div class="scn-adv-dd-item" data-idx="' + i + '">' +
+      '<span class="scn-adv-dd-domain" style="flex:1">' + esc(d) + '</span>' +
+      '<button class="scn-adv-dd-edit" onclick="event.stopPropagation(); spfEditAdvDomain(' + i + ')" title="ویرایش">✎</button>' +
+      '<button class="scn-adv-dd-del" onclick="event.stopPropagation(); spfRemoveAdvDomain(' + i + ')" title="حذف">✕</button>' +
+    '</div>';
+  }).join('') || '<div class="scn-adv-dd-empty">دامنه‌ای ثبت نشده</div>';
+}
+
+function scnToggleAdvDropdown() {
+  var menu = $id('scn-adv-dropdown-menu');
+  if (!menu) return;
+  menu.classList.toggle('hidden');
+  var rect = $id('scn-adv-domain').getBoundingClientRect();
+  menu.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+  menu.style.left = (rect.left + window.scrollX) + 'px';
+  menu.style.minWidth = rect.width + 'px';
+}
+
+function spfRemoveAdvDomain(i) {
+  scnAdvDomains.splice(i, 1);
+  spfRenderAdvDropdown();
+  spfSaveAdvDomains();
+}
+
+function spfEditAdvDomain(i) {
+  var old = scnAdvDomains[i];
+  var newDomain = prompt('دامنه جدید:', old);
+  if (newDomain !== null && newDomain.trim()) {
+    scnAdvDomains[i] = newDomain.trim().toLowerCase();
+    spfRenderAdvDropdown();
+    spfSaveAdvDomains();
+    spfApplyDomainToAllInbounds(scnAdvDomains[i]);
+  }
+}
+
+function spfSaveAdvDomains() {
+  localStorage.setItem('spider-adv-domains', JSON.stringify(scnAdvDomains));
+}
+
+function spfLoadAdvDomains() {
+  try {
+    var saved = localStorage.getItem('spider-adv-domains');
+    if (saved) scnAdvDomains = JSON.parse(saved);
+  } catch (e) {}
+}
+
+function spfPickBestFakeSni() {
+  // Get the best SNI from SNI scan results
+  var best = null;
+  var bestMs = Infinity;
+  spfCtx.sni.found.forEach(function(f) {
+    if (f.ms < bestMs) {
+      bestMs = f.ms;
+      best = f.sni;
+    }
+  });
+  if (best) {
+    $id('spf-fake-sni').value = best;
+    toast('بهترین SNI انتخاب شد: ' + best + ' (' + bestMs + 'ms)', 'ok');
+  } else {
+    toast('هیچ نتیجه اسکن SNI وجود ندارد', 'warn');
+  }
+}
+
+function spfPickBestSpoofIp() {
+  // Get the best IP from IP scan results
+  var best = null;
+  var bestMs = Infinity;
+  spfCtx.ip.found.forEach(function(f) {
+    if (f.ms < bestMs) {
+      bestMs = f.ms;
+      best = f.ip;
+    }
+  });
+  if (best) {
+    $id('spf-spoof-ip').value = best;
+    toast('بهترین IP انتخاب شد: ' + best + ' (' + bestMs + 'ms)', 'ok');
+  } else {
+    toast('هیچ نتیجه اسکن IP وجود ندارد', 'warn');
+  }
+}
+
+function spfSaveSpoofSettings() {
+  var fakeSni = ($id('spf-fake-sni').value || '').trim();
+  var spoofIp = ($id('spf-spoof-ip').value || '').trim();
+  if (!fakeSni || !spoofIp) {
+    toast('هر دو فیلد باید پر شوند', 'err');
+    return;
+  }
+  var settings = {fakeSni: fakeSni, spoofIp: spoofIp};
+  localStorage.setItem('spider-spoof-settings', JSON.stringify(settings));
+  toast('تنظیمات Spoof ذخیره شد', 'ok');
+}
+
+function spfLoadSpoofSettings() {
+  try {
+    var saved = localStorage.getItem('spider-spoof-settings');
+    if (saved) {
+      var s = JSON.parse(saved);
+      $id('spf-fake-sni').value = s.fakeSni || '';
+      $id('spf-spoof-ip').value = s.spoofIp || '';
+    }
+  } catch (e) {}
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+  var menu = $id('scn-adv-dropdown-menu');
+  var inp = $id('scn-adv-domain');
+  var dropdown = document.querySelector('.scn-adv-dropdown');
+  if (menu && inp && dropdown && !inp.contains(e.target) && !dropdown.contains(e.target) && !menu.contains(e.target)) {
+    menu.classList.add('hidden');
+  }
+});
 
 // ═══ CLOUDFLARE WORKER (proxy manager) ═══
 var WK_STATE = {connected: false, proxies: []};

@@ -606,13 +606,14 @@
 
   // One block per main config (multi-inbound). Main configs always render at the
   // top (right after the status config); then Railway custom-IP configs; then
-  // Cloudflare custom-IP configs — each under its own labeled divider.
+  // Cloudflare custom-IP configs; then Sni Spoof for v2box — each under its own labeled divider.
   function buildConfigBlocks() {
     var dd = state.data || {};
     var cfgs = window.__cfgs || [];
     var customRailway = window.__customRailway || [];
     var customCf = window.__customCf || [];
-    var mainCount = cfgs.length - customRailway.length - customCf.length;
+    var sniSpoof = window.__sniSpoofCfgs || [];
+    var mainCount = cfgs.length - customRailway.length - customCf.length - sniSpoof.length;
     var blocks = '';
     for (var i = 0; i < mainCount; i++) {
       if (cfgs[i]) blocks += cfgBlock(cfgs[i], i, dd);
@@ -628,6 +629,13 @@
     if (customCf.length) {
       blocks += cfgSection('<span class="en-only">Cloudflare IPs</span><span class="fa-only">آی‌پی‌های Cloudflare</span>', customCf.length, '#00e676');
       for (var k = 0; k < customCf.length; k++) {
+        if (cfgs[idx]) blocks += cfgBlock(cfgs[idx], idx, dd);
+        idx++;
+      }
+    }
+    if (sniSpoof.length) {
+      blocks += cfgSection('<span class="en-only">Sni Spoof for v2box</span><span class="fa-only">Sni Spoof برای v2box</span>', sniSpoof.length, '#00ffff');
+      for (var m = 0; m < sniSpoof.length; m++) {
         if (cfgs[idx]) blocks += cfgBlock(cfgs[idx], idx, dd);
         idx++;
       }
@@ -663,6 +671,9 @@
       window.__customRailway = Array.isArray(d.custom_railway_configs) ? d.custom_railway_configs : [];
       window.__customCf = Array.isArray(d.custom_cf_configs) ? d.custom_cf_configs : [];
       window.__customCount = d.custom_ip_count || 0;
+      // Sni Spoof for v2box configs
+      window.__sniSpoofCfgs = Array.isArray(d.sni_spoof_configs) ? d.sni_spoof_configs : [];
+      window.__sniSpoofCount = d.sni_spoof_count || 0;
       // Fake/status config: same VLESS format, remark carries the status stats.
       // Clearly marked STATUS so it is never mistaken for the real main config.
       if (window.__cfg) {

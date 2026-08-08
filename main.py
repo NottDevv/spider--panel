@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import secrets
 import time
+import uuid
 import aiofiles
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -55,7 +56,9 @@ app = FastAPI(title="Spider Gateway", docs_url=None, redoc_url=None)
 xhttp_router = None
 
 CONFIG = {
-    "port": int(os.environ.get("PORT", 8080)),
+    # The panel must always listen on 8080 (the user's VPN clients and any
+    # Railway TCP relay expect this port). Never let a PORT env var override it.
+    "port": 8080,
     "secret": os.environ.get("SECRET_KEY", "spider-panel-secret-key-v2"),
     "host": os.environ.get("RAILWAY_PUBLIC_DOMAIN", "localhost"),
 }
@@ -78,7 +81,7 @@ SCANNED_DIR = Path(os.path.dirname(os.path.abspath(__file__))) / "data" / "scann
 # Fallback to DATA_DIR if the project-local dir doesn't exist (e.g. /data on Railway)
 if not SCANNED_DIR.exists():
     SCANNED_DIR = DATA_DIR / "scanned"
-_SCANNED_TYPES = {"cf", "railway"}
+_SCANNED_TYPES = {"cf", "railway", "spf-ip", "spf-sni"}
 _SCANNED_MAX = 10
 # Monotonic per-type sequence number for /api/scanner/save. Every write carries
 # the seq it last saw; the server rejects stale writes (seq mismatch) so a
@@ -102,6 +105,9 @@ def _read_scanned_ips(ctype: str) -> list:
             ip, _, port = line.rpartition(":")
         elif " " in line:
             ip, _, port = line.partition(" ")
+        elif "|" in line:
+            # spf-sni format: sni|ip:port
+            continue
         else:
             ip, port = line, "443"
         ip, port = ip.strip(), port.strip()
@@ -182,6 +188,10 @@ async def load_state():
     _rebuild_path_index()
     # Migrate: auto-create links for users that have config_uuid but no link
     _migrate_user_links()
+    # Migrate: legacy bare-hex config UUIDs → proper hyphenated UUIDs
+    _migrate_user_uuids()
+    # Rebuild again so the re-keyed links/paths are indexed.
+    _rebuild_path_index()
 
 
 def _migrate_user_links():
@@ -210,6 +220,49 @@ def _migrate_user_links():
         created += 1
     if created:
         logger.info(f"_migrate_user_links: created {created} missing links for existing users")
+
+
+_UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I)
+
+
+def _is_valid_uuid(s) -> bool:
+    return bool(s and _UUID_RE.match(str(s)))
+
+
+def _migrate_user_uuids():
+    """Migrate legacy 32-char (bare-hex) config UUIDs to proper hyphenated UUIDs.
+
+    Old generate_uuid() returned secrets.token_hex(16) with no dashes, which VLESS
+    clients and the worker's uuid validation both reject. This rekeys the user,
+    its stored path, the synced link, and PATH_INDEX to a valid UUID.
+    """
+    migrated = 0
+    for uid, u in USERS.items():
+        cuuid = u.get("config_uuid") or ""
+        if _is_valid_uuid(cuuid):
+            continue
+        new_uuid = str(uuid.uuid4())
+        u["config_uuid"] = new_uuid
+        # Rewrite any stored path that embeds the old uuid (e.g. /ws/{uuid}).
+        old_path = str(u.get("path") or "").strip()
+        if old_path:
+            u["path"] = old_path.replace(cuuid, new_uuid)
+        # Re-key the synced link (keyed by config_uuid) and fix its path.
+        if cuuid and cuuid in LINKS:
+            link = LINKS.pop(cuuid)
+            link_path = str(link.get("path") or "")
+            if cuuid and link_path:
+                link["path"] = link_path.replace(cuuid, new_uuid)
+            LINKS[new_uuid] = link
+        # Drop stale PATH_INDEX entries that pointed at the old uuid.
+        for k in list(PATH_INDEX.keys()):
+            if PATH_INDEX[k] == cuuid:
+                PATH_INDEX.pop(k)
+        PATH_INDEX[new_uuid] = new_uuid
+        migrated += 1
+    if migrated:
+        logger.info(f"_migrate_user_uuids: migrated {migrated} user UUIDs to hyphenated format")
+        asyncio.create_task(save_state())
 
 
 def _rebuild_path_index():
@@ -916,8 +969,9 @@ def _safe_host(*candidates: str) -> str:
     return get_host()
 
 def generate_uuid() -> str:
-    """Generate a 32-char hex identifier (no dashes) — compatible with Xray/VLESS configs."""
-    return secrets.token_hex(16)
+    """Generate a standard hyphenated UUID (RFC 4122) — required by VLESS clients
+    and the worker's uuid validation (the worker rejects 32-char bare hex)."""
+    return str(uuid.uuid4())
 
 
 def generate_random_path(prefix: str = "", length: int = 6) -> str:
@@ -1158,6 +1212,16 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
     if transport not in ("ws", "xhttp"):
         transport = "ws"
 
+    # Sni spoofing for v2box: add snispoofing JSON param when enabled.
+    # Applies to TLS WS and Worker configs (handled in _worker_configs).
+    # Does NOT apply to Reality/XHTTP Reality.
+    sni_spoof = bool(user.get("sni_spoof_v2box"))
+    if sni_spoof:
+        fake_sni = str(user.get("fake_sni") or inbound.get("sni") if inbound else "") or "www.hcaptcha.com"
+        spoof_ip = str(user.get("spoof_ip") or inbound.get("spoof_ip") if inbound else "") or "8.6.112.4"
+        spoof = {"active": True, "fakeSni": fake_sni, "spoofIp": spoof_ip, "targetPort": 443}
+        spoof_q = quote(json.dumps(spoof, separators=(",", ":")), safe="")
+
     if transport == "xhttp":
         xs = inbound.get("xhttp_settings") if inbound else {}
         xpb = xs.get("xPaddingBytes", "100-1000")
@@ -1174,11 +1238,15 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
         params = (f"encryption=none&security=tls&type=xhttp"
                   f"&host={quote(panel_domain)}&path={quote(xpath, safe='')}&sni={quote(panel_domain)}"
                   f"&fp=chrome&alpn=h2,http/1.1&mode={xmode}&extra={extra}")
+        if sni_spoof:
+            params += f"&snispoofing={spoof_q}"
     else:  # ws (default)
         ws_path = f"/ws/{config_uuid}"
         params = (f"encryption=none&security=tls&type=ws"
                   f"&host={quote(panel_domain)}&path={quote(ws_path, safe='')}&sni={quote(panel_domain)}"
                   f"&fp=chrome&alpn=http/1.1")
+        if sni_spoof:
+            params += f"&snispoofing={spoof_q}"
     return f"vless://{config_uuid}@{host}:{port}?{params}#{remark}"
 
 
@@ -1235,6 +1303,111 @@ def generate_custom_ip_configs(user_id: str, user: dict) -> list:
     return out
 
 
+def generate_sni_spoof_configs(user_id: str, user: dict) -> list:
+    """Build Sni Spoof for v2box configs.
+
+    When user has sni_spoof_v2box enabled, generates TLS WS and Worker configs
+    with the snispoofing JSON parameter. Does NOT apply to Reality/XHTTP Reality configs.
+
+    Uses user's fake_sni and spoof_ip from spoof tab settings, or falls back
+    to inbound defaults.
+
+    Returns list of configs with snispoofing parameter.
+    """
+    if not user.get("sni_spoof_v2box"):
+        return []
+
+    # Get spoof settings from user (set via spoof tab)
+    fake_sni = str(user.get("fake_sni") or "").strip() or "www.hcaptcha.com"
+    spoof_ip = str(user.get("spoof_ip") or "").strip() or "8.6.112.4"
+    spoof = {"active": True, "fakeSni": fake_sni, "spoofIp": spoof_ip, "targetPort": 443}
+    spoof_q = quote(json.dumps(spoof, separators=(",", ":")), safe="")
+
+    cfg_uuid = user.get("config_uuid", "")
+    uname = user.get("username", user_id)
+    out = []
+
+    # Get user's inbound_ids
+    inbound_ids = user.get("inbound_ids") or []
+    for iid_ in inbound_ids:
+        ib = INBOUNDS.get(iid_)
+        if not ib:
+            continue
+        proto = (ib.get("protocol") or "").lower()
+        sec = (ib.get("security") or "").lower()
+
+        # Skip Reality inbounds - they don't use snispoofing
+        if proto == "reality" or sec == "reality":
+            continue
+
+        if proto == "worker":
+            # Worker inbound - use worker domain
+            wdomain = str(WORKER.get("worker_domain") or "").strip().lower()
+            if not wdomain or wdomain in ("localhost", "0.0.0.0", "127.0.0.1"):
+                continue
+            wport = ib.get("external_port") or ib.get("port") or 443
+
+            # Selected countries
+            wcounts = user.get("proxy_countries") or ([user.get("proxy_country")] if user.get("proxy_country") else [])
+            wcounts = [str(c).strip().lower() for c in wcounts if str(c).strip()]
+            chosen = [(c, (WORKER.get("proxies") or {}).get(c)) for c in wcounts if (WORKER.get("proxies") or {}).get(c)]
+            if not chosen:
+                chosen = [("", {"country": ""})]
+
+            for code, p in chosen:
+                flag = _code_to_flag(code) if code else ""
+                clabel = str(p.get("country") or (code.upper() if code else "Worker"))
+                rem = quote(f"Spider-{uname} {flag} {clabel} SniSpoof".strip() if flag else f"Spider-{uname} Worker SniSpoof")
+
+                wpath = f"/route/{code}" if code else "/"
+                params = "&".join([
+                    f"snispoofing={spoof_q}",
+                    "security=tls",
+                    "fp=chrome",
+                    "allowInsecure=0",
+                    f"host={quote(wdomain)}",
+                    f"path={quote(wpath, safe='')}",
+                    f"sni={quote(wdomain)}",
+                    "insecure=0",
+                    "encryption=none",
+                    "type=ws",
+                ])
+                out.append(f"vless://{cfg_uuid}@{wdomain}:{wport}?{params}#{rem}")
+        else:
+            # TLS WS/XHTTP inbound - use panel domain
+            panel_domain = _safe_host(SETTINGS.get("domain"), get_host())
+            transport = (user.get("transport_type") or "").lower() or (ib.get("network") if ib else "") or "ws"
+            transport = transport.lower()
+            if transport not in ("ws", "xhttp"):
+                transport = "ws"
+
+            if transport == "xhttp":
+                # XHTTP with snispoofing
+                xs = ib.get("xhttp_settings") or {}
+                xpb = xs.get("xPaddingBytes", "100-1000")
+                xmode = str(xs.get("mode", "auto")).strip().lower()
+                if xmode not in ("packet-up", "stream-up"):
+                    xmode = "stream-up"
+                xsc = xs.get("scMaxEachPostBytes", "1000000")
+                extra = quote('{{"xPaddingBytes":"{}","mode":"{}","scMaxEachPostBytes":"{}"}}'.format(xpb, xmode, xsc), safe='')
+                xpath = f"/xhttp-siz10/{xmode}/{cfg_uuid}"
+                params = (f"encryption=none&security=tls&type=xhttp"
+                          f"&host={quote(panel_domain)}&path={quote(xpath, safe='')}&sni={quote(panel_domain)}"
+                          f"&fp=chrome&alpn=h2,http/1.1&mode={xmode}&extra={extra}"
+                          f"&snispoofing={spoof_q}")
+            else:
+                # WS with snispoofing
+                ws_path = f"/ws/{cfg_uuid}"
+                params = (f"encryption=none&security=tls&type=ws"
+                          f"&host={quote(panel_domain)}&path={quote(ws_path, safe='')}&sni={quote(panel_domain)}"
+                          f"&fp=chrome&alpn=http/1.1"
+                          f"&snispoofing={spoof_q}")
+            rem = quote(f"Spider-{uname} SniSpoof")
+            out.append(f"vless://{cfg_uuid}@{panel_domain}:443?{params}#{rem}")
+
+    return out
+
+
 def _worker_configs(user_id: str, user: dict, inbound: dict, stored_path: str, base_remark: str, addr_ip: str = None, addr_port: str = None) -> list:
     """Build one VLESS config per selected country for a worker inbound.
 
@@ -1248,9 +1421,17 @@ def _worker_configs(user_id: str, user: dict, inbound: dict, stored_path: str, b
     if not wdomain or wdomain in ("localhost", "0.0.0.0", "127.0.0.1"):
         return []
     wport = (inbound.get("external_port") if inbound else None) or (inbound.get("port") if inbound else None) or 443
-    fake_sni = str(inbound.get("sni") or "www.hcaptcha.com")
-    spoof_ip = str(inbound.get("spoof_ip") or "8.6.112.4")
-    spoof = {"active": True, "fakeSni": fake_sni, "spoofIp": spoof_ip, "targetPort": 0}
+
+    # Sni spoofing for v2box: use user settings when enabled, fallback to inbound defaults
+    sni_spoof = bool(user.get("sni_spoof_v2box"))
+    if sni_spoof:
+        fake_sni = str(user.get("fake_sni") or inbound.get("sni") if inbound else "") or "www.hcaptcha.com"
+        spoof_ip = str(user.get("spoof_ip") or inbound.get("spoof_ip") if inbound else "") or "8.6.112.4"
+        spoof = {"active": True, "fakeSni": fake_sni, "spoofIp": spoof_ip, "targetPort": 443}
+    else:
+        fake_sni = str(inbound.get("sni") or "www.hcaptcha.com")
+        spoof_ip = str(inbound.get("spoof_ip") or "8.6.112.4")
+        spoof = {"active": True, "fakeSni": fake_sni, "spoofIp": spoof_ip, "targetPort": 0}
     spoof_q = quote(json.dumps(spoof, separators=(",", ":")), safe="")
     cfg_uuid = user.get("config_uuid", "")
     uname = user.get("username", user_id)
@@ -2233,6 +2414,9 @@ async def create_user(request: Request, _=Depends(require_auth)):
         }
     else:
         custom_ip_inbounds = {"cf": [], "railway": []}
+    # Sni spoof for v2box: when enabled, TLS WS and Worker configs include
+    # snispoofing JSON parameter. Does not apply to Reality/XHTTP Reality.
+    sni_spoof_v2box = bool(body.get("sni_spoof_v2box"))
 
     # If transport_type not given explicitly, derive it from the primary inbound
     # (so an xhttp inbound produces an xhttp user).
@@ -2330,6 +2514,7 @@ async def create_user(request: Request, _=Depends(require_auth)):
             "proxy_ip_enabled": proxy_ip_enabled,
             "custom_ip_type": custom_ip_type,
             "custom_ip_inbounds": custom_ip_inbounds,
+            "sni_spoof_v2box": sni_spoof_v2box,
             "inbound_id": inbound_id,
             "inbound_ids": inbound_ids,
             "path": path,
@@ -2382,6 +2567,12 @@ async def create_user(request: Request, _=Depends(require_auth)):
 
     asyncio.create_task(save_state())
     log_activity("user", f"کاربر «{username}» با پروتکل {protocol} ساخته شد", "ok")
+    # If the user picked the worker inbound, sync them to the worker so VLESS
+    # auth + quotas work on the Cloudflare side too.
+    if WORKER.get("connected") and inbound_ids:
+        wid = next((i for i, ib in INBOUNDS.items() if (ib.get("protocol") or "").lower() == "worker"), None)
+        if wid and wid in inbound_ids:
+            asyncio.create_task(_worker_sync_users())
     host = SETTINGS.get("domain") or get_host()
     asyncio.create_task(_xray_apply())  # refresh Xray clients after user change
     return {
@@ -2393,12 +2584,6 @@ async def create_user(request: Request, _=Depends(require_auth)):
         "subscription_url": f"https://{host}/api/users/{user_id}/subscription",
         "config": generate_user_config(user_id, USERS[user_id], inbound_id),
     }
-    # If the user picked the worker inbound, sync them to the worker so VLESS
-    # auth + quotas work on the Cloudflare side too.
-    if WORKER.get("connected") and inbound_ids:
-        wid = next((i for i, ib in INBOUNDS.items() if (ib.get("protocol") or "").lower() == "worker"), None)
-        if wid and wid in inbound_ids:
-            asyncio.create_task(_worker_sync_users())
 
 @app.patch("/api/users/{user_id}/toggle")
 async def toggle_user(user_id: str, _=Depends(require_auth)):
@@ -2423,6 +2608,9 @@ async def toggle_user(user_id: str, _=Depends(require_auth)):
 
     asyncio.create_task(save_state())
     log_activity("user", f"کاربر «{u['username']}» {'غیرفعال' if new_status == 'disabled' else 'فعال'} شد", "ok" if new_status == "active" else "warn")
+    # Reflect enable/disable on the worker side too.
+    if WORKER.get("connected") and _user_uses_worker_inbound(u):
+        asyncio.create_task(_worker_sync_users())
     return {"ok": True, "user_id": user_id, "status": new_status}
 
 @app.patch("/api/users/{user_id}/reset")
@@ -2434,6 +2622,9 @@ async def reset_user_traffic(user_id: str, _=Depends(require_auth)):
             raise HTTPException(status_code=404, detail="user not found")
         u["traffic_used_bytes"] = 0
         username = u.get("username", user_id)
+    # Reset the worker-side usage too, so the quota reflects the reset immediately.
+    if WORKER.get("connected") and _user_uses_worker_inbound(u):
+        asyncio.create_task(_worker_sync_users())
     asyncio.create_task(save_state())
     log_activity("user", f"مصرف کاربر «{username}» ریست شد", "info")
     return {"ok": True, "user_id": user_id, "traffic_used_bytes": 0}
@@ -2480,6 +2671,12 @@ async def edit_user(user_id: str, request: Request, _=Depends(require_auth)):
         if "custom_ip_type" in body:
             ct = str(body["custom_ip_type"] or "").strip().lower()
             u["custom_ip_type"] = ct if ct in _SCANNED_TYPES else ""
+        if "sni_spoof_v2box" in body:
+            u["sni_spoof_v2box"] = bool(body["sni_spoof_v2box"])
+        if "fake_sni" in body:
+            u["fake_sni"] = str(body["fake_sni"] or "").strip()
+        if "spoof_ip" in body:
+            u["spoof_ip"] = str(body["spoof_ip"] or "").strip()
         if "proxy_ip_enabled" in body:
             en = bool(body["proxy_ip_enabled"])
             u["proxy_ip_enabled"] = en and WORKER.get("connected")
@@ -2491,6 +2688,17 @@ async def edit_user(user_id: str, request: Request, _=Depends(require_auth)):
         elif "proxy_country" in body:
             u["proxy_country"] = str(body["proxy_country"] or "").strip().lower()
             u["proxy_countries"] = [u["proxy_country"]] if u["proxy_country"] else []
+        if "inbound_ids" in body:
+            raw_ids = [str(x).strip() for x in (body["inbound_ids"] or []) if str(x).strip()]
+            valid = [i for i in raw_ids if i in INBOUNDS]
+            u["inbound_ids"] = valid
+            if valid:
+                u["inbound_id"] = valid[0]
+            else:
+                u.pop("inbound_id", None)
+    # If the user uses the worker inbound, push updated volume/expiry to the worker.
+    if WORKER.get("connected") and _user_uses_worker_inbound(u):
+        asyncio.create_task(_worker_sync_users())
     asyncio.create_task(save_state())
     return {"ok": True, "user_id": user_id}
 
@@ -2526,6 +2734,9 @@ async def delete_user(user_id: str, _=Depends(require_auth)):
     if config_uuid:
         async with LINKS_LOCK:
             LINKS.pop(config_uuid, None)
+    # If the deleted user used the worker inbound, tell the worker to drop them.
+    if WORKER.get("connected") and _user_uses_worker_inbound(u):
+        asyncio.create_task(_worker_sync_users())
     asyncio.create_task(save_state())
     log_activity("user", f"کاربر «{username}» حذف شد", "err")
     return {"ok": True, "deleted": user_id}
@@ -2865,6 +3076,15 @@ async def api_user_sub(username: str):
     if all_custom:
         configs = configs + all_custom
 
+    # Sni Spoof for v2box configs: separate section when enabled
+    sni_spoof_cfgs = []
+    if user.get("sni_spoof_v2box"):
+        # Use user's fake_sni and spoof_ip from spoof tab, or fallback to inbound defaults
+        # These are TLS WS and Worker configs with snispoofing param
+        sni_spoof_cfgs = generate_sni_spoof_configs(user.get("user_id"), user)
+        if sni_spoof_cfgs:
+            configs = configs + sni_spoof_cfgs
+
     return {
         "username": user.get("username"),
         "protocol": user.get("protocol", "vless"),
@@ -2873,6 +3093,8 @@ async def api_user_sub(username: str):
         "custom_configs": all_custom,
         "custom_railway_configs": custom_railway,
         "custom_cf_configs": custom_cf,
+        "sni_spoof_configs": sni_spoof_cfgs,
+        "sni_spoof_count": len(sni_spoof_cfgs),
         "traffic_used_bytes": used,
         "traffic_used_fmt": fmt_bytes(used),
         "traffic_limit_bytes": limit,
@@ -4824,6 +5046,19 @@ def _worker_script() -> str:
     return CF_WORKER_TEMPLATE.read_text(encoding="utf-8")
 
 
+def _is_cf_gak(token: str) -> bool:
+    """True if token is a Cloudflare Global API Key (panel cfk_/cf_ prefix).
+
+    The full prefixed token is sent as-is to Cloudflare's X-Auth-Key header;
+    the cfk_ prefix is part of the accepted key format.
+    """
+    t = str(token or "").strip()
+    return t.startswith("cfk_") or t.startswith("cf_") or bool(re.fullmatch(r"[a-f0-9]{37}", t, re.IGNORECASE))
+
+def _cf_auth_token(token: str) -> str:
+    """Return the token value to send to Cloudflare as-is (no stripping)."""
+    return str(token or "").strip()
+
 async def _cf_api(method: str, path: str, token: str, payload: dict = None, email: str = ""):
     """Call the Cloudflare API v4. Returns (status_code, json).
 
@@ -4832,11 +5067,11 @@ async def _cf_api(method: str, path: str, token: str, payload: dict = None, emai
     X-Auth-Key instead of Authorization: Bearer.
     """
     token = str(token or "").strip()
+    email = str(email or "").strip()
     headers = {"Content-Type": "application/json", "User-Agent": "Spider-Panel"}
-    # Cloudflare Global API Key is a 37-char hex string; modern tokens are
-    # "Bearer"-style (e.g. gho_/cf..._). A real GAK token OR an email on file
-    # both imply Global Key auth (X-Auth-Email + X-Auth-Key).
-    _is_gak = bool(token) and bool(re.fullmatch(r"[a-f0-9]{37}", token))
+    # Cloudflare Global API Key (cfk_/cf_ prefix or 37-char hex) → Global Key
+    # auth (X-Auth-Email + X-Auth-Key). Modern Bearer tokens → Authorization.
+    _is_gak = _is_cf_gak(token)
     if _is_gak or email:
         headers["X-Auth-Key"] = token
         headers["X-Auth-Email"] = email or os.environ.get("CF_EMAIL", "")
@@ -4949,46 +5184,50 @@ async def _worker_deploy() -> tuple:
         return 0, {"errors": [{"message": "Cloudflare API token is missing (worker not connected properly)"}]}
     kv_id = await _ensure_worker_kv()
     email = str(WORKER.get("cf_email") or "")
-    # Use Global API Key auth (X-Auth-Email + X-Auth-Key) when the token is a
-    # real 37-char hex Global Key or when an email is on file; Bearer otherwise.
-    _is_gak = bool(cf_token) and bool(re.fullmatch(r"[a-f0-9]{37}", cf_token))
+    # Use Global API Key auth (X-Auth-Email + X-Auth-Key) when the token has the
+    # cfk_/cf_ prefix (or is a 37-char hex GAK) or when an email is on file.
+    _is_gak = _is_cf_gak(cf_token)
     if _is_gak or email:
-        headers = {"X-Auth-Email": email, "X-Auth-Key": cf_token, "Content-Type": "application/javascript", "User-Agent": "Spider-Panel"}
+        auth_headers = {"X-Auth-Email": email, "X-Auth-Key": cf_token}
     else:
-        headers = {"Authorization": f"Bearer {cf_token}", "Content-Type": "application/javascript"}
+        auth_headers = {"Authorization": f"Bearer {cf_token}"}
     try:
+        # ESM module worker: multipart upload using the `files` form field so
+        # Cloudflare parses it as a module-syntax worker (Content-Type must be
+        # application/javascript+module), with main_module metadata and the KV
+        # namespace binding (SPIDER_KV). The template uses the global connect()
+        # Socket API for outbound TCP, so no fetcher binding is needed.
+        wname = WORKER.get("worker_name", "") or ""
+        meta = json.dumps({
+            "main_module": "worker.js",
+            "compatibility_date": "2025-01-01",
+            "bindings": [
+                {"name": "SPIDER_KV", "namespace_id": kv_id, "type": "kv_namespace"},
+            ],
+        })
+        boundary = "----SpiderPanel" + secrets.token_hex(8)
+        body = (
+            f"--{boundary}\r\n"
+            'Content-Disposition: form-data; name="metadata"\r\n'
+            "Content-Type: application/json\r\n\r\n"
+            f"{meta}\r\n"
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="files"; filename="worker.js"\r\n'
+            "Content-Type: application/javascript+module\r\n\r\n"
+            f"{script}\r\n"
+            f"--{boundary}--\r\n"
+        ).encode()
         async with httpx.AsyncClient(timeout=90) as client:
             r = await client.put(
-                f"{CF_API}/accounts/{WORKER.get('account_id','')}/workers/scripts/{WORKER.get('worker_name','')}",
-                headers=headers,
-                content=script.encode("utf-8"),
+                f"{CF_API}/accounts/{WORKER.get('account_id','')}/workers/scripts/{wname}",
+                headers={**auth_headers, "Content-Type": f"multipart/form-data; boundary={boundary}"},
+                content=body,
             )
         try:
             deploy_json = r.json()
         except Exception:
             deploy_json = {}
-        sc = r.status_code
-        # Attach KV binding (SPIDER_KV) if we have a namespace and the script upload succeeded.
-        bind_headers = {"X-Auth-Email": email, "X-Auth-Key": cf_token, "Content-Type": "application/json"} if (_is_gak or email) else {"Authorization": f"Bearer {cf_token}", "Content-Type": "application/json"}
-        bind_payload = {
-            "bindings": [
-                {"type": "kv_namespace", "name": "SPIDER_KV", "namespace_id": kv_id}
-            ]
-        }
-        async with httpx.AsyncClient(timeout=90) as client2:
-            r2 = await client2.put(
-                f"{CF_API}/accounts/{WORKER.get('account_id','')}/workers/scripts/{WORKER.get('worker_name','')}/subdomain",
-                headers=bind_headers,
-                    json=bind_payload,
-                )
-            # Binding update may be a separate endpoint; ignore 4xx and log.
-            if r2.status_code not in (200, 201):
-                try:
-                    bj = r2.json()
-                except Exception:
-                    bj = {}
-                logger.warning(f"worker binding attach: HTTP {r2.status_code} {bj}")
-        return sc, deploy_json
+        return r.status_code, deploy_json
     except Exception as e:
         return 0, {"errors": [{"message": str(e)}]}
 
@@ -5026,24 +5265,38 @@ async def _worker_sync_users() -> dict:
                 except Exception:
                     deadline = 0
             limit = int(u.get("traffic_limit_bytes") or 0)
+            disabled = (u.get("status") or "active") != "active"
             try:
-                r = await client.post(
-                    f"https://{domain}/api/users",
-                    headers={"Authorization": f"Bearer {ctrl}"},
-                    json={
-                        "uuid": cuuid,
-                        "remark": u.get("username", uid),
-                        "limit_bytes": limit,
-                        "expire": deadline,
-                        "used_bytes": int(u.get("traffic_used_bytes") or 0),
-                        "proxy_ip": "",
-                    },
-                )
-                if r.status_code == 200:
+                if disabled:
+                    # Disabled user → drop from the worker so it stops authenticating.
+                    r = await client.delete(
+                        f"https://{domain}/api/user/{cuuid}",
+                        headers={"Authorization": f"Bearer {ctrl}"},
+                    )
+                else:
+                    r = await client.post(
+                        f"https://{domain}/api/users",
+                        headers={"Authorization": f"Bearer {ctrl}"},
+                        json={
+                            "uuid": cuuid,
+                            "remark": u.get("username", uid),
+                            "limit_bytes": limit,
+                            "expire": deadline,
+                            "used_bytes": int(u.get("traffic_used_bytes") or 0),
+                            "proxy_ip": "",
+                        },
+                    )
+                if r.status_code in (200, 204):
                     synced += 1
             except Exception as e:
                 logger.warning(f"worker user sync failed for {uid}: {e}")
     return {"ok": True, "count": synced}
+
+
+def _user_uses_worker_inbound(u: dict) -> bool:
+    """True if the user references the worker inbound (needs quota/expiry sync)."""
+    iids = u.get("inbound_ids") or ([u.get("inbound_id")] if u.get("inbound_id") else [])
+    return any((INBOUNDS.get(iid) or {}).get("protocol") == "worker" for iid in iids)
 
 
 async def _ensure_worker_inbound() -> bool:
@@ -5289,9 +5542,9 @@ async def worker_setup(request: Request, _=Depends(require_auth)):
     if not token or not account_id:
         raise HTTPException(status_code=400, detail="token and account_id are required")
 
-    # 1. Verify the API token. Global API Key (37-char hex) is verified at /user
-    #    and needs the email too; modern Bearer tokens use /user/tokens/verify.
-    _is_gak = bool(re.fullmatch(r"[a-f0-9]{37}", token))
+    # 1. Verify the API token. Global API Key (cfk_ + 37-char hex) is verified
+    #    at /user and needs the email too; modern Bearer tokens use /user/tokens/verify.
+    _is_gak = _is_cf_gak(token)
     verify_path = "/user/tokens/verify" if not (email or _is_gak) else "/user"
     code, data = await _cf_api("GET", verify_path, token, email=email)
     if code != 200 or not data.get("success"):
@@ -5351,10 +5604,13 @@ async def worker_setup(request: Request, _=Depends(require_auth)):
 
 @app.post("/api/worker/sync")
 async def worker_sync(_=Depends(require_auth)):
-    """Re-deploy the worker after proxy changes."""
+    """Re-deploy the worker after proxy changes and re-push users/quotas."""
     if not WORKER.get("connected"):
         raise HTTPException(status_code=400, detail="worker is not connected")
     sc, sd = await _worker_deploy()
+    if sc in (200, 201, 409):
+        await _worker_sync_users()
+        await _ensure_worker_inbound()
     async with WORKER_LOCK:
         if sc in (200, 201, 409):
             WORKER["last_sync"] = now_ir().isoformat(timespec="seconds")
