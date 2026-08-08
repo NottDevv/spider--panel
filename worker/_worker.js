@@ -22,7 +22,8 @@ function authorized(request) {
 }
 function uuidRe() { return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i; }
 
-// KV helpers (SPIDER_KV binding). User record: {uuid, remark, limit_bytes, expire, used_bytes, proxy_ip}.
+// KV helpers (SPIDER_KV binding). User record:
+// {uuid, remark, limit_bytes, expire, used_bytes, proxy_ip, concurrent_connections}.
 async function getUser(env, uuid) {
   uuid = (uuid || '').toLowerCase();
   if (!uuidRe().test(uuid)) return null;
@@ -36,13 +37,81 @@ async function getUser(env, uuid) {
   } catch (e) { return null; }
 }
 async function setUser(env, uuid, u) { await env.SPIDER_KV.put('user:' + uuid, JSON.stringify(u)); }
-async function addUsage(env, uuid, n) {
+
+// Batched traffic accounting — flushed to KV only every ~1 MiB so heavy transfers
+// don't hammer KV write limits (free plan allows only ~1000 writes/day per key).
+async function addUsage(env, uuid, n, holder) {
+  holder.p = (holder.p || 0) + n;
+  if (holder.p < 1048576) return true;
+  const p = holder.p; holder.p = 0;
+  const u = await getUser(env, uuid);
+  if (!u) return false;
+  u.used_bytes = (u.used_bytes || 0) + p;
+  await setUser(env, uuid, u);
+  return !(u.limit_bytes > 0 && u.used_bytes >= u.limit_bytes);
+}
+async function flushUsage(env, uuid, holder) {
+  if (!holder.p) return;
+  const p = holder.p; holder.p = 0;
+  const u = await getUser(env, uuid);
+  if (!u) return;
+  u.used_bytes = (u.used_bytes || 0) + p;
+  await setUser(env, uuid, u);
+}
+
+// ── Per-user concurrent-IP limit (real enforcement, mirror of the panel relay) ──
+// Each live connection keeps a {ip, exp} entry in KV key `ips:{uuid}` and renews
+// it with a low-frequency heartbeat, so the slot survives as long as the
+// connection is open. Connections from a NEW IP are rejected once the count
+// reaches the user's concurrent_connections. TTL expiry heals stale entries if
+// a disconnect event is never seen (e.g. an edge crash).
+const IP_TTL = 900; // seconds — 15 min backstop for abnormal termination
+const IP_HEARTBEAT_MS = 300000; // renew every 5 min (bounded KV writes: ~290/day)
+
+async function getIpList(env, uuid) {
   try {
-    const u = await getUser(env, uuid);
-    if (!u) return;
-    u.used_bytes = (u.used_bytes || 0) + n;
-    await setUser(env, uuid, u);
-  } catch (e) {}
+    const raw = await env.SPIDER_KV.get('ips:' + uuid);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+async function setIpList(env, uuid, rec) {
+  try { await env.SPIDER_KV.put('ips:' + uuid, JSON.stringify(rec)); } catch (e) {}
+}
+
+// Register this connection IP. Returns true when allowed, false when over limit.
+async function touchIp(env, uuid, ip, maxIp) {
+  if (!ip || ip === 'unknown' || ip === '127.0.0.1') return true;
+  if (!maxIp || maxIp < 1) return true;
+  const now = Date.now() / 1000;
+  const rec = (await getIpList(env, uuid)) || { ips: [] };
+  const live = rec.ips.filter(x => x && x.exp > now);
+  const existing = live.find(x => x.ip === ip);
+  if (existing) {
+    existing.exp = now + IP_TTL;
+  } else if (live.length >= maxIp) {
+    return false;
+  } else {
+    live.push({ ip, exp: now + IP_TTL });
+  }
+  await setIpList(env, uuid, { ips: live });
+  return true;
+}
+async function removeIp(env, uuid, ip) {
+  if (!ip || ip === 'unknown') return;
+  const rec = await getIpList(env, uuid);
+  if (!rec) return;
+  const now = Date.now() / 1000;
+  rec.ips = rec.ips.filter(x => x && x.ip !== ip && x.exp > now);
+  await setIpList(env, uuid, rec);
+}
+
+// Real client IP from the request (Cloudflare-injected).
+function clientIp(request) {
+  const cf = request.headers.get('CF-Connecting-IP');
+  if (cf) return cf.trim();
+  const fwd = request.headers.get('x-forwarded-for');
+  if (fwd) return fwd.split(',')[0].trim();
+  return 'unknown';
 }
 
 // Parse the VLESS header from the first websocket binary message.
@@ -277,6 +346,7 @@ export default {
           expire: Number(body.expire) || 0,
           used_bytes: Number(body.used_bytes) || 0,
           proxy_ip: String(body.proxy_ip || ''),
+          concurrent_connections: Number(body.concurrent_connections) || 0,
           created: Date.now(),
         };
         await setUser(env, uuid, u);
@@ -330,6 +400,8 @@ async function handleVlessWs(request, env, country, preUser) {
   const [client, server] = Object.values(pair);
   server.accept();
   server.binaryType = 'arraybuffer';
+  const connIp = clientIp(request);
+  const usage = { p: 0 };
 
   server.addEventListener('message', async (ev) => {
     const data = new Uint8Array(ev.data);
@@ -345,6 +417,18 @@ async function handleVlessWs(request, env, country, preUser) {
       }
       if (!user) { try { server.close(4030, 'unauthorized'); } catch(e){} return; }
       server.__user = user;
+      // Enforce the per-user concurrent-IP limit with the real client IP.
+      if (!await touchIp(env, user.uuid, connIp, user.concurrent_connections)) {
+        try { server.close(4031, 'ip limit reached'); } catch(e){}
+        return;
+      }
+      // Renew the IP entry while the connection stays open so a long-lived
+      // session keeps its slot (5-min heartbeat, 15-min TTL backstop).
+      if (!server.__hb) {
+        server.__hb = setInterval(async () => {
+          await touchIp(env, user.uuid, connIp, user.concurrent_connections);
+        }, IP_HEARTBEAT_MS);
+      }
       // Country route → that country's proxy; otherwise the user's assigned proxy.
       let proxy = '';
       if (country) proxy = await getCountryProxy(env, country);
@@ -359,18 +443,28 @@ async function handleVlessWs(request, env, country, preUser) {
         };
         if (h.payload.length) { try { await target.write(h.payload); } catch(e){} }
         pumpTcpToWs(target, server);
-        if (h.payload.length) addUsage(env, user.uuid, h.payload.length);
+        if (h.payload.length) addUsage(env, user.uuid, h.payload.length, usage);
         return;
       } catch (e) {
         try { server.close(4001, 'connect failed'); } catch(err){}
         return;
       }
     }
-    if (server.__wsToTcp) { server.__wsToTcp(data); addUsage(env, server.__user.uuid, data.length); }
+    if (server.__wsToTcp) { server.__wsToTcp(data); addUsage(env, server.__user.uuid, data.length, usage); }
   });
 
-  server.addEventListener('close', () => { try { server.__sock && server.__sock.close(); } catch(e){} });
-  server.addEventListener('error', () => { try { server.__sock && server.__sock.close(); } catch(e){} });
+  server.addEventListener('close', async () => {
+    if (server.__hb) clearInterval(server.__hb);
+    try { server.__sock && server.__sock.close(); } catch(e){}
+    await flushUsage(env, server.__user && server.__user.uuid, usage);
+    await removeIp(env, server.__user && server.__user.uuid, connIp);
+  });
+  server.addEventListener('error', async () => {
+    if (server.__hb) clearInterval(server.__hb);
+    try { server.__sock && server.__sock.close(); } catch(e){}
+    await flushUsage(env, server.__user && server.__user.uuid, usage);
+    await removeIp(env, server.__user && server.__user.uuid, connIp);
+  });
 
   return new Response(null, { status: 101, webSocket: client });
 }

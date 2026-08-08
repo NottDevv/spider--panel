@@ -927,6 +927,7 @@ async def startup():
     from xhttp_siz10 import router as xhttp_router
     app.include_router(xhttp_router)
     asyncio.create_task(_worker_proxy_sync_loop())
+    asyncio.create_task(_xray_client_audit_loop())
 
 # Worker proxy source sync — hourly pull from the daily GitHub list and push to
 # the deployed Cloudflare Worker (Railway is the control plane; the Worker gets
@@ -4641,11 +4642,14 @@ def _add_inbound_to_xray(cfg: dict, ib: dict, iid: str, host: str):
     # Protocol-specific client settings — use REAL user UUIDs that picked this
     # inbound so they can actually connect through Xray. (Reality is a VLESS
     # client too, so it also carries uuid clients.)
+    # Only users that are currently allowed (active + not expired + quota left)
+    # are served — expired/disabled/quota-exceeded users are dropped so Xray
+    # rejects their connections (real expiry/volume enforcement for Reality).
     if protocol in ("vless", "reality", "vmess", "trojan"):
         client_ids = set()
         for u in USERS.values():
             uids = u.get("inbound_ids") or ([u.get("inbound_id")] if u.get("inbound_id") else [])
-            if iid in uids and u.get("config_uuid"):
+            if iid in uids and u.get("config_uuid") and is_user_allowed(u):
                 client_ids.add(u["config_uuid"])
         if not client_ids:
             # Ensure at least a placeholder client so Xray accepts the config;
@@ -4744,6 +4748,46 @@ def _add_inbound_to_xray(cfg: dict, ib: dict, iid: str, host: str):
 # ── Xray process manager ───────────────────────────────────────────────────────
 _xray_proc: asyncio.subprocess.Process | None = None
 _xray_restart_lock = asyncio.Lock()
+# Set of user config_uuids the last _xray_apply() served on reality inbounds.
+# The audit loop re-applies Xray when this set changes (user expires / disabled /
+# quota exhausted over time), so Reality connections are actually cut.
+_xray_last_served: set = set()
+
+
+def _expected_xray_client_uuids() -> set:
+    """Real users Xray should currently serve on reality inbounds."""
+    out = set()
+    for iid, ib in INBOUNDS.items():
+        is_reality = ((ib.get("protocol") or "").lower() == "reality"
+                      or (ib.get("security") or "").lower() == "reality")
+        if not is_reality:
+            continue
+        for u in USERS.values():
+            uids = u.get("inbound_ids") or ([u.get("inbound_id")] if u.get("inbound_id") else [])
+            if iid in uids and u.get("config_uuid") and is_user_allowed(u):
+                out.add(u["config_uuid"])
+    return out
+
+
+async def _xray_client_audit_loop():
+    """Periodically drop Reality users who expired/ran out of quota/disabled.
+
+    Xray enforces nothing itself; the panel cuts Reality access by regenerating
+    the config without the disallowed UUIDs and restarting Xray.
+    """
+    global _xray_last_served
+    await asyncio.sleep(45)
+    while True:
+        try:
+            async with USERS_LOCK:
+                for u in USERS.values():
+                    auto_check_user_expiry(u)
+            expected = _expected_xray_client_uuids()
+            if expected != _xray_last_served:
+                await _xray_apply()
+        except Exception as e:
+            logger.warning(f"xray client audit failed: {e}")
+        await asyncio.sleep(60)
 
 
 def _xray_bin_path() -> Path:
@@ -4798,8 +4842,10 @@ async def _xray_start(config: dict) -> bool:
 
 async def _xray_apply():
     """Regenerate config for all inbounds and (re)start Xray with it."""
+    global _xray_last_served
     config = generate_xray_server_config()
     await _xray_start(config)
+    _xray_last_served = _expected_xray_client_uuids()
 
 
 @app.post("/api/tools/generate-xray-config")
@@ -5398,6 +5444,7 @@ async def _worker_sync_users() -> dict:
                             "expire": deadline,
                             "used_bytes": int(u.get("traffic_used_bytes") or 0),
                             "proxy_ip": "",
+                            "concurrent_connections": int(u.get("concurrent_connections") or 0),
                         },
                     )
                 if r.status_code in (200, 204):

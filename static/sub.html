@@ -718,7 +718,7 @@
     if (window.__statuscfg) copyText(window.__statuscfg);
   };
   window.copySub = function() {
-    copyText(subUrl + '\n' + allConfigsText());
+    copyText(subUrl);
   };
   window.importSub = function() {
     window.open('v2rayng://install-sub?url=' + encodeURIComponent(subUrl), '_blank');

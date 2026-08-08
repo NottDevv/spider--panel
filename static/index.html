@@ -735,6 +735,20 @@ tr{animation:fadeIn .3s ease}
 .ib-pick.selected .ib-pick-check{background:var(--gradient);border-color:transparent;color:#fff;animation:scaleIn .25s ease}
 .ib-pick-check .material-symbols-outlined{font-size:14px}
 
+/* Country tick chips — per-country toggle (replaces the Ctrl multi-select). */
+.country-tick{
+  display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;
+  padding:5px 10px;background:var(--surface-glass);border:1.5px solid var(--border);
+  border-radius:999px;font-size:12px;color:var(--txt);transition:all .2s;
+}
+.country-tick:hover{box-shadow:var(--shadow-sm)}
+.country-tick .ck{
+  width:18px;height:18px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;color:transparent;transition:all .2s;font-size:11px;
+}
+.country-tick.selected{border-color:var(--neon);box-shadow:0 0 0 1px var(--neon)}
+.country-tick.selected .ck{background:var(--gradient);border-color:transparent;color:#fff}
+
 /* Per-inbound options panel (country multi-select + iOS switches). Theme-aware. */
 .ib-opts{
   flex-basis:100%;margin-top:4px;padding:10px 12px;
@@ -1488,7 +1502,7 @@ var I18N = {
     'createUser': 'ایجاد کاربر جدید', 'editUser': 'ویرایش کاربر', 'username': 'نام کاربری', 'conn': 'اتصال همزمان', 'volume': 'حجم', 'unit': 'واحد', 'expire': 'اعتبار', 'day': 'روز', 'month': 'ماه',
     'inboundsMulti': 'اینباندها (چندتایی)', 'noInboundOpt': 'اینباندی وجود ندارد',
     'inboundPickHint': 'برای هر اینباند، گزینه‌های مخصوصش نمایش داده می‌شود: Worker → انتخاب کشور، TLS → سوییچ IP اسکنر، Reality → بدون گزینه.',
-    'workerCountries': 'کشورهای چندمنطقه‌ای (چندتایی — Ctrl برای انتخاب چند):',
+    'workerCountries': 'کشورهای چندمنطقه‌ای (برای هر کشور یک تیک فعال کنید):',
     'addCfIps': 'افزودن ۱۰ کانفیگ با IPهای Cloudflare اسکن‌شده',
     'addRailwayIps': 'افزودن ۱۰ کانفیگ با IPهای Railway اسکن‌شده',
     'realityNoExtra': 'Reality گزینه اضافه‌ای ندارد — فقط کانفیگ اصلی Reality.',
@@ -1536,7 +1550,7 @@ var I18N = {
     'createUser': 'Create New User', 'editUser': 'Edit User', 'username': 'Username', 'conn': 'Concurrent Connections', 'volume': 'Traffic', 'unit': 'Unit', 'expire': 'Expiry', 'day': 'Day', 'month': 'Month',
     'inboundsMulti': 'Inbounds (multi-select)', 'noInboundOpt': 'No inbounds available',
     'inboundPickHint': 'Each inbound shows its own options: Worker → choose countries, TLS → scanned-IP switch, Reality → no extra options.',
-    'workerCountries': 'Multi-location countries (multi-select — Ctrl to pick several):',
+    'workerCountries': 'Multi-location countries (tick each country you want):',
     'addCfIps': 'Add 10 configs with scanned Cloudflare IPs',
     'addRailwayIps': 'Add 10 configs with scanned Railway IPs',
     'realityNoExtra': 'Reality needs no extras — only the main Reality config.',
@@ -1924,7 +1938,7 @@ function _userStatus(u) {
 
 function _userActions(u) {
   return '<div class="act-row">' +
-    '<button class="btn btn-sm btn-g" onclick="viewCfg(\'' + u.user_id + '\')" title="Config">'+iconCfg+'</button>' +
+    '<button class="btn btn-sm btn-g" onclick="viewCfg(\'' + esc(u.username) + '\')" title="Config">'+iconCfg+'</button>' +
     '<button class="btn btn-sm btn-g" onclick="viewSub(\'' + u.username + '\')" title="Sub Link">'+iconLink+'</button>' +
     '<button class="btn btn-sm btn-b" onclick="viewQR(\'' + u.user_id + '\')" title="QR Code">'+iconQr+'</button>' +
     '<button class="btn btn-sm btn-b" onclick="editUser(\'' + u.user_id + '\')" title="Edit">'+iconEdit+'</button>' +
@@ -2130,10 +2144,13 @@ async function deleteUser(uid) {
 }
 
 // ─── Config & Sub ───
-async function viewCfg(uid) {
+async function viewCfg(username) {
   try {
-    var d = await api('/api/users/' + uid + '/config');
-    curCfg = d.config || '';
+    var d = await api('/api/sub/' + encodeURIComponent(username));
+    var list = Array.isArray(d.configs) ? d.configs : [];
+    // Drop the fake "status" config (📊 = %F0%9F%93%8A) so the user copies real configs only.
+    list = list.filter(function(c){ return c && c.indexOf('%F0%9F%93%8A') === -1; });
+    curCfg = list.join('\n');
     $id('cfg-code').textContent = curCfg || t('noCfg');
     openModal('mod-cfg');
   } catch(e) { toast(e.message, 'err'); }
@@ -3445,9 +3462,16 @@ function cuToggleIpSwitch(ibId, el) {
 }
 
 function cuPickWorkerCountries(ibId, el) {
-  var vals = Array.prototype.slice.call(el.selectedOptions || []).map(function(o){ return o.value; });
-  cuInboundState.countries[ibId] = cuInboundState.countries[ibId] || {};
-  cuInboundState.countries[ibId].worker = vals;
+  var arr = cuInboundState.countries[ibId] = cuInboundState.countries[ibId] || {};
+  arr.worker = arr.worker || [];
+  var code = el.getAttribute('data-code');
+  var idx = arr.worker.indexOf(code);
+  if (el.classList.contains('selected')) {
+    if (idx === -1) arr.worker.push(code);
+  } else {
+    if (idx !== -1) arr.worker.splice(idx, 1);
+  }
+  // No selected countries → no worker configs generated for this inbound.
 }
 
 function cuCustomStates() {
@@ -3492,15 +3516,16 @@ function cuRenderInboundOpts() {
       html += '<div class="ib-opts" data-for="' + esc(id) + '" style="flex-basis:100%">';
       if (type === 'worker') {
         var sel = cuInboundState.countries[id] || {};
-        var opts = '';
+        var chipHtml = '';
         cuWorkerProxies().forEach(function(p) {
           var flag = window.cuCodeToFlag ? cuCodeToFlag(p.code) : '';
           var checked = (sel.worker || []).indexOf(p.code) !== -1 ? ' selected' : '';
-          opts += '<option value="' + esc(p.code) + '"' + checked + '>' + flag + ' ' + esc(p.country || p.code) + ' (' + esc(p.code) + ')</option>';
+          chipHtml += '<span class="country-tick' + checked + '" data-code="' + esc(p.code) + '" onclick="cuPickWorkerCountries(\'' + esc(id) + '\',this)">' +
+            '<span class="ck material-symbols-outlined">check</span>' + flag + ' ' + esc(p.country || p.code) + '</span>';
         });
         html += '<div class="set-row" style="padding:0;border:none;flex-wrap:wrap">' +
           '<span class="set-lbl" style="width:100%">' + t('workerCountries') + '</span>' +
-          '<select multiple size="4" class="f-g" data-ib="' + esc(id) + '" onchange="cuPickWorkerCountries(\'' + esc(id) + '\',this)" style="direction:ltr;text-align:left">' + opts + '</select>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:6px;direction:ltr;text-align:left">' + chipHtml + '</div>' +
         '</div>' +
         '<div class="set-row" style="padding:0;border:none">' +
           '<span class="set-lbl" style="font-size:11px">' + t('addCfIps') + '</span>' +
