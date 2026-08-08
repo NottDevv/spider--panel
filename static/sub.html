@@ -663,8 +663,14 @@
       var d = await r.json();
       state.data = d;
       window.__cfg = d.config || d.vless_link || '';
-      // Multi-inbound configs (one per selected inbound), fallback to single.
-      window.__cfgs = (Array.isArray(d.configs) && d.configs.length) ? d.configs : (window.__cfg ? [window.__cfg] : []);
+      // The backend prepends a fake-stats status config (remark starts with the
+      // 📊 emoji = %F0%9F%93%8A) to d.configs for subscription clients. This page
+      // builds its own status card from vless_link, so drop the backend status
+      // config from the rendered list to avoid showing it twice.
+      window.__cfgs = (Array.isArray(d.configs) && d.configs.length)
+        ? d.configs.filter(function (c) { return c && c.indexOf('%F0%9F%93%8A') === -1; })
+        : (window.__cfg ? [window.__cfg] : []);
+      if (!window.__cfgs.length && window.__cfg) window.__cfgs = [window.__cfg];
       // Custom scanned-IP configs are appended to configs by the backend; keep
       // them separate so they render BELOW the main configs in the sub page.
       window.__customCfgs = Array.isArray(d.custom_configs) ? d.custom_configs : [];

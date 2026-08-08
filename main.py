@@ -683,9 +683,9 @@ async def startup():
                 "network": "ws",
                 "security": "tls",
                 "domain": _safe_host(SETTINGS.get("domain"), get_host()),
-                "external_domain": _safe_host(SETTINGS.get("domain"), get_host()),
+                "external_domain": "",
                 "sni": "",
-                "external_port": 443,
+                "external_port": "",
                 "fingerprint": "chrome",
                 "reality_settings": {},
                 "xhttp_settings": {},
@@ -779,8 +779,10 @@ async def startup():
             if _cur in ("", "0.0.0.0", "127.0.0.1", "localhost", "SERVER_IP"):
                 _ib["domain"] = _real
                 _changed = True
-            if _cext in ("", "0.0.0.0", "127.0.0.1", "localhost", "SERVER_IP"):
-                _ib["external_domain"] = _real
+            # For TLS WS/XHTTP inbounds: external_domain should be empty (panel domain used via SETTINGS["domain"])
+            # For Worker inbounds: external_domain should be the worker domain (set by _ensure_worker_inbound)
+            if _proto != "worker" and _cext in ("", "0.0.0.0", "127.0.0.1", "localhost", "SERVER_IP"):
+                _ib["external_domain"] = ""
                 _changed = True
     if _changed:
         asyncio.create_task(save_state())
@@ -1301,6 +1303,91 @@ def generate_custom_ip_configs(user_id: str, user: dict) -> list:
                 if cfg:
                     out["railway"].append(cfg)
     return out
+
+
+def generate_status_config(user: dict, configs: list) -> str:
+    """Generate a status config (config-status) with fake random stats.
+
+    This config is placed FIRST in the subscription so clients display it as
+    the status/overview config. It uses the panel's main domain and carries
+    fake volume/time/user-count in the remark for easy reading.
+
+    The address is the panel domain (not external_domain) and host/sni are
+    also the panel domain so TLS handshake reaches the panel.
+    """
+    import random
+
+    # Get user info
+    username = user.get("username", "user")
+    user_id = user.get("user_id", "")
+    config_uuid = user.get("config_uuid", "") or user_id
+
+    # Use panel domain from SETTINGS (required for TLS WS/XHTTP)
+    if SETTINGS.get("domain"):
+        panel_domain = SETTINGS["domain"]
+    else:
+        panel_domain = _safe_host(SETTINGS.get("domain"), get_host())
+
+    # Generate fake stats for the status config
+    # Random volume: 100GB - 500GB total, 10GB - 100GB used
+    total_gb = random.randint(100, 500)
+    used_gb = random.randint(10, min(100, total_gb - 1))
+
+    # Random expiry: 30-365 days
+    expire_days = random.randint(30, 365)
+
+    # Random concurrent users: 1-10
+    online_users = random.randint(1, 10)
+
+    # Build remark with fake stats (status config identifier)
+    # Format: "📊 Status | User: {username} | Used: {used}GB/{total}GB | Days: {days} | Online: {online}"
+    remark_text = f"📊 Status | User: {username} | Used: {used_gb}GB/{total_gb}GB | Days: {expire_days} | Online: {online_users}"
+    remark = quote(remark_text)
+
+    # Try to find a TLS WS/XHTTP config to copy transport from
+    transport = "ws"
+    ws_path = f"/ws/{config_uuid}"
+    params = (f"encryption=none&security=tls&type=ws"
+              f"&host={quote(panel_domain)}&path={quote(ws_path, safe='')}&sni={quote(panel_domain)}"
+              f"&fp=chrome&alpn=http/1.1")
+
+    for c in configs:
+        if c and "type=ws" in c:
+            transport = "ws"
+            # Already set ws_path and params above; break if desired
+            break
+        elif c and "type=xhttp" in c:
+            transport = "xhttp"
+            # Build xhttp parameters using settings from user's inbound
+            inbound_ids = user.get("inbound_ids") or []
+            xpb = "100-1000"
+            xsc = "1000000"
+            xmode = "stream-up"
+            for iid_ in inbound_ids:
+                ib = INBOUNDS.get(iid_)
+                if ib:
+                    _p = (ib.get("protocol") or "").lower()
+                    _s = (ib.get("security") or "").lower()
+                    if _p != "reality" and _s != "reality" and _p != "worker":
+                        xs = ib.get("xhttp_settings") or {}
+                        xpb = xs.get("xPaddingBytes", "100-1000")
+                        xmode = str(xs.get("mode", "auto")).strip().lower()
+                        if xmode not in ("packet-up", "stream-up"):
+                            xmode = "stream-up"
+                        xsc = xs.get("scMaxEachPostBytes", "1000000")
+                        break
+            extra = quote('{{"xPaddingBytes":"{}","mode":"{}","scMaxEachPostBytes":"{}"}}'.format(xpb, xmode, xsc), safe='')
+            ws_path = f"/xhttp-siz10/{xmode}/{config_uuid}"
+            params = (f"encryption=none&security=tls&type=xhttp"
+                      f"&host={quote(panel_domain)}&path={quote(ws_path, safe='')}&sni={quote(panel_domain)}"
+                      f"&fp=chrome&mode={xmode}&extra={extra}")
+            break
+
+    # Address is panel domain, port 443
+    host = panel_domain
+    port = "443"
+
+    return f"vless://{config_uuid}@{host}:{port}?{params}#{remark}"
 
 
 def generate_sni_spoof_configs(user_id: str, user: dict) -> list:
@@ -2144,6 +2231,11 @@ async def create_inbound(request: Request, _=Depends(require_auth)):
             external_domain = domain or CONFIG.get("host", "")
         if network not in ("tcp", "xhttp", "grpc"):
             network = "tcp"
+    else:
+        # For TLS WS/XHTTP (non-reality, non-worker): external_domain and external_port should be empty
+        # The panel domain is used via SETTINGS["domain"] in generate_user_config
+        external_domain = ""
+        external_port = ""
 
     inbound_id = generate_short_id()
     async with INBOUNDS_LOCK:
@@ -3002,7 +3094,7 @@ async def api_user_sub(username: str):
                 break
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # Even inactive users get their sub page (just show status)
     status = user.get("status", "active")
 
@@ -3037,8 +3129,6 @@ async def api_user_sub(username: str):
     limit = user.get("traffic_limit_bytes", 0)
     traffic_pct = round(used / max(limit, 1) * 100, 1) if limit > 0 else 0
 
-    config = generate_user_config(user.get("user_id"), user, user.get("inbound_id"))
-
     # Multi-inbound: build one config per selected inbound.
     # A "worker" inbound expands to one config per selected country (multi-location).
     configs = []
@@ -3054,7 +3144,8 @@ async def api_user_sub(username: str):
                 # A reality inbound without a configured domain/port isn't ready
                 # yet — skip it so the sub never shows a broken config.
                 if ib and (_p == "reality" or _s == "reality"):
-                    if not str(ib.get("external_domain") or "").strip() or not str(ib.get("port") or "").strip():
+                    # For Reality: check external_domain and external_port (not port)
+                    if not str(ib.get("external_domain") or "").strip() or not str(ib.get("external_port") or "").strip():
                         continue
                 if ib and _p == "worker":
                     configs.extend(_worker_configs(uid_, user, ib, stored_path_user, f"Spider-{user.get('username', uid_)}"))
@@ -3063,7 +3154,9 @@ async def api_user_sub(username: str):
             except Exception:
                 continue
     if not configs:
-        configs = [config] if config else []
+        # Fallback: single inbound config
+        fallback_config = generate_user_config(user.get("user_id"), user, user.get("inbound_id"))
+        configs = [fallback_config] if fallback_config else []
 
     # Custom scanned-IP configs (the iOS switch): per inbound type.
     # worker → Cloudflare IPs, tls → Railway IPs, reality → none.
@@ -3084,6 +3177,27 @@ async def api_user_sub(username: str):
         sni_spoof_cfgs = generate_sni_spoof_configs(user.get("user_id"), user)
         if sni_spoof_cfgs:
             configs = configs + sni_spoof_cfgs
+
+    # Generate a status config (config-status) with fake random stats
+    # This config is always the FIRST one in the list so clients show it as "status"
+    status_config = generate_status_config(user, configs)
+
+    # Insert status config at the beginning
+    if status_config:
+        configs = [status_config] + configs
+
+    # Pick a TLS WS/XHTTP config for the status config (not Reality/Worker)
+    # so the status config uses the panel domain for host/sni
+    # Skip the first config (which is the status config) and pick the first real config
+    config = None
+    for c in configs[1:]:
+        if c and ("type=ws" in c or "type=xhttp" in c):
+            config = c
+            break
+    if not config and len(configs) > 1:
+        config = configs[1]
+    elif not config and configs:
+        config = configs[0]
 
     return {
         "username": user.get("username"),

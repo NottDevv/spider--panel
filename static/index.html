@@ -3083,7 +3083,10 @@ function scnSaveAdvDomain() {
   spfSaveAdvDomains();
   // Apply to all inbound domain fields
   spfApplyDomainToAllInbounds(v);
-  toast('دامنه ذخیره و به همه اینباندها اعمال شد', 'ok');
+  // Persist to backend SETTINGS["domain"] so TLS WS/XHTTP configs use it
+  apiPost('/api/tools/settings', { domain: v })
+    .then(function() { toast('دامنه ذخیره و به همه اینباندها اعمال شد', 'ok'); })
+    .catch(function() { toast('خطا در ذخیره دامنه در سرور', 'err'); });
 }
 
 function spfApplyDomainToAllInbounds(domain) {
@@ -3134,6 +3137,10 @@ function spfEditAdvDomain(i) {
     spfRenderAdvDropdown();
     spfSaveAdvDomains();
     spfApplyDomainToAllInbounds(scnAdvDomains[i]);
+    // Persist to backend SETTINGS["domain"]
+    apiPost('/api/tools/settings', { domain: scnAdvDomains[i] })
+      .then(function() { toast('دامنه ویرایش و اعمال شد', 'ok'); })
+      .catch(function() { toast('خطا در ذخیره دامنه در سرور', 'err'); });
   }
 }
 
