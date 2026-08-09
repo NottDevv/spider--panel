@@ -617,6 +617,8 @@ tr{animation:fadeIn .3s ease}
 
 .pbar{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:5px}
 .pbar-f{height:100%;background:var(--gradient);border-radius:3px;transition:width .5s ease}
+.ib-ovpn-preview-box{font-size:11px;line-height:1.9;background:var(--bg2);border:1px solid var(--bg3);border-radius:8px;padding:8px 10px;margin-top:8px;direction:ltr;text-align:left;font-family:ui-monospace,Menlo,Consolas,monospace}
+.ib-ovpn-preview-box b{color:var(--txt2);font-weight:600}
 
 .srv-bar{margin-bottom:6px}.srv-bar-h{display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px}
 .srv-bar-h strong{font-size:11px}.srv-bar-bg{height:7px;background:var(--bg3);border-radius:4px;overflow:hidden}
@@ -748,6 +750,9 @@ tr{animation:fadeIn .3s ease}
 }
 .country-tick.selected{border-color:var(--neon);box-shadow:0 0 0 1px var(--neon)}
 .country-tick.selected .ck{background:var(--gradient);border-color:transparent;color:#fff}
+.country-tick.ip-tick{padding:3px 8px;font-size:11px;font-family:monospace}
+.country-tick.ip-tick.selected{border-color:var(--neon);box-shadow:0 0 0 1px var(--neon)}
+.country-tick.sel-all{border-style:dashed;opacity:.8;font-size:11px}
 
 /* Per-inbound options panel (country multi-select + iOS switches). Theme-aware. */
 .ib-opts{
@@ -1199,7 +1204,6 @@ tr{animation:fadeIn .3s ease}
                 </a>
               </div>
             </div>
-            <div class="f-g"><label data-i18n="cfAccountId">Account ID</label><input type="text" id="wk-account" dir="ltr" placeholder="e.g. 1a2b3c..."></div>
             <div class="px-hint" data-i18n="workerAutoName">نام و دامنه Worker به‌صورت خودکار از اکانت Cloudflare گرفته می‌شود.</div>
             <button class="btn btn-p" style="width:100%;margin-top:10px" onclick="workerSetup()"><span data-i18n="cfConnect">اتصال و Deploy</span></button>
           </div>
@@ -1385,6 +1389,7 @@ tr{animation:fadeIn .3s ease}
   <form onsubmit="submitInbound(event)">
     <input type="hidden" id="ib-id">
     <div class="f-g"><label data-i18n="inboundName">نام اینباند</label><input type="text" id="ib-name" required data-i18n-placeholder="inboundName" placeholder="مثال: Main-WS"></div>
+    <div id="ib-vless-fields">
     <div class="f-g"><label data-i18n="intPort">پورت اصلی (پورتی که سرور روی آن گوش میدهد)</label><input type="number" id="ib-port" required placeholder="8443" dir="ltr"></div>
     <div class="f-g"><label data-i18n="securityType">امنیت</label><select id="ib-security" onchange="onSecurityChange()">
       <option value="tls">TLS</option>
@@ -1435,6 +1440,20 @@ tr{animation:fadeIn .3s ease}
       <!-- gRPC fields -->
       <div id="ib-grpc-fields" class="hidden"><div class="f-g"><label data-i18n="serviceName">Service Name</label><input type="text" id="ib-grpc-svc" value="grpc" dir="ltr"></div></div>
     </div>
+    </div>
+
+    <!-- OpenVPN-only fields (shown when editing an OpenVPN inbound) -->
+    <div id="ib-openvpn-fields" class="hidden">
+      <div class="divider"></div>
+      <div style="font-size:11px;color:var(--neon);font-weight:700;margin-bottom:8px" data-i18n="openvpnSettings">تنظیمات OpenVPN</div>
+      <div class="f-g"><label data-i18n="ovpnIntPort">پورت گوش‌دادن داخلی (سرور)</label><input type="number" id="ib-ovpn-intport" value="1194" min="1" max="65535" dir="ltr" oninput="ovpnPreview()"></div>
+      <div class="f-r">
+        <div class="f-g"><label data-i18n="ovpnExtDomain">دامنه پروکسی TCP خارجی</label><input type="text" id="ib-ovpn-extdomain" dir="ltr" placeholder="abc.proxy.rlwy.net" oninput="ovpnPreview()"></div>
+        <div class="f-g"><label data-i18n="ovpnExtPort">پورت پروکسی TCP خارجی</label><input type="number" id="ib-ovpn-extport" dir="ltr" min="1" max="65535" placeholder="39280" oninput="ovpnPreview()"></div>
+      </div>
+      <div id="ib-ovpn-preview" class="ib-ovpn-preview"></div>
+      <div style="font-size:10px;color:var(--txt2);margin-top:6px" data-i18n="ovpnHint">مشتری فقط به پایان‌نامه خارجی وصل می‌شود؛ هرگز به پورت داخلی.</div>
+    </div>
 
     <div class="modal-btns">
       <button type="button" class="btn btn-g" onclick="closeModal('mod-inbound')"><span data-i18n="cancel">انصراف</span></button>
@@ -1483,7 +1502,7 @@ var LANG = localStorage.getItem('spider-lang') || 'fa';
 var I18N = {
   fa: {
     'dash': 'داشبورد', 'users': 'کاربران', 'inbounds': 'اینباندها', 'scanner': 'اسکنر IP', 'worker': 'Worker', 'settings': 'تنظیمات', 'contact': 'Contact Me', 'logout': 'خروج',
-    'workerSetupTip': 'پنل را به Cloudflare Worker متصل کنید تا کاربرانی که Proxy IP انتخاب می‌کنند از مسیر Worker عبور کنند. ترافیک از Railway عبور نمی‌کند.', 'cfToken': 'Cloudflare API Token', 'getToken': 'گرفتن توکن', 'cfAccountId': 'Account ID', 'cfWorkerName': 'Worker Name', 'cfWorkerDomain': 'Worker Domain', 'cfConnect': 'اتصال و Deploy', 'connected': 'متصل', 'disconnected': 'قطع', 'workerStatus': 'وضعیت', 'workerUrl': 'Worker URL', 'lastSync': 'آخرین Sync', 'lastError': 'آخرین خطا', 'proxyPool': 'Proxy IP Pool', 'addProxy': 'افزودن کشور', 'workerSettings': 'تنظیمات Worker', 'removeConn': 'حذف اتصال Worker', 'noProxyYet': 'هنوز کشوری اضافه نکرده‌اید', 'connecting': 'در حال اتصال...', 'workerConnected': 'Worker متصل و Deploy شد', 'syncing': 'در حال Sync...', 'synced': 'Sync شد', 'confirmRemoveWorker': 'اتصال Worker حذف شود؟', 'workerRemoved': 'اتصال Worker حذف شد', 'proxyCodePrompt': 'کد کشور (مثلا de):', 'proxyCountryPrompt': 'نام کشور:', 'proxyHostPrompt': 'آدرس Proxy IP (مثلا de.example.com):', 'proxyPortPrompt': 'پورت Proxy IP:', 'proxySaved': 'کشور ذخیره و Worker بروزرسانی شد', 'confirmDelProxy': 'این کشور حذف شود؟', 'proxyDeleted': 'کشور حذف شد', 'workerFillAll': 'همه فیلدها را پر کنید', 'workerProxyEnabled': 'Worker Proxy IP', 'workerProxyNone': 'بدون Proxy', 'workerRouteTip': 'کانفیگ کاربر روی دامنه Worker با مسیر /route/{کد کشور} ساخته می‌شود و از Railway عبور نمی‌کند.', 'workerAutoName': 'نام و دامنه Worker به‌صورت خودکار از اکانت Cloudflare گرفته می‌شود.', 'proxySource': 'منبع پروکسی روزانه', 'autoSyncHourly': 'بروزرسانی خودکار (ساعتی)', 'updateNow': 'بروزرسانی از منبع', 'updatingFromSource': 'در حال بروزرسانی از منبع', 'sourceUpdated': 'بروزرسانی شد', 'sourceError': 'خطا در بروزرسانی منبع', 'countries': 'کشور', 'syncsDone': 'تعداد بروزرسانی‌ها', 'pickCountry': 'یک کشور انتخاب کنید',
+    'workerSetupTip': 'پنل را به Cloudflare Worker متصل کنید تا کاربرانی که Proxy IP انتخاب می‌کنند از مسیر Worker عبور کنند. ترافیک از Railway عبور نمی‌کند.', 'cfToken': 'Cloudflare API Token', 'getToken': 'گرفتن توکن', 'cfWorkerName': 'Worker Name', 'cfWorkerDomain': 'Worker Domain', 'cfConnect': 'اتصال و Deploy', 'connected': 'متصل', 'disconnected': 'قطع', 'workerStatus': 'وضعیت', 'workerUrl': 'Worker URL', 'lastSync': 'آخرین Sync', 'lastError': 'آخرین خطا', 'proxyPool': 'Proxy IP Pool', 'addProxy': 'افزودن کشور', 'workerSettings': 'تنظیمات Worker', 'removeConn': 'حذف اتصال Worker', 'noProxyYet': 'هنوز کشوری اضافه نکرده‌اید', 'connecting': 'در حال اتصال...', 'workerConnected': 'Worker متصل و Deploy شد', 'syncing': 'در حال Sync...', 'synced': 'Sync شد', 'confirmRemoveWorker': 'اتصال Worker حذف شود؟', 'workerRemoved': 'اتصال Worker حذف شد', 'proxyCodePrompt': 'کد کشور (مثلا de):', 'proxyCountryPrompt': 'نام کشور:', 'proxyHostPrompt': 'آدرس Proxy IP (مثلا de.example.com):', 'proxyPortPrompt': 'پورت Proxy IP:', 'proxySaved': 'کشور ذخیره و Worker بروزرسانی شد', 'confirmDelProxy': 'این کشور حذف شود؟', 'proxyDeleted': 'کشور حذف شد', 'workerFillAll': 'توکن Cloudflare را وارد کنید', 'workerProxyEnabled': 'Worker Proxy IP', 'workerProxyNone': 'بدون Proxy', 'workerRouteTip': 'کانفیگ کاربر روی دامنه Worker با مسیر /route/{کد کشور} ساخته می‌شود و از Railway عبور نمی‌کند.', 'workerAutoName': 'نام و دامنه Worker به‌صورت خودکار از اکانت Cloudflare گرفته می‌شود.', 'proxySource': 'منبع پروکسی روزانه', 'autoSyncHourly': 'بروزرسانی خودکار (ساعتی)', 'updateNow': 'بروزرسانی از منبع', 'updatingFromSource': 'در حال بروزرسانی از منبع', 'sourceUpdated': 'بروزرسانی شد', 'sourceError': 'خطا در بروزرسانی منبع', 'countries': 'کشور', 'syncsDone': 'تعداد بروزرسانی‌ها', 'pickCountry': 'یک کشور انتخاب کنید', 'selectFastIps': 'انتخاب همه سریع‌ها', 'loadingIps': 'در حال دریافت IPها...', 'countryIps': 'انتخاب IP',
     'tab.dash': 'داشبورد', 'tab.users': 'مدیریت کاربران', 'tab.inbounds': 'مدیریت اینباندها', 'tab.scanner': 'اسکنر آی‌پی', 'tab.settings': 'تنظیمات',
     'inboundFixedHint': 'فقط اینباندهای پیش‌فرض پنل استفاده می‌شوند. WS/TLS به‌صورت خودکار با دامنه اصلی پنل آماده است؛ Reality را با دامنه و پورت خودتان تکمیل کنید (کلید pbk به‌صورت خودکار ساخته می‌شود).', 'inboundFixed': 'افزودن اینباند غیرفعال است — فقط اینباندهای پیش‌فرض.', 'inboundAuto': 'این اینباند خودکار است و نیازی به تنظیم ندارد.',
     'newUser': 'کاربر جدید', 'newInbound': 'اینباند جدید', 'domain': 'دامنه',
@@ -1521,6 +1540,7 @@ var I18N = {
     'extDomain': 'External Domain', 'extPortCfg': 'External Port', 'extDomainPlace': 'دامنه خارجی برای کانفیگ کلاینت', 'commaSep': 'با کاما جدا کنید',
     'intPort': 'پورت اصلی (پورتی که سرور روی آن گوش میدهد)', 'extPortCfg2': 'پورت خارجی (کانفیگ)', 'portHint': 'پورت داخلی = پورتی که Xray روی آن گوش میدهد. پورت خارجی = پورتی که در کانفیگ ظاهر میشود (آدرس کانفیگ: domain:external_port).',
     'network': 'شبکه', 'serviceName': 'Service Name', 'createInbound': 'ایجاد اینباند', 'editInbound': 'ویرایش اینباند', 'inboundCreated': 'اینباند با موفقیت ذخیره شد',
+    'openvpnSettings': 'تنظیمات OpenVPN', 'ovpnIntPort': 'پورت گوش‌دادن داخلی (سرور)', 'ovpnExtDomain': 'دامنه پروکسی TCP خارجی', 'ovpnExtPort': 'پورت پروکسی TCP خارجی', 'ovpnHint': 'مشتری فقط به پایان‌نامه خارجی وصل می‌شود؛ هرگز به پورت داخلی.', 'openTcp': 'Open TCP', 'ovpnDownloaded': 'پروفایل OpenVPN دانلود شد', 'up': 'فعال',
     'config': 'کانفیگ', 'copy': 'کپی', 'close': 'بستن', 'copied': 'کانفیگ کپی شد', 'noCfg': 'کانفیگی موجود نیست', 'errCopy': 'خطا در کپی', 'notFound': 'یافت نشد', 'delete': 'حذف', 'edit': 'ویرایش', 'unlimited': 'نامحدود', 'expired': 'منقضی', 'daysUnit': ' روز', 'default': 'پیش‌فرض', 'usersCount': 'کاربران', 'secNetwork': 'شبکه', 'security': 'امنیت', 'action': 'عملیات', 'expiry': 'انقضا', 'connTh': 'اتصال',
     'confirmDeleteUser': 'آیا از حذف این کاربر اطمینان دارید؟', 'confirmDeleteInbound': 'آیا از حذف این اینباند اطمینان دارید؟', 'keysGenerated': 'کلیدهای Reality تولید شد', 'errKeyGen': 'خطا در تولید کلید', 'shortIdGen': 'Short ID تولید شد', 'shortIdNew': 'Short ID جدید تولید شد',
     'inboundUpdated': 'اینباند بروزرسانی شد', 'inboundCreated': 'اینباند ایجاد شد', 'updateInbound': 'بروزرسانی اینباند', 'inboundDeleted': 'اینباند حذف شد',
@@ -1531,7 +1551,7 @@ var I18N = {
   },
   en: {
     'dash': 'Dashboard', 'users': 'Users', 'inbounds': 'Inbounds', 'scanner': 'IP Scanner', 'worker': 'Worker', 'settings': 'Settings', 'contact': 'Contact Me', 'logout': 'Logout',
-    'workerSetupTip': 'Connect the panel to a Cloudflare Worker so users who pick a Proxy IP route through the Worker. Traffic never crosses Railway.', 'cfToken': 'Cloudflare API Token', 'getToken': 'Get Token', 'cfAccountId': 'Account ID', 'cfWorkerName': 'Worker Name', 'cfWorkerDomain': 'Worker Domain', 'cfConnect': 'Connect & Deploy', 'connected': 'Connected', 'disconnected': 'Disconnected', 'workerStatus': 'Status', 'workerUrl': 'Worker URL', 'lastSync': 'Last Sync', 'lastError': 'Last Error', 'proxyPool': 'Proxy IP Pool', 'addProxy': 'Add Country', 'workerSettings': 'Worker Settings', 'removeConn': 'Remove Worker Connection', 'noProxyYet': 'No country added yet', 'connecting': 'Connecting...', 'workerConnected': 'Worker connected & deployed', 'syncing': 'Syncing...', 'synced': 'Synced', 'confirmRemoveWorker': 'Remove the Worker connection?', 'workerRemoved': 'Worker connection removed', 'proxyCodePrompt': 'Country code (e.g. de):', 'proxyCountryPrompt': 'Country name:', 'proxyHostPrompt': 'Proxy IP host (e.g. de.example.com):', 'proxyPortPrompt': 'Proxy IP port:', 'proxySaved': 'Country saved, worker updated', 'confirmDelProxy': 'Delete this country?', 'proxyDeleted': 'Country deleted', 'workerFillAll': 'Fill in all fields', 'workerProxyEnabled': 'Worker Proxy IP', 'workerProxyNone': 'No Proxy', 'workerRouteTip': 'The user config is built on the Worker domain with a /route/{code} path — traffic never crosses Railway.', 'workerAutoName': 'Worker name and domain are fetched automatically from your Cloudflare account.', 'proxySource': 'Daily Proxy Source', 'autoSyncHourly': 'Auto-update (hourly)', 'updateNow': 'Update Now', 'updatingFromSource': 'Updating from source', 'sourceUpdated': 'Updated', 'sourceError': 'Failed to update source', 'countries': 'countries', 'syncsDone': 'Syncs done', 'pickCountry': 'Pick a country',
+    'workerSetupTip': 'Connect the panel to a Cloudflare Worker so users who pick a Proxy IP route through the Worker. Traffic never crosses Railway.', 'cfToken': 'Cloudflare API Token', 'getToken': 'Get Token', 'cfWorkerName': 'Worker Name', 'cfWorkerDomain': 'Worker Domain', 'cfConnect': 'Connect & Deploy', 'connected': 'Connected', 'disconnected': 'Disconnected', 'workerStatus': 'Status', 'workerUrl': 'Worker URL', 'lastSync': 'Last Sync', 'lastError': 'Last Error', 'proxyPool': 'Proxy IP Pool', 'addProxy': 'Add Country', 'workerSettings': 'Worker Settings', 'removeConn': 'Remove Worker Connection', 'noProxyYet': 'No country added yet', 'connecting': 'Connecting...', 'workerConnected': 'Worker connected & deployed', 'syncing': 'Syncing...', 'synced': 'Synced', 'confirmRemoveWorker': 'Remove the Worker connection?', 'workerRemoved': 'Worker connection removed', 'proxyCodePrompt': 'Country code (e.g. de):', 'proxyCountryPrompt': 'Country name:', 'proxyHostPrompt': 'Proxy IP host (e.g. de.example.com):', 'proxyPortPrompt': 'Proxy IP port:', 'proxySaved': 'Country saved, worker updated', 'confirmDelProxy': 'Delete this country?', 'proxyDeleted': 'Country deleted', 'workerFillAll': 'Enter the Cloudflare token', 'workerProxyEnabled': 'Worker Proxy IP', 'workerProxyNone': 'No Proxy', 'workerRouteTip': 'The user config is built on the Worker domain with a /route/{code} path — traffic never crosses Railway.', 'workerAutoName': 'Worker name and domain are fetched automatically from your Cloudflare account.', 'proxySource': 'Daily Proxy Source', 'autoSyncHourly': 'Auto-update (hourly)', 'updateNow': 'Update Now', 'updatingFromSource': 'Updating from source', 'sourceUpdated': 'Updated', 'sourceError': 'Failed to update source', 'countries': 'countries', 'syncsDone': 'Syncs done', 'pickCountry': 'Pick a country', 'selectFastIps': 'Select all fast IPs', 'loadingIps': 'Loading IPs...', 'countryIps': 'pick IPs',
     'tab.dash': 'Dashboard', 'tab.users': 'Manage Users', 'tab.inbounds': 'Manage Inbounds', 'tab.scanner': 'IP Scanner', 'tab.settings': 'Settings',
     'inboundFixedHint': 'Only the panel’s default inbounds are used. WS/TLS is ready automatically with the panel’s main domain; fill Reality’s domain & ports yourself (pbk is auto-generated).', 'inboundFixed': 'Adding inbounds is disabled — only the default inbounds.', 'inboundAuto': 'This inbound is automatic — nothing to configure.',
     'newUser': 'New User', 'newInbound': 'New Inbound', 'domain': 'Domain',
@@ -1569,6 +1589,7 @@ var I18N = {
     'extDomain': 'External Domain', 'extPortCfg': 'External Port', 'extDomainPlace': 'External domain shown in the client config', 'commaSep': 'Separate with commas',
     'intPort': 'Main port (the port the server listens on)', 'extPortCfg2': 'External Port (config)', 'portHint': 'Internal port = what Xray listens on. External port = what appears in the config (config address: domain:external_port).',
     'network': 'Network', 'serviceName': 'Service Name', 'createInbound': 'Create Inbound', 'editInbound': 'Edit Inbound', 'inboundCreated': 'Inbound saved successfully',
+    'openvpnSettings': 'OpenVPN Settings', 'ovpnIntPort': 'Internal listen port (server)', 'ovpnExtDomain': 'External TCP proxy domain', 'ovpnExtPort': 'External TCP proxy port', 'ovpnHint': 'Clients always connect to the external endpoint, never the internal port.', 'openTcp': 'Open TCP', 'ovpnDownloaded': 'OpenVPN profile downloaded', 'up': 'up',
     'config': 'Config', 'copy': 'Copy', 'close': 'Close', 'copied': 'Config copied', 'noCfg': 'No config available', 'errCopy': 'Copy failed', 'notFound': 'Not found', 'delete': 'Delete', 'edit': 'Edit', 'unlimited': 'Unlimited', 'expired': 'Expired', 'daysUnit': ' days', 'default': 'Default', 'usersCount': 'Users', 'secNetwork': 'Network', 'security': 'Security', 'action': 'Actions', 'expiry': 'Expiry', 'connTh': 'Conn',
     'confirmDeleteUser': 'Are you sure you want to delete this user?', 'confirmDeleteInbound': 'Are you sure you want to delete this inbound?', 'keysGenerated': 'Reality keys generated', 'errKeyGen': 'Key generation failed', 'shortIdGen': 'Short ID generated', 'shortIdNew': 'New Short ID generated',
     'inboundUpdated': 'Inbound updated', 'inboundCreated': 'Inbound created', 'updateInbound': 'Update Inbound', 'inboundDeleted': 'Inbound deleted',
@@ -1935,15 +1956,45 @@ function _userStatus(u) {
   return u.status === 'active' ? '<span class="badge badge-g">' + t('active') + '</span>' : '<span class="badge badge-r">' + t('inactive') + '</span>';
 }
 
+function _userHasOpenvpn(u) {
+  var ids = u.inbound_ids || (u.inbound_id ? [u.inbound_id] : []);
+  return ALL_IB.some(function(ib) {
+    return ids.indexOf(ib.inbound_id) !== -1 && (ib.protocol || '').toLowerCase() === 'openvpn';
+  });
+}
+
 function _userActions(u) {
   return '<div class="act-row">' +
     '<button class="btn btn-sm btn-g" onclick="viewCfg(\'' + esc(u.username) + '\')" title="Config">'+iconCfg+'</button>' +
     '<button class="btn btn-sm btn-g" onclick="viewSub(\'' + u.username + '\')" title="Sub Link">'+iconLink+'</button>' +
     '<button class="btn btn-sm btn-b" onclick="viewQR(\'' + u.user_id + '\')" title="QR Code">'+iconQr+'</button>' +
+    (_userHasOpenvpn(u) ? '<button class="btn btn-sm btn-p" onclick="downloadOvpn(\'' + u.user_id + '\')" title="OpenVPN .ovpn">' + t('openTcp') + '</button>' : '') +
     '<button class="btn btn-sm btn-b" onclick="editUser(\'' + u.user_id + '\')" title="Edit">'+iconEdit+'</button>' +
     '<button class="btn btn-sm btn-r" onclick="toggleUser(\'' + u.user_id + '\')" title="Toggle">'+iconToggle+'</button>' +
     '<button class="btn btn-sm btn-r" onclick="deleteUser(\'' + u.user_id + '\')" title="Delete">'+iconTrash+'</button>' +
   '</div>';
+}
+
+async function downloadOvpn(userId) {
+  try {
+    var r = await fetch('/api/users/' + userId + '/openvpn', {credentials: 'same-origin'});
+    if (!r.ok) {
+      var t2 = await r.json().catch(function(){ return {detail: r.statusText}; });
+      throw new Error((t2 && t2.detail) || t('toast.err'));
+    }
+    var blob = await r.blob();
+    var disp = r.headers.get('Content-Disposition') || '';
+    var fn = 'user.ovpn';
+    var m = /filename\*=UTF-8''([^;]+)/.exec(disp);
+    if (m) { try { fn = decodeURIComponent(m[1]); } catch(e){} }
+    else { var m2 = /filename="([^"]+)"/.exec(disp); if (m2) fn = m2[1]; }
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fn;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(a.href);
+    toast(t('ovpnDownloaded'), 'ok');
+  } catch(e) { toast(e.message || t('toast.err'), 'err'); }
 }
 
 function _userRow(u) {
@@ -2013,6 +2064,7 @@ async function submitCreateUser(e) {
   // Per-inbound custom-IP switches + worker countries.
   var cuSw = cuCustomStates();   // { inboundId: {cf:bool, railway:bool} }
   var cuCountries = cuWorkerCountries();  // { inboundId: [codes] }
+  var cuWorkerIps = cuWorkerIps();  // { code: [ip, ...] } per-country picked IPs
   var cfIds = inbound_ids.filter(function(i){ return cuSw[i] && cuSw[i].cf; });
   var rwIds = inbound_ids.filter(function(i){ return cuSw[i] && cuSw[i].railway; });
   var sniSpoof = $id('cu-sni-spoof') ? $id('cu-sni-spoof').classList.contains('on') : false;
@@ -2046,6 +2098,7 @@ async function submitCreateUser(e) {
       inbound_ids: inbound_ids,
       proxy_countries: allCountries,
       proxy_country: firstCountry,
+      worker_ips: cuWorkerIps,
       proxy_ip_enabled: !!allCountries.length,
       // Mark which inbounds want scanned custom-IP configs (worker→cf, tls→railway).
       custom_ip_inbounds: { cf: cfIds, railway: rwIds },
@@ -2194,6 +2247,14 @@ function renderInbounds() {
     } else if (ib.protocol === 'worker') {
       html += t('domain') + ': ' + (ib.external_domain || '—') + '<br>';
       html += t('port') + ': 443 (Worker)<br>';
+    } else if ((ib.protocol || '').toLowerCase() === 'openvpn') {
+      html += t('ovpnIntPort') + ': ' + (ib.internal_listen_port || 1194) + '<br>';
+      html += t('ovpnExtDomain') + ': ' + (ib.external_tcp_proxy_domain || '—') + '<br>';
+      html += t('ovpnExtPort') + ': ' + (ib.external_tcp_proxy_port || '—') + '<br>';
+      html += '<div class="ib-ovpn-preview-box">Server Listen: 0.0.0.0:' + (ib.internal_listen_port || 1194) + ' &middot; Client Endpoint: ' +
+        ((ib.external_tcp_proxy_domain && ib.external_tcp_proxy_port) ? esc(ib.external_tcp_proxy_domain) + ':' + ib.external_tcp_proxy_port : '—') + '</div>';
+      if (ib.server_up) { html += '<div style="color:#2ecc71;font-size:10px">● OpenVPN ' + t('up') + ' (pid ' + ib.server_pid + ')</div>'; }
+      else if (ib.last_error) { html += '<div style="color:#e74c3c;font-size:10px">⚠ ' + esc(ib.last_error) + '</div>'; }
     } else {
       // WS/TLS: fully automatic with the panel's main domain.
       html += t('domain') + ': ' + (ib.external_domain || '—') + ' (خودکار)<br>';
@@ -2287,6 +2348,26 @@ function openCreateInbound() {
   toast(t('inboundFixed'), 'warn');
 }
 
+function showIbMode(proto) {
+  proto = (proto || '').toLowerCase();
+  toggleById('ib-vless-fields', proto !== 'openvpn');
+  toggleById('ib-openvpn-fields', proto === 'openvpn');
+  toggleById('ib-reality-fields', proto === 'reality');
+}
+
+function ovpnPreview() {
+  var intP = parseInt($id('ib-ovpn-intport').value) || 1194;
+  var extD = ($id('ib-ovpn-extdomain').value || '').trim();
+  var extP = parseInt($id('ib-ovpn-extport').value) || 0;
+  var el = $id('ib-ovpn-preview');
+  if (!el) return;
+  var extS = (extD && extP) ? esc(extD) + ':' + extP : '—';
+  el.innerHTML = '<div class="ib-ovpn-preview-box">' +
+    '<div><b style="color:var(--txt2)">Server Listen:</b> <span>0.0.0.0:' + intP + '</span></div>' +
+    '<div><b style="color:var(--txt2)">Client Endpoint:</b> <span>' + extS + '</span></div>' +
+    '</div>';
+}
+
 function editInbound(iid) {
   var ib = ALL_IB.find(function(x) { return x.inbound_id === iid; });
   if (!ib) return;
@@ -2310,6 +2391,7 @@ function editInbound(iid) {
 
   if (isReality) {
     // Reality: user fills domain + ports; pbk is auto-generated.
+    showIbMode('reality');
     $id('ib-security').value = 'reality';
     $id('ib-network').value = ib.network || 'xhttp';
     $id('ib-port').value = ib.port || '';
@@ -2318,6 +2400,17 @@ function editInbound(iid) {
     $id('ib-submit').textContent = t('updateInbound');
     onSecurityChange();
     onNetworkChange();
+    openModal('mod-inbound');
+  } else if ((ib.protocol || '').toLowerCase() === 'openvpn') {
+    // OpenVPN: internal listen port + external TCP-proxy endpoint (client-facing).
+    showIbMode('openvpn');
+    $id('ib-id').value = iid;
+    $id('ib-name').value = ib.name || '';
+    $id('ib-ovpn-intport').value = ib.internal_listen_port || 1194;
+    $id('ib-ovpn-extdomain').value = ib.external_tcp_proxy_domain || '';
+    $id('ib-ovpn-extport').value = ib.external_tcp_proxy_port || '';
+    $id('ib-submit').textContent = t('updateInbound');
+    ovpnPreview();
     openModal('mod-inbound');
   } else {
     // WS/TLS: fully automatic — nothing to configure.
@@ -2334,40 +2427,47 @@ async function submitInbound(e) {
   var security = $id('ib-security').value;
   var sni = $id('ib-sni').value || 'is1-ssl.mzstatic.com';
 
-  // All inbounds are VLESS now.
-  var body = {
-    name: $id('ib-name').value,
-    protocol: 'vless',
-    port: parseInt($id('ib-port').value) || 8443,
-    external_port: parseInt($id('ib-extport').value) || null,
-    external_domain: $id('ib-extdomain').value || '',
-    network: network,
-    security: security,
-    sni: sni
-  };
+  // All inbounds are VLESS now, except OpenVPN (a .ovpn profile, not a VLESS line).
+  var body = { name: $id('ib-name').value };
 
-  // Reality settings
-  if (security === 'reality') {
-    body.reality_settings = {
-      private_key: $id('ib-privkey').value || '',
-      public_key: $id('ib-pubkey').value || '',
-      dest: $id('ib-dest').value || 'is1-ssl.mzstatic.com:443',
-      server_names: ($id('ib-servernames').value || '').split(',').map(function(s){return s.trim()}).filter(Boolean),
-      short_ids: $id('ib-shortids').value || '',
-      spiderx: $id('ib-spiderx').value || '/'
-    };
-  }
+  if (!$id('ib-openvpn-fields').classList.contains('hidden')) {
+    // OpenVPN inbound: internal listen port + external TCP-proxy endpoint.
+    body.protocol = 'openvpn';
+    body.internal_listen_port = parseInt($id('ib-ovpn-intport').value) || 1194;
+    body.external_tcp_proxy_domain = ($id('ib-ovpn-extdomain').value || '').trim();
+    body.external_tcp_proxy_port = parseInt($id('ib-ovpn-extport').value) || 0;
+  } else {
+    body.protocol = 'vless';
+    body.port = parseInt($id('ib-port').value) || 8443;
+    body.external_port = parseInt($id('ib-extport').value) || null;
+    body.external_domain = $id('ib-extdomain').value || '';
+    body.network = network;
+    body.security = security;
+    body.sni = sni;
 
-  // Network settings
-  if (network === 'ws') {
-    body.ws_settings = { path: $id('ib-wspath').value || '/' };
-  } else if (network === 'xhttp') {
-    body.xhttp_settings = {
-      path: $id('ib-xhttppath').value || '/',
-      mode: $id('ib-xhttp-mode').value || 'auto'
-    };
-  } else if (network === 'grpc') {
-    body.grpc_settings = { serviceName: $id('ib-grpc-svc').value || 'grpc' };
+    // Reality settings
+    if (security === 'reality') {
+      body.reality_settings = {
+        private_key: $id('ib-privkey').value || '',
+        public_key: $id('ib-pubkey').value || '',
+        dest: $id('ib-dest').value || 'is1-ssl.mzstatic.com:443',
+        server_names: ($id('ib-servernames').value || '').split(',').map(function(s){return s.trim()}).filter(Boolean),
+        short_ids: $id('ib-shortids').value || '',
+        spiderx: $id('ib-spiderx').value || '/'
+      };
+    }
+
+    // Network settings
+    if (network === 'ws') {
+      body.ws_settings = { path: $id('ib-wspath').value || '/' };
+    } else if (network === 'xhttp') {
+      body.xhttp_settings = {
+        path: $id('ib-xhttppath').value || '/',
+        mode: $id('ib-xhttp-mode').value || 'auto'
+      };
+    } else if (network === 'grpc') {
+      body.grpc_settings = { serviceName: $id('ib-grpc-svc').value || 'grpc' };
+    }
   }
 
   try {
@@ -3323,13 +3423,12 @@ function wkDeleteSelected() {
 
 async function workerSetup() {
   var token = ($id('wk-token').value || '').trim();
-  var account = ($id('wk-account').value || '').trim();
-  if (!token || !account) { toast(t('workerFillAll'), 'err'); return; }
+  if (!token) { toast(t('workerFillAll'), 'err'); return; }
   var btn = null;
   document.querySelectorAll('#worker-setup .btn-p').forEach(function(b){ btn = b; });
   if (btn) { btn.disabled = true; btn.textContent = t('connecting'); }
   try {
-    var w = await api('/api/worker/setup', {method: 'POST', body: {token: token, account_id: account}});
+    var w = await api('/api/worker/setup', {method: 'POST', body: {token: token}});
     $id('wk-token').value = '';
     toast(t('workerConnected'), 'ok');
     await loadWorker();
@@ -3459,17 +3558,73 @@ function cuToggleIpSwitch(ibId, el) {
   else if (type === 'railway') cuInboundState.countries[ibId].railway = on;
 }
 
+// Cache of per-country IPs fetched from the panel (reused across modal opens).
+var CU_IP_CACHE = {};
+var CU_IP_FETCHING = {};
+
 function cuPickWorkerCountries(ibId, el) {
   var arr = cuInboundState.countries[ibId] = cuInboundState.countries[ibId] || {};
   arr.worker = arr.worker || [];
+  arr.workerIps = arr.workerIps || {};
   var code = el.getAttribute('data-code');
   var idx = arr.worker.indexOf(code);
-  if (el.classList.contains('selected')) {
-    if (idx === -1) arr.worker.push(code);
+  if (idx !== -1) {
+    // Deselect: remove the country and its picked IPs.
+    arr.worker.splice(idx, 1);
+    delete arr.workerIps[code];
   } else {
-    if (idx !== -1) arr.worker.splice(idx, 1);
+    // Select: add the country and fetch its IPs for the per-IP picker.
+    arr.worker.push(code);
+    cuLoadWorkerIps(ibId, code);
   }
-  // No selected countries → no worker configs generated for this inbound.
+  cuRenderInboundOpts();
+}
+
+function cuToggleWorkerIp(ibId, code, ip, el) {
+  var arr = cuInboundState.countries[ibId] = cuInboundState.countries[ibId] || {};
+  arr.workerIps = arr.workerIps || {};
+  var lst = arr.workerIps[code] = arr.workerIps[code] || [];
+  var i = lst.indexOf(ip);
+  if (i !== -1) lst.splice(i, 1);
+  else lst.push(ip);
+  cuRenderInboundOpts();
+}
+
+async function cuLoadWorkerIps(ibId, code) {
+  if (CU_IP_CACHE[code] || CU_IP_FETCHING[code]) return;
+  CU_IP_FETCHING[code] = true;
+  try {
+    var r = await api('/api/worker/proxies/' + encodeURIComponent(code) + '/ips');
+    CU_IP_CACHE[code] = (r && r.ips) || [];
+    cuRenderInboundOpts();
+  } catch(e) { CU_IP_CACHE[code] = []; }
+  CU_IP_FETCHING[code] = false;
+}
+
+function cuSelectAllFastIps(ibId, el) {
+  var code = el.getAttribute('data-code');
+  var arr = cuInboundState.countries[ibId] = cuInboundState.countries[ibId] || {};
+  arr.workerIps = arr.workerIps || {};
+  var ips = CU_IP_CACHE[code] || [];
+  arr.workerIps[code] = ips.filter(function(r) { return r.ok; }).map(function(r) { return r.ip; });
+  cuRenderInboundOpts();
+}
+
+function cuWorkerIps() {
+  // Aggregate picked per-country IPs across all worker inbounds:
+  // {code: [ip, ...]} (dedup by country).
+  var out = {};
+  Object.keys(cuInboundState.countries || {}).forEach(function(id) {
+    var c = cuInboundState.countries[id] || {};
+    Object.keys(c.workerIps || {}).forEach(function(code) {
+      var lst = (c.workerIps[code] || []).slice();
+      lst.forEach(function(ip) {
+        var cur = out[code] = out[code] || [];
+        if (cur.indexOf(ip) === -1) cur.push(ip);
+      });
+    });
+  });
+  return out;
 }
 
 function cuCustomStates() {
@@ -3515,16 +3670,39 @@ function cuRenderInboundOpts() {
       if (type === 'worker') {
         var sel = cuInboundState.countries[id] || {};
         var chipHtml = '';
+        var ipSections = '';
         cuWorkerProxies().forEach(function(p) {
           var flag = window.cuCodeToFlag ? cuCodeToFlag(p.code) : '';
           var checked = (sel.worker || []).indexOf(p.code) !== -1 ? ' selected' : '';
           chipHtml += '<span class="country-tick' + checked + '" data-code="' + esc(p.code) + '" onclick="cuPickWorkerCountries(\'' + esc(id) + '\',this)">' +
             '<span class="ck material-symbols-outlined">check</span>' + flag + ' ' + esc(p.country || p.code) + '</span>';
+          // Per-IP picker: once a country chip is ticked, show its IPs with
+          // measured latency as selectable chips (worker configs only).
+          if (checked) {
+            var ips = CU_IP_CACHE[p.code] || [];
+            var selIps = (sel.workerIps || {})[p.code] || [];
+            if (ips.length) {
+              var ipHtml = '';
+              ips.forEach(function(r) {
+                var checkedIp = selIps.indexOf(r.ip) !== -1 ? ' selected' : '';
+                var latTxt = r.ok ? '🏓 ' + r.latency_ms + 'ms' : '✕';
+                ipHtml += '<span class="country-tick ip-tick' + checkedIp + '" data-ip="' + esc(r.ip) + '" data-code="' + esc(p.code) + '" onclick="cuToggleWorkerIp(\'' + esc(id) + '\',\'' + esc(p.code) + '\',\'' + esc(r.ip) + '\',this)">' +
+                  '<span class="ck material-symbols-outlined">check</span>' + esc(r.ip) + ' <em style="font-style:normal;font-size:10px;opacity:.7">' + latTxt + '</em></span>';
+              });
+              ipHtml += '<span class="country-tick sel-all" data-code="' + esc(p.code) + '" onclick="cuSelectAllFastIps(\'' + esc(id) + '\',this)">' + t('selectFastIps') + '</span>';
+              ipSections += '<div class="set-row" style="padding:0;border:none;flex-wrap:wrap">' +
+                '<span class="set-lbl" style="font-size:11px">' + (p.country || p.code.toUpperCase()) + ' — ' + t('countryIps') + '</span>' +
+                '<div style="display:flex;flex-wrap:wrap;gap:6px;direction:ltr;text-align:left">' + ipHtml + '</div>' +
+              '</div>';
+            } else {
+              ipSections += '<div class="set-row" style="padding:0;border:none"><span class="set-lbl" style="font-size:11px">' + t('loadingIps') + '</span></div>';
+            }
+          }
         });
         html += '<div class="set-row" style="padding:0;border:none;flex-wrap:wrap">' +
           '<span class="set-lbl" style="width:100%">' + t('workerCountries') + '</span>' +
           '<div style="display:flex;flex-wrap:wrap;gap:6px;direction:ltr;text-align:left">' + chipHtml + '</div>' +
-        '</div>' +
+        '</div>' + ipSections +
         '<div class="set-row" style="padding:0;border:none">' +
           '<span class="set-lbl" style="font-size:11px">' + t('addCfIps') + '</span>' +
           '<button type="button" class="ios-switch' + (sel.cf ? ' on' : '') + '" data-type="cf" onclick="cuToggleIpSwitch(\'' + esc(id) + '\',this)"></button>' +

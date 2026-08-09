@@ -429,6 +429,10 @@ WORKER: dict = {
 WORKER_LOCK = asyncio.Lock()
 # Serialize source syncs (hourly loop + manual button can't overlap).
 WORKER_SYNC_LOCK = asyncio.Lock()
+# Per-country IP ping cache: {code: (probe_time, [{ip, port, latency_ms, ok}])}
+# so the country IP picker doesn't re-probe the pool on every modal open.
+WORKER_IPS_CACHE: dict = {}
+WORKER_IPS_CACHE_TTL = 60
 
 # پروتکل‌های پشتیبانی‌شده برای هر کانفیگ
 PROTOCOLS = ("vless-ws", "xhttp-packet-up", "xhttp-stream-up", "xhttp-stream-one")
@@ -876,7 +880,7 @@ async def startup():
     for _ib in INBOUNDS.values():
         _proto = (_ib.get("protocol") or "").lower()
         _sec = (_ib.get("security") or "").lower()
-        if _proto == "worker" or _proto == "reality" or _sec == "reality":
+        if _proto in ("worker", "reality", "openvpn") or _sec == "reality":
             continue
         if int(_ib.get("port") or 0) != _relay_port:
             _ib["port"] = _relay_port
@@ -889,6 +893,12 @@ async def startup():
     # points at the worker domain (address/host/sni auto-filled at boot too).
     if WORKER.get("connected"):
         await _ensure_worker_inbound()
+
+    # Always ensure an OpenVPN inbound exists, then try to (re)start the server
+    # best-effort at boot (no-op when openvpn/tun are absent — recorded in
+    # the inbound's last_error so the UI can show it).
+    await _ensure_openvpn_inbound()
+    await _openvpn_apply()
 
     # User path migration: each user's path must match their WS inbound. A user
     # who has a WS (or worker) inbound must have path /ws/{config_uuid} so the
@@ -928,6 +938,7 @@ async def startup():
     app.include_router(xhttp_router)
     asyncio.create_task(_worker_proxy_sync_loop())
     asyncio.create_task(_xray_client_audit_loop())
+    asyncio.create_task(_openvpn_watchdog_loop())
 
 # Worker proxy source sync — hourly pull from the daily GitHub list and push to
 # the deployed Cloudflare Worker (Railway is the control plane; the Worker gets
@@ -1137,6 +1148,10 @@ def generate_user_config(user_id: str, user: dict, inbound_id: str = None, addr:
     proto = proto.lower()
     sec = (inbound.get("security") if inbound else None) or "tls"
     sec = sec.lower()
+
+    # OpenVPN inbounds produce a per-user .ovpn profile, never a VLESS line.
+    if proto == "openvpn":
+        return ""
 
     config_uuid = user.get("config_uuid", "") or user_id
     username = user.get("username", user_id)
@@ -1532,6 +1547,11 @@ def _worker_configs(user_id: str, user: dict, inbound: dict, stored_path: str, b
     addr = addr_ip or wdomain
     port = addr_port or wport
     out = []
+    # Per-country picked IPs: the user may have ticked specific proxy IPs in the
+    # country picker; each becomes its own config addressed to that IP while
+    # host/sni/path still route through the worker domain. Only applies when no
+    # scanned-IP (addr_ip) override is in play.
+    picked_ips = user.get("worker_ips") or {}
     for code, p in chosen:
         flag = _code_to_flag(code) if code else ""
         clabel = str(p.get("country") or (code.upper() if code else "Worker"))
@@ -1545,19 +1565,36 @@ def _worker_configs(user_id: str, user: dict, inbound: dict, stored_path: str, b
             wpath = "/"
         else:
             wpath = f"/route/{code}" if code else (stored_path or "/")
-        params = "&".join([
-            f"snispoofing={spoof_q}",
-            "security=tls",
-            "fp=chrome",
-            "allowInsecure=0",
-            f"host={quote(wdomain)}",
-            f"path={quote(wpath, safe='')}",
-            f"sni={quote(wdomain)}",
-            "insecure=0",
-            "encryption=none",
-            "type=ws",
-        ])
-        out.append(f"vless://{cfg_uuid}@{addr}:{port}?{params}#{rem}")
+        ip_list = picked_ips.get(code) if not addr_ip else None
+        if ip_list:
+            for cip in ip_list:
+                params = "&".join([
+                    f"snispoofing={spoof_q}",
+                    "security=tls",
+                    "fp=chrome",
+                    "allowInsecure=0",
+                    f"host={quote(wdomain)}",
+                    f"path={quote(wpath, safe='')}",
+                    f"sni={quote(wdomain)}",
+                    "insecure=0",
+                    "encryption=none",
+                    "type=ws",
+                ])
+                out.append(f"vless://{cfg_uuid}@{cip}:{port}?{params}#{rem}-{cip}")
+        else:
+            params = "&".join([
+                f"snispoofing={spoof_q}",
+                "security=tls",
+                "fp=chrome",
+                "allowInsecure=0",
+                f"host={quote(wdomain)}",
+                f"path={quote(wpath, safe='')}",
+                f"sni={quote(wdomain)}",
+                "insecure=0",
+                "encryption=none",
+                "type=ws",
+            ])
+            out.append(f"vless://{cfg_uuid}@{addr}:{port}?{params}#{rem}")
     return out
 
 
@@ -2179,7 +2216,7 @@ async def create_inbound(request: Request, _=Depends(require_auth)):
     body = await request.json()
     name = (body.get("name") or "اینباند جدید").strip()[:60]
     protocol = str(body.get("protocol") or "vless").lower()
-    if protocol not in ("vless", "vmess", "trojan", "reality", "worker"):
+    if protocol not in ("vless", "vmess", "trojan", "reality", "worker", "openvpn"):
         raise HTTPException(status_code=400, detail="Invalid protocol")
     network = str(body.get("network") or "ws").lower()
     security = str(body.get("security") or "tls").lower()
@@ -2260,6 +2297,15 @@ async def create_inbound(request: Request, _=Depends(require_auth)):
             "grpc_settings": grpc_settings,
             "created_at": datetime.now().isoformat(),
         }
+        if protocol == "openvpn":
+            INBOUNDS[inbound_id].update({
+                "internal_listen_port": int(body.get("internal_listen_port") or 1194),
+                "external_tcp_proxy_domain": str(body.get("external_tcp_proxy_domain") or "").strip(),
+                "external_tcp_proxy_port": int(body.get("external_tcp_proxy_port") or 0) or "",
+                "server_up": False,
+                "server_pid": None,
+                "last_error": "",
+            })
     if protocol == "reality" and network == "xhttp" and not xhttp_settings.get("path"):
         xhttp_settings["path"] = "/"
         xhttp_settings.setdefault("mode", "auto")
@@ -2267,7 +2313,10 @@ async def create_inbound(request: Request, _=Depends(require_auth)):
         xhttp_settings.setdefault("scMaxEachPostBytes", "1000000")
     await save_state()
     log_activity("inbound", f"اینباند «{name}» با پروتکل {protocol.upper()} ساخته شد", "ok")
-    asyncio.create_task(_xray_apply())  # (re)start Xray with the new inbound
+    if protocol == "openvpn":
+        asyncio.create_task(_openvpn_apply())  # write server.conf + (re)start OpenVPN
+    else:
+        asyncio.create_task(_xray_apply())  # (re)start Xray with the new inbound
     return {"ok": True, "inbound_id": inbound_id, **INBOUNDS[inbound_id]}
 
 
@@ -2283,7 +2332,7 @@ async def update_inbound(inbound_id: str, request: Request, _=Depends(require_au
             ib["name"] = str(body["name"]).strip()[:60]
         if "protocol" in body:
             p = str(body["protocol"]).lower()
-            if p in ("vless", "vmess", "trojan", "reality", "worker"):
+            if p in ("vless", "vmess", "trojan", "reality", "worker", "openvpn"):
                 ib["protocol"] = p
         # A worker inbound always targets the connected worker domain; if the
         # inbound's domain is stale/empty, refresh it automatically.
@@ -2341,9 +2390,21 @@ async def update_inbound(inbound_id: str, request: Request, _=Depends(require_au
             ib["ws_settings"] = body["ws_settings"]
         if "grpc_settings" in body and isinstance(body["grpc_settings"], dict):
             ib["grpc_settings"] = body["grpc_settings"]
+        if ib.get("protocol") == "openvpn":
+            if "internal_listen_port" in body:
+                _iv = str(body["internal_listen_port"] or "").strip()
+                ib["internal_listen_port"] = int(_iv) if _iv else 1194
+            if "external_tcp_proxy_domain" in body:
+                ib["external_tcp_proxy_domain"] = str(body["external_tcp_proxy_domain"] or "").strip()
+            if "external_tcp_proxy_port" in body:
+                _ev = str(body["external_tcp_proxy_port"] or "").strip()
+                ib["external_tcp_proxy_port"] = int(_ev) if _ev else ""
     await save_state()
     log_activity("inbound", f"اینباند «{ib.get('name', inbound_id)}» ویرایش شد", "info")
-    asyncio.create_task(_xray_apply())
+    if (ib.get("protocol") or "").lower() == "openvpn":
+        asyncio.create_task(_openvpn_apply())  # rewrite server.conf + restart server
+    else:
+        asyncio.create_task(_xray_apply())
     return {"ok": True}
 
 
@@ -2399,6 +2460,14 @@ async def delete_inbound(inbound_id: str, _=Depends(require_auth)):
         if not ib:
             raise HTTPException(status_code=404, detail="inbound not found")
         name = ib.get("name", inbound_id)
+        was_openvpn = (ib.get("protocol") or "").lower() == "openvpn"
+    if was_openvpn:
+        proc = _openvpn_procs.pop(inbound_id, None)
+        if proc and proc.returncode is None:
+            try:
+                proc.terminate()
+            except Exception:
+                pass
     asyncio.create_task(save_state())
     log_activity("inbound", f"اینباند «{name}» حذف شد", "err")
     return {"ok": True, "deleted": inbound_id}
@@ -2429,6 +2498,7 @@ async def list_users(_=Depends(require_auth)):
             "proxy_country": u.get("proxy_country", ""),
             "proxy_ips": u.get("proxy_ips", []),
             "proxy_countries": u.get("proxy_countries", []),
+            "worker_ips": u.get("worker_ips", {}),
             "proxy_ip_enabled": u.get("proxy_ip_enabled", False),
             "custom_ip_type": u.get("custom_ip_type", ""),
             "traffic_limit_bytes": u.get("traffic_limit_bytes", 0),
@@ -2487,6 +2557,17 @@ async def create_user(request: Request, _=Depends(require_auth)):
     proxy_countries = [str(x).strip().lower() for x in (body.get("proxy_countries") or []) if str(x).strip()]
     if not proxy_countries and proxy_country:
         proxy_countries = [proxy_country.lower()]
+    # Per-country chosen proxy IPs (worker multi-location): {code: [ip, ...]}.
+    # The country IP picker lets the user tick specific IPs; each picked IP
+    # becomes its own worker config. Only set for worker inbounds.
+    worker_ips = {}
+    _wips = body.get("worker_ips")
+    if isinstance(_wips, dict):
+        for _c, _lst in _wips.items():
+            _c = str(_c).strip().lower()
+            _ips = [str(x).strip() for x in (_lst or []) if str(x).strip()]
+            if _c and _ips:
+                worker_ips[_c] = _ips[:8]
     # Cloudflare Worker routing: when enabled + worker connected, the user's
     # configs are addressed to the worker domain with a /route/{code} path.
     proxy_ip_enabled = bool(body.get("proxy_ip_enabled"))
@@ -2604,6 +2685,7 @@ async def create_user(request: Request, _=Depends(require_auth)):
             "proxy_country": proxy_country,
             "proxy_ips": proxy_ips,
             "proxy_countries": proxy_countries,
+            "worker_ips": worker_ips,
             "proxy_ip_enabled": proxy_ip_enabled,
             "custom_ip_type": custom_ip_type,
             "custom_ip_inbounds": custom_ip_inbounds,
@@ -2781,6 +2863,15 @@ async def edit_user(user_id: str, request: Request, _=Depends(require_auth)):
         elif "proxy_country" in body:
             u["proxy_country"] = str(body["proxy_country"] or "").strip().lower()
             u["proxy_countries"] = [u["proxy_country"]] if u["proxy_country"] else []
+        if "worker_ips" in body:
+            _wips = {}
+            if isinstance(body["worker_ips"], dict):
+                for _c, _lst in body["worker_ips"].items():
+                    _c = str(_c).strip().lower()
+                    _ips = [str(x).strip() for x in (_lst or []) if str(x).strip()]
+                    if _c and _ips:
+                        _wips[_c] = _ips[:8]
+            u["worker_ips"] = _wips
         if "inbound_ids" in body:
             raw_ids = [str(x).strip() for x in (body["inbound_ids"] or []) if str(x).strip()]
             valid = [i for i in raw_ids if i in INBOUNDS]
@@ -2980,6 +3071,41 @@ async def get_user_subscription(user_id: str, _=Depends(require_auth)):
         "subscription_url": f"https://{host}/sub/{sub_uuid}",
         "encoded_config": content,
     }
+
+
+@app.get("/api/users/{user_id}/openvpn")
+async def get_user_openvpn(user_id: str, _=Depends(require_auth)):
+    """Download the user's OpenVPN client profile (.ovpn)."""
+    async with USERS_LOCK:
+        u = USERS.get(user_id)
+        if not u:
+            raise HTTPException(status_code=404, detail="user not found")
+        username = u.get("username", user_id)
+        iids = u.get("inbound_ids") or ([u.get("inbound_id")] if u.get("inbound_id") else [])
+    ovp = next(
+        (INBOUNDS[i] for i in iids
+         if INBOUNDS.get(i) and (INBOUNDS[i].get("protocol") or "").lower() == "openvpn"),
+        None,
+    )
+    if not ovp:
+        raise HTTPException(status_code=400, detail="کاربر اینباند OpenVPN ندارد / user has no OpenVPN inbound")
+    ext_domain = str(ovp.get("external_tcp_proxy_domain") or "").strip()
+    ext_port = ovp.get("external_tcp_proxy_port")
+    if not ext_domain or not ext_port:
+        raise HTTPException(status_code=400, detail="پایان‌نامه خارجی OpenVPN هنوز تنظیم نشده است / external endpoint not set — edit the OpenVPN inbound first")
+    try:
+        import openvpn_pki as opki
+        opki.init_openvpn(str(DATA_DIR))
+        content = opki.build_ovpn(user_id, username, ext_domain, int(ext_port))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    fname = f"{username}.ovpn"
+    ascii_name = re.sub(r"[^\x20-\x7e]", "_", fname)
+    return Response(
+        content=content,
+        media_type="application/x-openvpn-profile",
+        headers={"Content-Disposition": f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(fname)}"},
+    )
 
 
 # ── Public sub page ───────────────────────────────────────────────────────────
@@ -3234,6 +3360,7 @@ async def api_user_sub(username: str):
         "proxy_ips": user.get("proxy_ips", []),
         "proxy_country": user.get("proxy_country", ""),
         "proxy_countries": user.get("proxy_countries", []),
+        "worker_ips": user.get("worker_ips", {}),
         "proxy_ip_enabled": user.get("proxy_ip_enabled", False),
         "max_ip_per_user": int(user.get("concurrent_connections", SETTINGS.get("max_ip_per_user", 3) or 3)),
         "used_ips": len(USER_IP_MAP.get(user.get("user_id", ""), set())),
@@ -5455,6 +5582,33 @@ async def _worker_sync_users() -> dict:
                     synced += 1
             except Exception as e:
                 logger.warning(f"worker user sync failed for {uid}: {e}")
+        # Reconcile: drop worker entries whose uuid is no longer an active panel
+        # user that references the worker inbound (handles users deleted from the
+        # panel — the push loop above can't see them, so they'd linger in KV).
+        try:
+            r = await client.get(
+                f"https://{domain}/api/users",
+                headers={"Authorization": f"Bearer {ctrl}"},
+            )
+            if r.status_code == 200:
+                remote = (r.json().get("users") or []) if r.json() else []
+                panel_active = {
+                    (u.get("config_uuid") or uid) for uid, u in USERS.items()
+                    if (u.get("status") or "active") == "active"
+                    and wid in (u.get("inbound_ids") or ([u.get("inbound_id")] if u.get("inbound_id") else []))
+                }
+                for ru in remote:
+                    ruu = (ru.get("uuid") or "").lower()
+                    if ruu and ruu not in panel_active:
+                        try:
+                            await client.delete(
+                                f"https://{domain}/api/user/{ruu}",
+                                headers={"Authorization": f"Bearer {ctrl}"},
+                            )
+                        except Exception as e:
+                            logger.warning(f"worker user purge failed for {ruu}: {e}")
+        except Exception as e:
+            logger.warning(f"worker user reconcile failed: {e}")
     return {"ok": True, "count": synced}
 
 
@@ -5503,6 +5657,194 @@ async def _ensure_worker_inbound() -> bool:
     if changed:
         asyncio.create_task(save_state())
     return True
+
+
+# ── OpenVPN inbound ─────────────────────────────────────────────────────────
+def _user_has_openvpn_inbound(u: dict) -> bool:
+    """True if the user references any openvpn inbound."""
+    iids = u.get("inbound_ids") or ([u.get("inbound_id")] if u.get("inbound_id") else [])
+    return any((INBOUNDS.get(iid) or {}).get("protocol") == "openvpn" for iid in iids)
+
+
+async def _ensure_openvpn_inbound() -> bool:
+    """Create the default OpenVPN TCP inbound if none exists (idempotent)."""
+    changed = False
+    async with INBOUNDS_LOCK:
+        has_ovpn = any((ib.get("protocol") or "").lower() == "openvpn" for ib in INBOUNDS.values())
+        if not has_ovpn:
+            INBOUNDS["default-openvpn"] = {
+                "name": "OpenVPN TCP",
+                "protocol": "openvpn",
+                "port": "",
+                "network": "tcp",
+                "security": "",
+                "domain": "",
+                "external_domain": "",
+                "sni": "",
+                "spoof_ip": "",
+                "external_port": "",
+                "fingerprint": "",
+                "reality_settings": {},
+                "xhttp_settings": {},
+                "ws_settings": {},
+                "grpc_settings": {},
+                "internal_listen_port": 1194,
+                "external_tcp_proxy_domain": "",
+                "external_tcp_proxy_port": "",
+                "server_up": False,
+                "server_pid": None,
+                "last_error": "",
+                "created_at": datetime.now().isoformat(),
+            }
+            changed = True
+    if changed:
+        asyncio.create_task(save_state())
+    return True
+
+
+_openvpn_procs: dict = {}
+_openvpn_restart_lock = asyncio.Lock()
+
+
+async def _openvpn_start(iid: str, ib: dict) -> bool:
+    """Best-effort start of the OpenVPN subprocess for one openvpn inbound.
+
+    Never raises: every failure lands in ib['last_error'] so the UI can show it,
+    and the panel keeps serving. The binary and /dev/net/tun may be absent on the
+    local box (the Dockerfile provides them on Railway) — that is expected and
+    recorded, not fatal.
+    """
+    import shutil
+    bin_path = shutil.which("openvpn")
+    if not bin_path:
+        ib["last_error"] = "openvpn binary not found"
+        ib["server_up"] = False
+        return False
+    if not Path("/dev/net/tun").exists():
+        ib["last_error"] = "/dev/net/tun not available"
+        ib["server_up"] = False
+        return False
+    internal_port = int(ib.get("internal_listen_port") or 1194)
+    try:
+        import openvpn_pki as opki
+        opki.init_openvpn(str(DATA_DIR))
+        conf_path = opki.write_server_conf(internal_port)
+    except Exception as e:
+        ib["last_error"] = f"config write failed: {e}"
+        ib["server_up"] = False
+        return False
+    async with _openvpn_restart_lock:
+        proc = _openvpn_procs.get(iid)
+        if proc and proc.returncode is None:
+            try:
+                proc.terminate()
+                await asyncio.wait_for(proc.wait(), timeout=3)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+        # OpenVPN writes ALL its diagnostics to stdout (stderr stays empty), so
+        # capture both to the same per-inbound log or a crash leaves no trace.
+        log_path = DATA_DIR / "openvpn" / f"server-{iid}.log"
+        try:
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            log_f = open(log_path, "ab")
+        except Exception as e:
+            ib["last_error"] = f"openvpn log open failed: {e}"
+            ib["server_up"] = False
+            return False
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                str(bin_path), "--config", str(conf_path),
+                stdout=log_f,
+                stderr=log_f,
+            )
+            _openvpn_procs[iid] = proc
+            # Grace period: config/tun failures kill the process within
+            # milliseconds. Only report "up" if it survives.
+            await asyncio.sleep(1.2)
+            log_f.close()
+            if proc.returncode is not None:
+                _openvpn_procs.pop(iid, None)
+                ib["server_up"] = False
+                ib["server_pid"] = None
+                ib["last_error"] = (
+                    f"openvpn exited immediately (rc={proc.returncode}): "
+                    f"{_ovpn_err_tail(log_path)}"
+                )
+                logger.warning("OpenVPN for %s exited immediately rc=%s", iid, proc.returncode)
+                return False
+            ib["server_up"] = True
+            ib["server_pid"] = proc.pid
+            ib.pop("last_error", None)
+            logger.info(f"OpenVPN started (pid={proc.pid}, port={internal_port})")
+            return True
+        except Exception as e:
+            try:
+                log_f.close()
+            except Exception:
+                pass
+            ib["last_error"] = f"openvpn start failed: {e}"
+            ib["server_up"] = False
+            return False
+
+
+def _ovpn_err_tail(path: Path, limit: int = 600) -> str:
+    """Last ~600 bytes of an openvpn log as a short oneline."""
+    try:
+        if not path.exists():
+            return "no log output"
+        tail = path.read_bytes()[-limit:]
+        return " ".join(tail.decode("utf-8", "replace").split()[-40:]) or "(empty log)"
+    except Exception:
+        return "could not read openvpn log"
+
+
+async def _openvpn_apply():
+    """Rewrite server.conf for every openvpn inbound and (re)start the server."""
+    for iid, ib in list(INBOUNDS.items()):
+        if (ib.get("protocol") or "").lower() != "openvpn":
+            continue
+        try:
+            await _openvpn_start(iid, ib)
+        except Exception as e:
+            ib["last_error"] = f"openvpn apply failed: {e}"
+            ib["server_up"] = False
+            logger.warning(f"openvpn apply failed for {iid}: {e}")
+
+
+async def _openvpn_watchdog_loop():
+    """Track openvpn procs; report crashes and rate-limit restarts.
+
+    A crashed server must not sit at server_up=True forever. On death we surface
+    the stderr tail in last_error and restart at most once per interval.
+    """
+    await asyncio.sleep(15)
+    while True:
+        try:
+            for iid, ib in list(INBOUNDS.items()):
+                if (ib.get("protocol") or "").lower() != "openvpn":
+                    continue
+                proc = _openvpn_procs.get(iid)
+                if proc is None:
+                    continue
+                if proc.returncode is None:
+                    ib["server_up"] = True
+                    continue
+                _openvpn_procs.pop(iid, None)
+                ib["server_up"] = False
+                ib["server_pid"] = None
+                log_path = DATA_DIR / "openvpn" / f"server-{iid}.log"
+                ib["last_error"] = f"openvpn exited (rc={proc.returncode}): {_ovpn_err_tail(log_path)}"
+                logger.warning("OpenVPN %s exited rc=%s", iid, proc.returncode)
+                last = ib.get("last_restart_attempt")
+                if last is None or (datetime.now() - last).total_seconds() > 60:
+                    ib["last_restart_attempt"] = datetime.now()
+                    asyncio.create_task(_openvpn_apply())
+        except Exception as e:
+            logger.warning("openvpn watchdog error: %s", e)
+        await asyncio.sleep(30)
 
 
 async def _worker_control_update() -> dict:
@@ -5702,26 +6044,53 @@ async def worker_setup(request: Request, _=Depends(require_auth)):
     worker script and store the connection. No manual worker-name/domain entry."""
     body = await request.json()
     token = str(body.get("token") or "").strip()
-    account_id = str(body.get("account_id") or "").strip()
-    # Email is only needed for Global API Key auth; it comes from the CF_EMAIL
-    # environment variable so it is not asked in the UI (modern Bearer tokens
-    # need no email).
-    email = os.environ.get("CF_EMAIL", "")
-    if not token or not account_id:
-        raise HTTPException(status_code=400, detail="token and account_id are required")
+    # Email is only needed for Global API Key auth. The UI never asks for it:
+    # a Bearer token needs no email, and for a Global API Key we reuse the
+    # account email already stored from a previous connection (or CF_EMAIL env).
+    # The account_id is discovered automatically from the token.
+    if not token:
+        raise HTTPException(status_code=400, detail="token is required")
 
-    # 1. Verify the API token. Only a real Global API Key (cfk_ + 37-char hex)
-    #    is verified at /user (which needs the email too). A Bearer token always
+    # 1. Verify the API token. Only a real Global API Key (cfk_/cf_ prefix) is
+    #    verified at /user (which needs the email too). A Bearer token always
     #    goes through /user/tokens/verify, which only checks the token is valid
     #    and active — no extra scope needed (Workers-scoped tokens are rejected
     #    by /user with a 9109 permission error). Filling the email must not force
     #    the Bearer token onto the /user path.
     _is_gak = _is_cf_gak(token)
+    email = str(body.get("email") or WORKER.get("cf_email") or os.environ.get("CF_EMAIL", "")).strip()
+    if _is_gak and not email:
+        raise HTTPException(
+            status_code=400,
+            detail="Global API Key به ایمیل اکانت نیاز دارد — یک توکن API معمولی وارد کنید یا ایمیل را در متغیر محیطی CF_EMAIL بگذارید. "
+                   "(A Global API Key needs the account email — use a modern API token, or set the email in the CF_EMAIL env var.)",
+        )
     verify_path = "/user/tokens/verify" if not _is_gak else "/user"
     code, data = await _cf_api("GET", verify_path, token, email=email)
     if code != 200 or not data.get("success"):
         msg = (data.get("errors") or [{}])[0].get("message", "invalid token")
         raise HTTPException(status_code=400, detail=f"Cloudflare token rejected: {msg}")
+
+    # 2. Discover the account the token belongs to. GET /accounts lists every
+    #    account the token can access (needs Account:Read); if the token is
+    #    scoped differently, fall back to /memberships. No account_id is asked
+    #    in the UI — the token is the only input.
+    account_id = ""
+    _c2, _d2 = await _cf_api("GET", "/accounts", token, email=email)
+    res = (_d2.get("result") or []) if _d2 and _c2 == 200 else []
+    if res and res[0].get("id"):
+        account_id = str(res[0]["id"]).strip()
+    else:
+        _c3, _d3 = await _cf_api("GET", "/memberships", token, email=email)
+        res3 = (_d3.get("result") or []) if _d3 and _c3 == 200 else []
+        if res3 and res3[0].get("account") and res3[0]["account"].get("id"):
+            account_id = str(res3[0]["account"]["id"]).strip()
+    if not account_id:
+        raise HTTPException(
+            status_code=400,
+            detail="توکن به حساب دسترسی ندارد — توکنی بسازید که اجازه Account:Read داشته باشد. "
+                   "(Token can't read your Cloudflare account — create a token with Account read permission.)",
+        )
 
     # 2. Discover the worker name + subdomain from the account (the panel picks a
     #    unique name automatically). If the script already exists, reuse it.
@@ -5888,6 +6257,51 @@ async def worker_del_proxy(code: str, _=Depends(require_auth)):
         asyncio.create_task(save_state())
     async with WORKER_LOCK:
         return {"ok": True, **_worker_public()}
+
+
+@app.get("/api/worker/proxies/{code}/ips")
+async def worker_proxy_ips(code: str, _=Depends(require_auth)):
+    """Per-country proxy IP list with live TCP-connect latency.
+
+    Used by the country IP picker in the user modal (worker configs only): the
+    user sees each IP for a country with its measured latency and can tick the
+    specific IPs to use. Results are cached ~60s so opening the modal doesn't
+    re-probe the pool every time.
+    """
+    code = str(code or "").strip().lower()
+    if not WORKER.get("connected"):
+        return {"ok": True, "code": code, "ips": []}
+    # Invalidate when the pool changed.
+    now = time.time()
+    cached = WORKER_IPS_CACHE.get(code)
+    if cached and (now - cached[0]) < WORKER_IPS_CACHE_TTL:
+        return {"ok": True, "code": code, "ips": cached[1], "cached": True}
+
+    async with WORKER_LOCK:
+        p = (WORKER.get("proxies") or {}).get(code) or {}
+    plist = p.get("proxies") or ([p.get("proxy")] if p.get("proxy") else [])
+    port = int(p.get("port") or 443)
+    if not plist:
+        return {"ok": True, "code": code, "ips": []}
+
+    async def probe(ip):
+        t0 = time.time()
+        try:
+            rdr, wtr = await asyncio.wait_for(asyncio.open_connection(str(ip), port), timeout=4.0)
+            lat = int((time.time() - t0) * 1000)
+            try:
+                wtr.close()
+                await wtr.wait_closed()
+            except Exception:
+                pass
+            return {"ip": str(ip), "port": port, "latency_ms": lat, "ok": True}
+        except Exception:
+            return {"ip": str(ip), "port": port, "latency_ms": None, "ok": False}
+
+    results = await asyncio.gather(*(probe(i) for i in plist))
+    results.sort(key=lambda r: (not r["ok"], r["latency_ms"] if r["latency_ms"] is not None else 10 ** 9))
+    WORKER_IPS_CACHE[code] = (now, results)
+    return {"ok": True, "code": code, "ips": results}
 
 
 @app.get("/api/worker/locations")
