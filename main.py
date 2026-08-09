@@ -5231,11 +5231,8 @@ async def _cf_api(method: str, path: str, token: str, payload: dict = None, emai
     headers = {"Content-Type": "application/json", "User-Agent": "Spider-Panel"}
     # Cloudflare Global API Key (cfk_/cf_ prefix or 37-char hex) → Global Key
     # auth (X-Auth-Email + X-Auth-Key). Modern Bearer tokens → Authorization.
-    # Only a real GAK is sent via X-Auth-Key; a Bearer token always uses Bearer
-    # auth even if an email happens to be on file (filling email must not turn a
-    # valid API token into a rejected X-Auth-Key).
     _is_gak = _is_cf_gak(token)
-    if _is_gak:
+    if _is_gak or email:
         headers["X-Auth-Key"] = token
         headers["X-Auth-Email"] = email or os.environ.get("CF_EMAIL", "")
     else:
@@ -5347,11 +5344,10 @@ async def _worker_deploy() -> tuple:
         return 0, {"errors": [{"message": "Cloudflare API token is missing (worker not connected properly)"}]}
     kv_id = await _ensure_worker_kv()
     email = str(WORKER.get("cf_email") or "")
-    # Use Global API Key auth (X-Auth-Email + X-Auth-Key) when the token is a
-    # real GAK (cfk_/cf_ prefix or 37-char hex); otherwise a Bearer token always
-    # goes through Authorization even if an email is on file.
+    # Use Global API Key auth (X-Auth-Email + X-Auth-Key) when the token has the
+    # cfk_/cf_ prefix (or is a 37-char hex GAK) or when an email is on file.
     _is_gak = _is_cf_gak(cf_token)
-    if _is_gak:
+    if _is_gak or email:
         auth_headers = {"X-Auth-Email": email, "X-Auth-Key": cf_token}
     else:
         auth_headers = {"Authorization": f"Bearer {cf_token}"}
@@ -5703,21 +5699,14 @@ async def worker_setup(request: Request, _=Depends(require_auth)):
     body = await request.json()
     token = str(body.get("token") or "").strip()
     account_id = str(body.get("account_id") or "").strip()
-    # Email is only needed for Global API Key auth; it comes from the CF_EMAIL
-    # environment variable so it is not asked in the UI (modern Bearer tokens
-    # need no email).
-    email = os.environ.get("CF_EMAIL", "")
+    email = str(body.get("email") or "").strip()
     if not token or not account_id:
         raise HTTPException(status_code=400, detail="token and account_id are required")
 
-    # 1. Verify the API token. Only a real Global API Key (cfk_ + 37-char hex)
-    #    is verified at /user (which needs the email too). A Bearer token always
-    #    goes through /user/tokens/verify, which only checks the token is valid
-    #    and active — no extra scope needed (Workers-scoped tokens are rejected
-    #    by /user with a 9109 permission error). Filling the email must not force
-    #    the Bearer token onto the /user path.
+    # 1. Verify the API token. Global API Key (cfk_ + 37-char hex) is verified
+    #    at /user and needs the email too; modern Bearer tokens use /user/tokens/verify.
     _is_gak = _is_cf_gak(token)
-    verify_path = "/user/tokens/verify" if not _is_gak else "/user"
+    verify_path = "/user/tokens/verify" if not (email or _is_gak) else "/user"
     code, data = await _cf_api("GET", verify_path, token, email=email)
     if code != 200 or not data.get("success"):
         msg = (data.get("errors") or [{}])[0].get("message", "invalid token")
@@ -5738,14 +5727,6 @@ async def worker_setup(request: Request, _=Depends(require_auth)):
         if code2 in (200, 404):
             pass  # script check only; domain comes from subdomain above
     if not worker_domain:
-        no_subdomain = any(e.get("code") == 10007 for e in (data.get("errors") or []))
-        if no_subdomain:
-            raise HTTPException(
-                status_code=400,
-                detail="این اکانت هنوز workers.dev subdomain ندارد — یک بار صفحه Workers & Pages را در داشبورد Cloudflare باز کنید "
-                       "تا ساب‌دامین ساخته شود، سپس دوباره وصل شوید. "
-                       "(Account has no workers.dev subdomain yet — open the Workers & Pages page in the Cloudflare dashboard once, then retry.)",
-            )
         raise HTTPException(status_code=400, detail="could not resolve worker subdomain — check the API token has Workers:Edit permission")
 
     # 3. Save connection, then deploy the worker script.
