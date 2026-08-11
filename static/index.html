@@ -2523,29 +2523,10 @@ var SCN_STOP = false;
 var scnCtx = { cf: {found: [], tried: 0, gen: 0, seq: 0}, railway: {found: [], tried: 0, gen: 0, seq: 0} };
 
 // ═══ SPOOF SCANNER ═══
-// Cloudflare IP ranges from cf_subnets.txt
-var SPF_IP_RANGES = [
-  [104, 16, 0, 0, 12], [104, 17, 0, 0, 12], [104, 18, 0, 0, 12], [104, 19, 0, 0, 12],
-  [104, 20, 0, 0, 12], [104, 21, 0, 0, 12], [104, 22, 0, 0, 12], [104, 23, 0, 0, 12],
-  [104, 24, 0, 0, 12], [104, 25, 0, 0, 12], [104, 26, 0, 0, 12], [104, 27, 0, 0, 12],
-  [104, 28, 0, 0, 12], [104, 29, 0, 0, 12], [104, 30, 0, 0, 12], [104, 31, 0, 0, 12],
-  [172, 64, 0, 0, 13], [172, 65, 0, 0, 13], [172, 66, 0, 0, 13], [172, 67, 0, 0, 13],
-  [162, 159, 0, 0, 16], [108, 162, 192, 0, 18], [141, 101, 64, 0, 18],
-  [188, 114, 96, 0, 19], [190, 93, 240, 0, 20], [197, 234, 240, 0, 20],
-  [198, 41, 128, 0, 18], [199, 27, 128, 0, 17], [162, 158, 0, 0, 15]
-];
-// SNI list from sni-list.txt (truncated for performance - full list loaded on demand)
-var SPF_SNI_LIST = [
-  "www.cloudflare.com", "www.hcaptcha.com", "api.cloudflare.com", "dash.cloudflare.com",
-  "workers.cloudflare.com", "pages.cloudflare.com", "developers.cloudflare.com",
-  "cloudflare-dns.com", "one.one.one.one", "1.1.1.1", "cloudflare.com",
-  "www.google.com", "www.youtube.com", "www.facebook.com", "www.microsoft.com",
-  "www.apple.com", "www.amazon.com", "www.github.com", "www.twitter.com",
-  "api.openai.com", "chatgpt.com", "www.anthropic.com", "www.deepseek.com",
-  "www.cloudflare-dns.com", "cdnjs.cloudflare.com", "assets.hcaptcha.com",
-  "analytics.hcaptcha.com", "challenges.cloudflare.com", "radar.cloudflare.com",
-  "speed.cloudflare.com", "speedtest.cloudflare.com", "cdn.cloudflare.com"
-];
+// IP ranges and SNI list are loaded from static/cf_subnets.txt and static/sni-list.txt
+var SPF_IP_RANGES = [];
+var SPF_SNI_LIST = [];
+var SPF_FILES_LOADED = false;
 var SPF_STOP = false;
 var spfCtx = {
   ip: {found: [], tried: 0, gen: 0, seq: 0},
@@ -2780,6 +2761,7 @@ function scnSwitch(which, btn) {
   if (which === 'railway') scnLoadSaved('railway');
   if (which === 'tcp') scnRenderDomains();
   if (which === 'spoof') {
+    spfLoadFiles();
     spfLoadSaved('ip');
     spfLoadSaved('sni');
     spfRenderAdvDropdown();
@@ -2852,7 +2834,8 @@ function scnInit() {
 
 // ═══ SPOOF SCANNER FUNCTIONS ═══
 
-function spfInit() {
+async function spfInit() {
+  await spfLoadFiles();
   spfLoadSaved('ip');
   spfLoadSaved('sni');
   spfLoadAdvDomains();
@@ -2881,14 +2864,56 @@ function spfRandIp(range) {
   else if (range[4] === 18) { seg[2] = Math.floor(Math.random() * 256); }
   else if (range[4] === 19) { seg[2] = Math.floor(Math.random() * 256); }
   else if (range[4] === 20) { seg[2] = Math.floor(Math.random() * 256); }
+  else if (range[4] === 22) { seg[2] += Math.floor(Math.random() * 64); }
+  else if (range[4] === 23) { seg[2] += Math.floor(Math.random() * 128); }
+  else if (range[4] === 24) { /* all host bits in 4th octet */ }
   seg[3] = Math.floor(Math.random() * 253) + 2;
   return seg.join('.');
+}
+
+function spfParseCidr(cidr) {
+  // Parse "A.B.C.D/prefix" → [a, b, c, d, prefix] array for spfRandIp
+  var parts = cidr.trim().split('/');
+  if (parts.length !== 2) return null;
+  var octets = parts[0].split('.').map(function(x) { return parseInt(x, 10); });
+  var prefix = parseInt(parts[1], 10);
+  if (octets.length !== 4 || isNaN(prefix) || prefix < 8 || prefix > 32) return null;
+  if (octets.some(function(o) { return isNaN(o) || o < 0 || o > 255; })) return null;
+  return [octets[0], octets[1], octets[2], octets[3], prefix];
+}
+
+async function spfLoadFiles() {
+  if (SPF_FILES_LOADED) return;
+  try {
+    var [rangesResp, sniResp] = await Promise.all([
+      fetch('/static/cf_subnets.txt').catch(function(){}),
+      fetch('/static/sni-list.txt').catch(function(){})
+    ]);
+    if (rangesResp && rangesResp.ok) {
+      var txt = await rangesResp.text();
+      var parsed = txt.split(/\r?\n/).map(spfParseCidr).filter(function(x) { return x !== null; });
+      if (parsed.length) SPF_IP_RANGES = parsed;
+    }
+    if (sniResp && sniResp.ok) {
+      var sniTxt = await sniResp.text();
+      var snis = sniTxt.split(/\r?\n/).map(function(s) { return s.trim().toLowerCase(); }).filter(function(s) { return s && !s.startsWith('#'); });
+      if (snis.length) SPF_SNI_LIST = snis;
+    }
+    SPF_FILES_LOADED = true;
+  } catch (e) {
+    // keep empty arrays — user can still add custom ranges/SNIs manually
+  }
 }
 
 function spfStopScan() { SPF_STOP = true; toast('اسکن متوقف شد', 'warn'); }
 
 async function spfRunIpScan() {
   if (spfCtx.ip.running) return;
+  if (!SPF_FILES_LOADED) await spfLoadFiles();
+  if (!SPF_IP_RANGES.length) {
+    toast('لیست IP ranges خالی است! فایل cf_subnets.txt بارگیری نشد.', 'err');
+    return;
+  }
   spfCtx.ip.running = true;
   spfCtx.ip.found = [];
   spfCtx.ip.tried = 0;
@@ -2965,6 +2990,11 @@ async function spfRunIpScan() {
 
 async function spfRunSniScan() {
   if (spfCtx.sni.running) return;
+  if (!SPF_FILES_LOADED) await spfLoadFiles();
+  if (!SPF_IP_RANGES.length || !SPF_SNI_LIST.length) {
+    toast('لیست IP ranges یا SNI list خالی است! فایل‌های cf_subnets.txt و sni-list.txt بارگیری نشده‌اند.', 'err');
+    return;
+  }
   spfCtx.sni.running = true;
   spfCtx.sni.found = [];
   spfCtx.sni.tried = 0;

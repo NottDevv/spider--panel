@@ -3241,8 +3241,12 @@ async def api_user_sub(username: str):
 
 
 @app.get("/api/sub/{username}/qr")
-async def sub_qr(username: str):
-    """Public QR code PNG for the subscription page (no auth required)."""
+async def sub_qr(username: str, mode: str = "config"):
+    """Public QR code PNG for the subscription page (no auth required).
+
+    mode=config  → QR of the full VLESS config (default, backward-compatible)
+    mode=sub     → QR of the subscription link  https://domain/sub/{username}
+    """
     if not QR_AVAILABLE:
         raise HTTPException(status_code=501, detail="qr code generation not available")
     user = None
@@ -3255,10 +3259,14 @@ async def sub_qr(username: str):
                 break
     if not user:
         raise HTTPException(status_code=404, detail="user not found")
-    config = generate_user_config(uid, user, user.get("inbound_id"))
+    if mode == "sub":
+        host = SETTINGS.get("domain") or get_host()
+        data = f"https://{host}/sub/{username}"
+    else:
+        data = generate_user_config(uid, user, user.get("inbound_id"))
     qr = qrcode.QRCode(version=1, box_size=8, border=3,
                        error_correction=qrcode.constants.ERROR_CORRECT_M)
-    qr.add_data(config)
+    qr.add_data(data)
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
     buf = io.BytesIO()

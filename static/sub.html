@@ -359,7 +359,7 @@
 (function() {
   var uname = window.location.pathname.split('/').filter(Boolean).pop();
   var apiUrl = '/api/sub/' + encodeURIComponent(uname);
-  var subUrl = window.location.origin + '/sub-sync/sub/' + uname;
+  var subUrl = window.location.origin + '/sub/' + uname;
   var state = { data: null };
 
   /* ═══ NEON MOUSE TRAIL ═══ */
@@ -727,7 +727,7 @@
     var modal = document.getElementById('qrModal');
     var img = document.getElementById('qrImg');
     if (!modal || !img) return;
-    img.src = '/api/sub/' + encodeURIComponent(uname) + '/qr?t=' + Date.now();
+    img.src = '/api/sub/' + encodeURIComponent(uname) + '/qr?mode=sub&t=' + Date.now();
     modal.classList.add('show');
   };
   window.closeQr = function() {
