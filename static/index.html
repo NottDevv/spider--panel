@@ -852,49 +852,6 @@ tr{animation:fadeIn .3s ease}
 @media(max-width:900px){.sidebar-backdrop.show{display:block}}
 .sidebar-tog{display:none}@media(max-width:900px){.sidebar-tog{display:inline-flex!important}}
 
-/* ═══ Custom Sub Dropdown ═══ */
-.custom-sub-dropdown-wrap{position:relative;margin-top:8px}
-.custom-sub-dropdown{
-  display:flex;align-items:center;justify-content:space-between;
-  background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius);
-  padding:10px 14px;cursor:pointer;transition:all .2s;gap:8px;overflow:hidden;
-  backdrop-filter:blur(8px)
-}
-[data-theme="light"] .custom-sub-dropdown{background:var(--bg)}
-.custom-sub-dropdown:hover{border-color:rgba(43,127,255,.25)}
-.custom-sub-dropdown::after{
-  content:'';position:absolute;inset:0;border-radius:var(--radius);
-  background:linear-gradient(135deg,rgba(43,127,255,.05),transparent);opacity:0;transition:opacity .2s
-}
-.custom-sub-dropdown:hover::after{opacity:1}
-#custom-sub-selected-label{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
-#custom-sub-chevron{font-size:14px;color:var(--txt2);transition:transform .2s}
-.custom-sub-dropdown.open #custom-sub-chevron{transform:rotate(180deg)}
-.custom-sub-dropdown-icon{
-  display:inline-block;width:18px;height:18px;border-radius:4px;
-  background:linear-gradient(135deg,var(--spider-blue),var(--spider-purple));
-  flex-shrink:0;box-shadow:0 0 4px rgba(43,127,255,.4)
-}
-.custom-sub-dropdown-menu{
-  position:absolute;top:100%;left:0;right:0;
-  background:var(--bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  border:1.5px solid var(--border);border-radius:var(--radius);
-  max-height:220px;overflow-y:auto;overflow-x:hidden;
-  z-index:10;margin-top:6px;box-shadow:var(--shadow-lg);
-  opacity:0;visibility:hidden;transform:translateY(-6px);transition:all .2s
-}
-.custom-sub-dropdown-wrap.open .custom-sub-dropdown-menu{opacity:1;visibility:visible;transform:translateY(0)}
-.custom-sub-dropdown-menu::-webkit-scrollbar{width:6px}
-.custom-sub-dropdown-menu::-webkit-scrollbar-track{background:transparent}
-.custom-sub-dropdown-menu::-webkit-scrollbar-thumb{background:rgba(43,127,255,.18);border-radius:3px}
-.custom-sub-dropdown-menu::-webkit-scrollbar-thumb:hover{background:rgba(43,127,255,.28)}
-.custom-sub-option{
-  padding:10px 14px;cursor:pointer;border-radius:var(--radius);margin:4px 6px;
-  font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  transition:all .2s;display:flex;align-items:center;gap:8px
-}
-.custom-sub-option:hover{background:rgba(43,127,255,.08);color:var(--spider-blue)}
-.custom-sub-option.active{background:rgba(43,127,255,.14);color:var(--spider-blue);border:1px solid rgba(43,127,255,.2);font-weight:600}
 </style>
 </head>
 <body>
@@ -1328,29 +1285,6 @@ tr{animation:fadeIn .3s ease}
           </div>
           <div class="sub-link" id="audio-file" style="margin-top:8px;margin-bottom:0">static/music-panel.mp3</div>
           <audio id="panel-audio-player" loop style="display:none"></audio>
-        </div>
-
-        <div class="panel">
-          <div class="panel-h"><span class="glow" data-i18n="customSubPages">صفحات سفارشی ساب</span></div>
-          <div class="px-hint" style="margin-top:6px;margin-bottom:10px">صفحه‌ای که برای <code>/sub/{username}</code> سرو می‌شود. می‌توانید فایل‌های دلخواه را در <code>static/custom_sub/</code> قرار دهید.</div>
-          <div class="set-row">
-            <span class="set-lbl" data-i18n="defaultSubPage">صفحه ساب پیش‌فرض</span>
-            <div class="custom-sub-dropdown-wrap" id="custom-sub-dropdown-wrap">
-              <div class="custom-sub-dropdown" id="custom-sub-dropdown" onclick="toggleCustomSubMenu()">
-                <span class="custom-sub-dropdown-icon"></span>
-                <span id="custom-sub-selected-label" data-i18n="pickSubPage">صفحه‌ای انتخاب کنید...</span>
-                <i class="ti ti-chevron-down" id="custom-sub-chevron"></i>
-                <input type="hidden" id="set-custom-sub-default" value="">
-              </div>
-              <div class="custom-sub-dropdown-menu" id="custom-sub-dropdown-menu"></div>
-            </div>
-          </div>
-          <div style="margin-top:12px">
-            <button class="btn btn-g" onclick="refreshCustomSubs()" style="width:100%"><span data-i18n="refresh">🔄 بروزرسانی لیست</span></button>
-          </div>
-          <div style="margin-top:12px;padding:10px;border-radius:var(--radius);background:rgba(43,127,255,.04);border:1px dashed var(--border)">
-            <span style="font-size:11px;color:var(--txt2)" data-i18n="customSubPreview">🔗 پیش‌نمایش: <span id="custom-sub-preview-url" style="color:var(--spider-blue);font-weight:600">—</span></span>
-          </div>
         </div>
 
         <div class="panel">
@@ -2453,63 +2387,9 @@ async function deleteInbound(iid) {
 }
 
 // ─── Settings ───
-function $id(id){return document.getElementById(id)}
 function loadSettings() {
   // Already handled by theme pickers in HTML
-  loadCustomSubsCurrent();
 }
-
-// ─── Custom Sub Dropdown ───
-async function loadCustomSubsCurrent(){
-  try{
-    var d=await api('/api/custom-subs');
-    var menu=$id('custom-sub-dropdown-menu');
-    var hidden=$id('set-custom-sub-default');
-    var lbl=$id('custom-sub-selected-label');
-    var preview=$id('custom-sub-preview-url');
-    if(!menu||!hidden||!lbl)return;
-    var opts=d.subs||[];
-    hidden.value=d.default||'';
-    lbl.textContent=d.default?opts.find(function(o){return o.file===d.default})?.label||d.default:'صفحه‌ای انتخاب کنید...';
-    if(preview&&d.default){preview.textContent='/static/custom_sub/'+d.default}
-    menu.innerHTML='';
-    if(!opts.length){
-      menu.innerHTML='<div style="padding:10px 14px;font-size:12px;color:var(--text-secondary)">هیچ صفحه‌ای یافت نشد</div>';
-    }else{
-      menu.innerHTML=opts.map(function(o){
-        var active=o.file===d.default?' active':'';
-        return '<div class="custom-sub-option'+active+'" onclick="selectCustomSub(\''+esc(o.file)+'\', \''+esc(o.label)+'\')"><span class="custom-sub-dropdown-icon"></span>'+esc(o.label||o.file)+'</div>'
-      }).join('');
-    }
-  }catch(e){console.error(e)}
-}
-function toggleCustomSubMenu(){
-  var wrap=$id('custom-sub-dropdown-wrap');
-  if(!wrap)return;
-  wrap.classList.toggle('open');
-}
-function selectCustomSub(file,label){
-  var hidden=$id('set-custom-sub-default');
-  var lbl=$id('custom-sub-selected-label');
-  var preview=$id('custom-sub-preview-url');
-  if(hidden)hidden.value=file;
-  if(lbl)lbl.textContent=label||file;
-  if(preview)preview.textContent='/static/custom_sub/'+file;
-  var wrap=$id('custom-sub-dropdown-wrap');
-  if(wrap)wrap.classList.remove('open');
-  // Save immediately
-  api('/api/custom-subs/default', {method: 'POST', body: {file: file}}).then(function(){
-    toast('صفحه ساب پیش‌فرض ذخیره شد ✓','ok');
-  }).catch(function(e){toast(e.message,'err')})
-}
-async function refreshCustomSubs(){
-  await loadCustomSubsCurrent();
-  toast('لیست صفحات ساب بروز شد ✓','ok');
-}
-$id('custom-sub-dropdown')?.addEventListener('click', function(e){e.stopPropagation()});
-document.addEventListener('click', function(e){
-  if(!e.target.closest('#custom-sub-dropdown-wrap')){var w=$id('custom-sub-dropdown-wrap');if(w)w.classList.remove('open')}
-});
 
 async function changePassword(e) {
   e.preventDefault();
