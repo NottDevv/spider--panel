@@ -1622,6 +1622,11 @@ async def subscription_handler(identifier: str, request: Request):
     async with USERS_LOCK:
         for uid, u in USERS.items():
             if u.get("username") == identifier:
+                _custom_default = SETTINGS.get("custom_sub_default", "")
+                _candidate = _os.path.join(_CUSTOM_SUB_DIR, _os.path.basename(_custom_default))
+                if _custom_default and _os.path.isfile(_candidate):
+                    return FileResponse(_candidate)
+                # Fallback to legacy sub.html
                 return FileResponse(_os.path.join(_STATIC_DIR, "sub.html"))
 
     # 2) Check if it's a link UUID (return base64 config)
@@ -3056,6 +3061,44 @@ _os.makedirs(_STATIC_DIR, exist_ok=True)
 # the panel music + background images 404'd.
 app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
+# ── Custom subscription pages (user-curated sub HTML pages) ──────────────
+import os as _os
+_CUSTOM_SUB_DIR = _os.path.join(_STATIC_DIR, "custom_sub")
+_os.makedirs(_CUSTOM_SUB_DIR, exist_ok=True)
+app.mount("/static/custom_sub", StaticFiles(directory=_CUSTOM_SUB_DIR), name="custom_sub")
+
+@app.get("/api/custom-subs")
+async def list_custom_subs(_=Depends(require_auth)):
+    """List available custom subscription pages and the chosen default."""
+    files = []
+    for fn in sorted(_os.listdir(_CUSTOM_SUB_DIR)):
+        if fn.lower().endswith(".html") and fn != "index.html":
+            name = fn[:-5]  # strip .html
+            files.append({
+                "file": fn,
+                "name": name,
+                "url": f"/static/custom_sub/{fn}",
+                "label": name.replace("_", " ").replace("-", " ").title(),
+            })
+    default = SETTINGS.get("custom_sub_default", files[0]["file"] if files else None)
+    return {"subs": files, "default": default}
+
+@app.post("/api/custom-subs/default")
+async def set_default_sub(request: Request, _=Depends(require_auth)):
+    """Set the default custom subscription page."""
+    body = await request.json()
+    chosen = str(body.get("file", "")).strip()
+    if not chosen.endswith(".html"):
+        raise HTTPException(status_code=400, detail="Invalid file")
+    target = _os.path.join(_CUSTOM_SUB_DIR, _os.path.basename(chosen))
+    if not _os.path.isfile(target):
+        raise HTTPException(status_code=404, detail="Sub page not found")
+    async with SETTINGS_LOCK:
+        SETTINGS["custom_sub_default"] = chosen
+    asyncio.create_task(save_state())
+    log_activity("settings", f"Default sub set to {chosen}", "ok")
+    return {"ok": True, "default": chosen}
+
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     if await is_valid_session(request.cookies.get(SESSION_COOKIE)):
@@ -3369,6 +3412,7 @@ async def get_global_settings(_=Depends(require_auth)):
         "bg_sub": SETTINGS.get("bg_sub", ""),
         "panel_audio": SETTINGS.get("panel_audio", ""),
         "panel_audio_enabled": SETTINGS.get("panel_audio_enabled", False),
+        "custom_sub_default": SETTINGS.get("custom_sub_default", ""),
     }
 
 @app.post("/api/tools/settings")
@@ -3404,6 +3448,8 @@ async def set_global_settings(request: Request, _=Depends(require_auth)):
             val = str(body["default_connection_mode"]).strip()
             if val in ("ws", "xhttp", "tcp"):
                 SETTINGS["default_connection_mode"] = val
+        if "custom_sub_default" in body:
+            SETTINGS["custom_sub_default"] = str(body["custom_sub_default"]).strip()
     asyncio.create_task(save_state())
     log_activity("settings", "تنظیمات کلی ذخیره شد", "ok")
     return {"ok": True}

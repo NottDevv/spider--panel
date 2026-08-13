@@ -881,6 +881,32 @@ a{color:inherit;text-decoration:none}
         </div>
       </div>
     </div>
+
+    <!-- Custom Sub Pages -->
+    <div class="table-wrap" style="margin-bottom:18px">
+      <div style="padding:18px 22px;border-bottom:1px solid var(--border)">
+        <div class="server-title" style="margin-bottom:0"><i class="ti ti-layout"></i> صفحات سفارشی ساب</div>
+      </div>
+      <div style="padding:18px 22px">
+        <div class="form-field">
+          <label><i class="ti ti-checkup"></i> صفحه ساب پیش‌فرض</label>
+          <div class="custom-sub-dropdown-wrap" style="margin-top:8px" id="custom-sub-dropdown-wrap">
+            <div class="custom-sub-dropdown" id="custom-sub-dropdown" onclick="toggleCustomSubMenu()">
+              <span id="custom-sub-selected-label">انتخاب صفحه...</span>
+              <i class="ti ti-chevron-down" id="custom-sub-chevron"></i>
+              <input type="hidden" id="set-custom-sub-default" value="">
+            </div>
+            <div class="custom-sub-dropdown-menu" id="custom-sub-dropdown-menu">
+              <!-- Options populated dynamically -->
+            </div>
+            <input type="hidden" id="set-custom-sub-options" value="">
+          </div>
+          <div style="margin-top:10px;color:var(--text-secondary);font-size:12px">
+            <i class="ti ti-info-circle"></i> این صفحه برای لینک <code>/sub/{username}</code> سرو می‌شود.
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- WORKER PAGE -->
@@ -1350,8 +1376,51 @@ async function loadSettings(){
     document.getElementById('set-real-sni').value=real.sni||d.domain||'';
     document.getElementById('set-real-ext-domain').value=real.external_domain||d.domain||'';
     document.getElementById('set-real-ext-port').value=real.external_port||443;
+    // Custom sub default
+    document.getElementById('set-custom-sub-default').value=d.custom_sub_default||'';
+    loadCustomSubs(d.custom_sub_default||'');
+    var lbl=document.getElementById('custom-sub-selected-label');
+    if(lbl&&d.custom_sub_default){
+      var opts=document.getElementById('set-custom-sub-options').value;
+      try{var arr=JSON.parse(opts);var found=arr.find(function(o){return o.file===d.custom_sub_default});if(found){lbl.textContent=found.label||found.file}}catch(e){}
+    }
   }catch(e){console.error(e)}
 }
+
+async function loadCustomSubs(selected){
+  try{
+    var r=await authFetch('/api/custom-subs');var d=await r.json();
+    var opts=d.subs||[];var menu=document.getElementById('custom-sub-dropdown-menu');
+    var input=document.getElementById('set-custom-sub-options');
+    if(!menu||!input)return;
+    input.value=JSON.stringify(opts);
+    var html='';
+    if(!opts.length){
+      html+='<div class="custom-sub-option" style="color:var(--text-secondary)">هیچ صفحه‌ای یافت نشد</div>';
+    }else{
+      html=opts.map(function(o){
+        var active=o.file===selected?' active':'';
+        return '<div class="custom-sub-option'+active+'" onclick="selectCustomSub(\''+esc(o.file)+'\', \''+esc(o.label)+'\')"><span class="sub-preview"></span>'+esc(o.label||o.file)+'</div>'
+      }).join('');
+    }
+    menu.innerHTML=html;
+  }catch(e){console.error(e)}
+}
+function toggleCustomSubMenu(){
+  var wrap=document.getElementById('custom-sub-dropdown-wrap');
+  var dd=document.getElementById('custom-sub-dropdown');
+  if(wrap.classList.contains('open')){wrap.classList.remove('open')}else{wrap.classList.add('open')}
+}
+function selectCustomSub(file,label){
+  document.getElementById('set-custom-sub-default').value=file;
+  var lbl=document.getElementById('custom-sub-selected-label');if(lbl)lbl.textContent=label||file;
+  var wrap=document.getElementById('custom-sub-dropdown-wrap');if(wrap)wrap.classList.remove('open');
+  document.getElementById('custom-sub-chevron').style.transform='';
+}
+document.addEventListener('click',function(e){
+  var wrap=document.getElementById('custom-sub-dropdown-wrap');
+  if(!wrap||!wrap.contains(e.target)){wrap.classList.remove('open');}
+});
 
 async function saveSettings(){
   try{
@@ -1366,7 +1435,8 @@ async function saveSettings(){
       default_connection_mode:document.getElementById('set-conn-mode').value,
       enabled_protocols:protos,
       websocket_mode:document.getElementById('set-ws-mode').classList.contains('on'),
-      xhttp_mode:document.getElementById('set-xhttp-mode').classList.contains('on')
+      xhttp_mode:document.getElementById('set-xhttp-mode').classList.contains('on'),
+      custom_sub_default:document.getElementById('set-custom-sub-default').value.trim()
     };
     var r=await authFetch('/api/tools/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!r.ok)throw new Error();
@@ -1685,6 +1755,49 @@ html,body{{min-height:100%;background:var(--bg);font-family:'Vazirmatn',sans-ser
   .wrap{{padding:20px 12px 50px}}
 }}
 @keyframes spin{{to{{transform:rotate(360deg)}}}}
+/* Custom Sub Dropdown */
+.custom-sub-dropdown-wrap{{position:relative;margin-top:8px}}
+.custom-sub-dropdown{{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--surface);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:10px 14px;cursor:pointer;
+  transition:all .2s;gap:8px;overflow:hidden;position:relative;z-index:2
+}}
+.custom-sub-dropdown:hover{{border-color:rgba(43,127,255,.25)}}
+.custom-sub-dropdown::after{{
+  content:'';position:absolute;inset:0;border-radius:var(--radius-lg);
+  background:linear-gradient(135deg,rgba(43,127,255,.05),transparent);opacity:0;transition:opacity .2s
+}}
+.custom-sub-dropdown:hover::after{{opacity:1}}
+#custom-sub-selected-label{{font-size:13px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+#custom-sub-chevron{{font-size:14px;color:var(--text-secondary);transition:transform .2s}}
+.custom-sub-dropdown.open #custom-sub-chevron{{transform:rotate(180deg)}}
+.custom-sub-dropdown-menu{{
+  position:absolute;top:100%;left:0;right:0;
+  background:var(--surface);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border:1.5px solid var(--border);border-radius:var(--radius-lg);
+  max-height:220px;overflow-y:auto;overflow-x:hidden;
+  z-index:10;margin-top:6px;box-shadow:var(--shadow-lg);
+  opacity:0;visibility:hidden;transform:translateY(-6px);transition:all .2s;
+  padding:6px
+}}
+.custom-sub-dropdown-wrap.open .custom-sub-dropdown-menu{{opacity:1;visibility:visible;transform:translateY(0)}}
+.custom-sub-dropdown-menu::-webkit-scrollbar{{width:6px}}
+.custom-sub-dropdown-menu::-webkit-scrollbar-track{{background:transparent}}
+.custom-sub-dropdown-menu::-webkit-scrollbar-thumb{{background:rgba(43,127,255,.18);border-radius:3px}}
+.custom-sub-dropdown-menu::-webkit-scrollbar-thumb:hover{{background:rgba(43,127,255,.28)}}
+.custom-sub-option{{
+  padding:10px 14px;cursor:pointer;border-radius:var(--radius);margin:4px 6px;
+  font-size:12.5px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  transition:all .2s;display:flex;align-items:center;gap:8px
+}}
+.custom-sub-option:hover{{background:rgba(43,127,255,.08);color:var(--spider-blue)}}
+.custom-sub-option.active{{background:rgba(43,127,255,.14);color:var(--spider-blue);border:1px solid rgba(43,127,255,.2);font-weight:600}}
+.custom-sub-option .sub-preview{{
+  display:inline-block;width:18px;height:18px;border-radius:4px;
+  background:linear-gradient(135deg,var(--spider-blue),var(--spider-purple));
+  flex-shrink:0;box-shadow:0 0 4px rgba(43,127,255,.4)
+}}
 </style>
 </head>
 <body data-theme="light">
