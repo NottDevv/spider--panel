@@ -185,7 +185,7 @@
 </style>
 <script>
 (function() {
-  var uname = (new URLSearchParams(location.search)).get('u') || location.hash.slice(1) || 'guest';
+  var uname = (new URLSearchParams(location.search)).get('u') || location.hash.slice(1) || location.pathname.split('/').pop() || 'guest';
   var apiUrl = '/api/sub/' + encodeURIComponent(uname);
   var subUrl = window.location.origin + '/sub/' + uname;
   var state = { data: null };

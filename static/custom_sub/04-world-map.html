@@ -177,7 +177,7 @@
 </style>
 <script>
 (function(){
-  var uname=(new URLSearchParams(location.search)).get('u')||location.hash.slice(1)||'guest';
+  var uname = (new URLSearchParams(location.search)).get('u') || location.hash.slice(1) || location.pathname.split('/').pop() || 'guest';
   var apiUrl='/api/sub/'+encodeURIComponent(uname);var subUrl=window.location.origin+'/sub/'+uname;var state={data:null};
   function fmtBytes(b){if(!b||b<1)return'0 B';var u=['B','KB','MB','GB','TB'],i=0;while(b>=1024&&i<u.length-1){b/=1024;i++}return b.toFixed(i?2:0)+' '+u[i]}
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
