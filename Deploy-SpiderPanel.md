@@ -320,9 +320,7 @@ DESTINATION = www.speedtest.net:443
 
 ## 🔗 لینک‌های مفید
 
-- [مخزن رسمی Spider Panel](https://github.com/amirappleidfd-stack/spider--panel)
 - [مستندات VLESS Reality](https://github.com/XTLS/REALITY)
-- [JustRunMy.app](https://justrunmy.app)
 
 ---
 
